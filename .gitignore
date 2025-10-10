@@ -49,3 +49,9 @@ env/
 *.h5
 *.parquet
 data/
+
+# Specify 框架目录
+.specify/
+
+# Claude Code 配置目录
+.claude/
