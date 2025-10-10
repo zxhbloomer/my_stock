@@ -1,0 +1,22 @@
+# Conda 环境配置文件
+# 基于 Qlib 官方要求
+
+name: mystock
+
+channels:
+  - defaults
+  - conda-forge
+
+dependencies:
+  - python=3.8
+  - numpy>=1.21.0
+  - pandas>=1.1.2
+  - scikit-learn>=0.23.2
+  - pyyaml
+  - jupyter
+  - notebook
+  - matplotlib
+  - plotly
+  - pip
+  - pip:
+    - pyqlib

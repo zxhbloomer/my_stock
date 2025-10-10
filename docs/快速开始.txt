@@ -1,0 +1,124 @@
+# My Stock - 快速开始指南
+
+## 第一步：安装依赖
+
+在项目目录打开命令行，运行：
+```
+pip install -r requirements.txt
+```
+
+## 第二步：下载数据
+
+双击运行：
+```
+scripts\download_data.bat
+```
+
+或者手动执行：
+```
+python -m qlib.run.get_data qlib_data --target_dir ~/.qlib/qlib_data/cn_data --region cn
+```
+
+## 第三步：运行示例
+
+### 方式1：使用配置文件（推荐）
+
+双击运行：
+```
+scripts\run_example.bat
+```
+
+或者手动执行：
+```
+qrun configs\workflow_config_lightgbm_Alpha158.yaml
+```
+
+### 方式2：使用 Jupyter Notebook
+
+```
+jupyter notebook notebooks\01_workflow_by_code.ipynb
+```
+
+## 第四步：查看结果
+
+运行以下命令启动 MLflow UI：
+```
+mlflow ui
+```
+
+然后在浏览器打开：http://localhost:5000
+
+## 项目结构说明
+
+```
+my_stock/
+├── configs/                          # 配置文件
+│   ├── workflow_config_lightgbm_Alpha158.yaml       # CSI300 配置
+│   └── workflow_config_lightgbm_Alpha158_csi500.yaml # CSI500 配置
+├── mlruns/                           # 实验记录（自动生成）
+├── notebooks/                        # Jupyter 分析
+│   └── 01_workflow_by_code.ipynb
+├── scripts/                          # 脚本工具
+│   ├── download_data.bat
+│   └── run_example.bat
+├── README.md
+├── requirements.txt
+└── 快速开始.txt（本文件）
+```
+
+## 配置文件说明
+
+### CSI300 配置 (workflow_config_lightgbm_Alpha158.yaml)
+- 市场：沪深300 (csi300)
+- 基准：SH000300
+- 模型：LightGBM
+- 因子：Alpha158
+
+### CSI500 配置 (workflow_config_lightgbm_Alpha158_csi500.yaml)
+- 市场：中证500 (csi500)
+- 基准：SH000905
+- 模型：LightGBM
+- 因子：Alpha158
+
+## 修改配置
+
+所有配置文件都是标准的 YAML 格式，可以直接修改：
+
+1. 修改市场和基准
+```yaml
+market: &market csi300  # 或 csi500, csi100
+benchmark: &benchmark SH000300  # 对应的基准指数
+```
+
+2. 修改时间范围
+```yaml
+data_handler_config: &data_handler_config
+    start_time: 2008-01-01
+    end_time: 2020-08-01
+```
+
+3. 修改模型参数
+```yaml
+task:
+    model:
+        kwargs:
+            learning_rate: 0.0421  # 学习率
+            max_depth: 8           # 树的深度
+```
+
+## 常见问题
+
+Q: 数据下载失败？
+A: 检查网络连接，或者手动下载数据后放到 ~/.qlib/qlib_data/cn_data 目录
+
+Q: 运行报错 "qlib not initialized"？
+A: 确保已经下载数据，并且配置文件中的 provider_uri 路径正确
+
+Q: 如何查看更多示例？
+A: 访问 Qlib 官方仓库：https://github.com/microsoft/qlib/tree/main/examples
+
+## 参考资料
+
+- Qlib 官方文档：https://qlib.readthedocs.io/
+- Qlib GitHub：https://github.com/microsoft/qlib
+- 示例代码：https://github.com/microsoft/qlib/tree/main/examples

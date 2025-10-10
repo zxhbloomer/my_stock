@@ -1,0 +1,16 @@
+# Qlib 核心依赖（基于官方 examples/benchmarks 的 requirements.txt）
+pyqlib
+numpy>=1.21.0
+pandas>=1.1.2
+scikit-learn>=0.23.2
+
+# 可选：深度学习模型
+# torch==1.7.0
+
+# 可选：Jupyter 支持
+# jupyter
+# notebook
+
+# 可选：可视化
+# matplotlib
+# plotly
