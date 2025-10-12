@@ -6,6 +6,7 @@
 
 - ✅ **完整的数据流水线**: 从数据采集到处理的完整工具链
 - ✅ **Tushare数据源集成**: 支持A股市场数据采集
+- ✅ **图形化数据管理**: Tkinter GUI数据同步和任务管理界面
 - ✅ **灵活的任务系统**: 基于装饰器的任务注册和工厂模式
 - ✅ **异步数据库操作**: PostgreSQL异步/同步双模式支持
 - ✅ **批处理规划**: 智能批次切分和并发处理
@@ -16,6 +17,14 @@
 ```
 my_stock/
 ├── data/                        # 数据采集和处理模块（从alphaHome迁移）
+│   ├── gui/                     # GUI数据同步和管理界面
+│   │   ├── main_window.py       # 主窗口
+│   │   ├── controller.py        # 前后端控制器
+│   │   ├── handlers/            # 业务逻辑处理器
+│   │   ├── ui/                  # UI标签页组件
+│   │   ├── services/            # GUI业务服务
+│   │   ├── mixins/              # 功能混入类
+│   │   └── utils/               # GUI工具函数
 │   ├── collectors/              # 数据采集器
 │   │   ├── base/               # 采集器基础类
 │   │   │   └── fetcher_task.py # 通用数据获取任务基类
@@ -86,9 +95,11 @@ my_stock/
 ├── tests/                       # 测试文件
 ├── mlruns/                      # MLflow 实验记录（自动生成）
 ├── run_workflow.py              # 主工作流执行脚本
+├── run_gui.py                   # GUI数据同步界面启动脚本
 ├── view_results.py              # 结果分析脚本
 ├── view_charts.py               # 中文图表展示
 ├── test_imports.py              # 导入测试脚本
+├── test_gui_import.py           # GUI模块导入测试
 ├── environment.yml              # Conda环境配置
 ├── requirements.txt             # Python依赖
 └── CLAUDE.md                    # Claude Code项目说明
@@ -156,7 +167,20 @@ python run_workflow.py
 python run_workflow.py configs/workflow_config_lightgbm_Alpha158_csi500.yaml
 ```
 
-### 第六步：查看结果
+### 第六步：使用GUI管理数据（可选）
+
+```bash
+# 启动GUI数据同步界面
+python run_gui.py
+```
+
+GUI提供以下功能：
+- 数据采集任务管理和执行
+- 数据处理任务管理
+- 任务执行监控和日志查看
+- 存储设置配置
+
+### 第七步：查看结果
 
 ```bash
 # 查看回测结果

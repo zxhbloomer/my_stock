@@ -48,7 +48,6 @@ env/
 *.csv
 *.h5
 *.parquet
-data/
 
 # Specify 框架目录
 .specify/
@@ -63,3 +62,11 @@ data/
 config.json
 secrets.json
 *.key
+
+# 临时测试文件
+test_*.py
+debug*.py
+temp*.py
+fix_*.py
+list_*.py
+*_temp.py

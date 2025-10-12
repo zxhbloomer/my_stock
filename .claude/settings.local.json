@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(\"C:\\Users\\Administrator\\miniconda3\\envs\\mystock\\python.exe\" -c \"from data.common.config_manager import ConfigManager; cm = ConfigManager(); print(''ConfigManager initialized with .env support'')\")"
+      "Bash(\"C:\\Users\\Administrator\\miniconda3\\envs\\mystock\\python.exe\" -c \"import tudata; import inspect; print(inspect.getfile(tudata))\")",
+      "Bash(\"C:\\Users\\Administrator\\miniconda3\\envs\\mystock\\python.exe\" -c \"import tudata.pro.client as client; import inspect; print(inspect.getsourcefile(client.DataApi))\")",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Read(//c/Users/Administrator/miniconda3/envs/mystock/lib/site-packages/tudata/**)",
+      "Bash(\"C:\\Users\\Administrator\\miniconda3\\envs\\mystock\\python.exe\" test_api_switch.py)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
