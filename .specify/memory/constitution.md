@@ -1,50 +1,173 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+同步影响报告 - 宪法 v1.0.0
+========================================
 
-## Core Principles
+版本变更: 初始化 → v1.0.0
+变更理由: 为量化研究项目建立初始宪法
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+修改的原则: 无（初次创建）
+新增章节:
+  - 核心原则（5条原则）
+  - 研究诚信标准
+  - 开发工作流
+  - 治理规则
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+模板状态:
+  ✅ plan-template.md: 宪法检查章节已就绪
+  ✅ spec-template.md: 需求结构与研究原则一致
+  ✅ tasks-template.md: 任务组织支持研究工作流
+  ⚠️  暂无命令文件 - 宪法引用通用规则
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+待办事项:
+  - 无（所有占位符已填充）
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+下一步:
+  - 创建功能规范时引用本宪法
+  - 在 plan.md 的宪法检查章节引用原则
+  - 确保所有研究产出符合可重现性标准
+-->
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+# My Stock 项目宪法
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## 核心原则
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### 一、可重现性优先（不可协商）
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**必须遵守:**
+- 所有研究实验必须在MLflow中跟踪，包含完整元数据
+- 所有数据处理流程必须版本控制并文档化
+- 所有模型训练配置必须使用声明式YAML文件
+- 所有随机过程必须设置并记录随机种子
+- 必须维护环境规范文件（environment.yml, requirements.txt）
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+**理由:** 量化研究需要可重现的结果以便验证、审计和合规。不可重现的研究浪费资源并造成合规风险。
 
-## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+### 二、数据质量与完整性
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+**必须遵守:**
+- 数据使用前必须验证（缺失值、异常值、未来函数）
+- 金融数据必须使用时点正确性（避免使用未来信息）
+- 必须处理幸存者偏差（历史分析包含退市股票）
+- 数据预处理步骤必须文档化并说明理由
+- 数据切分必须严格遵循时间顺序（训练集→验证集→测试集）
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**理由:** 数据质量差导致模型过拟合，实盘失败。未来函数和幸存者偏差是量化金融的关键问题，会使所有研究无效。
+
+### 三、研究优先方法论
+
+**开发顺序:**
+1. 研究问题定义（假设、成功标准）
+2. Jupyter notebook中的探索性数据分析
+3. 因子/模型开发与验证
+4. 配置驱动的回测（YAML + qlib_run）
+5. 分析与迭代
+
+**必须遵守:**
+- Notebook必须专注于分析和可视化，不用于执行
+- 生产工作流必须使用qlib_run配合YAML配置，不用notebook
+- 研究见解必须用markdown文档化（发现、决策、教训）
+- 失败的实验必须记录（尝试了什么以及为什么失败）
+
+**理由:** 将探索（notebook）与执行（YAML配置）分离保持清晰度并支持自动化。记录失败防止重复错误。
+
+### 四、风险管理与验证
+
+**必须遵守:**
+- 所有策略必须包含交易成本建模（A股最低0.15%）
+- 必须计算风险指标（最大回撤、夏普比率、信息比率）
+- 必须执行样本外验证（滚动窗口或时间序列交叉验证）
+- 必须建模A股市场约束（T+1交易、涨跌停±10%）
+- 必须执行过拟合检测（IC衰减分析、策略稳定性）
+
+**理由:** 回测表现好但实盘失败的模型比没有模型更糟。风险意识的验证防止资金损失，确保策略可投产。
+
+### 五、代码质量与组织
+
+**目录结构要求:**
+- `configs/`: YAML工作流配置（每个策略变体一个文件）
+- `notebooks/`: 分析和可视化（按工作流阶段编号）
+- `utils/`: 可复用分析工具（因子计算、可视化）
+- `tests/`: 自定义工具的测试脚本
+- `specs/`: 遵循Specify框架的功能规范
+- MLflow跟踪所有实验（通过qlib集成自动完成）
+
+**代码标准:**
+- Python代码必须遵循PEP 8风格指南
+- 函数必须包含参数和返回值的类型提示
+- 复杂的因子计算必须文档化公式和理由
+- 领域特定逻辑必须使用中文注释（A股特定规则）
+- 工具模块必须可独立导入和测试
+
+**理由:** 量化研究代码库快速变复杂。清晰的组织和文档支持团队协作和长期维护。
+
+## 研究诚信标准
+
+### 因子开发
+- **新因子必须**有金融/统计学理由支持
+- **IC分析必须**在将因子加入模型前执行（目标: IC > 0.01）
+- **相关性分析必须**防止冗余因子（阈值: |ρ| < 0.7）
+- **稳定性测试必须**验证因子在不同市场环境下的表现
+
+### 模型训练
+- **基线模型**（Alpha158 + LightGBM）必须在优化前建立
+- **超参数搜索**必须使用验证集，不能用测试集
+- **模型选择**必须考虑多个指标（IC、IR、收益、稳定性）
+- **集成方法**优于单一复杂模型，更稳健
+
+### 回测标准
+- **滑点建模**必须考虑A股市场微观结构
+- **流动性约束**必须执行（成交量限制、价格冲击）
+- **策略容量**必须估算并文档化
+- **基准对比**必须使用合适的市场指数（沪深300、中证500）
+
+## 开发工作流
+
+### 研究循环
+1. **假设形成**: 定义可测试预测的研究问题
+2. **数据探索**: Notebook中的EDA，识别模式和问题
+3. **特征工程**: 开发和验证新因子
+4. **模型开发**: 通过qlib_run使用YAML配置训练模型
+5. **回测验证**: 用综合指标评估策略
+6. **结果分析**: 使用中文图表工具可视化结果
+7. **文档记录**: 记录发现、决策和下一步
+8. **迭代改进**: 基于分析优化或转向下一个假设
+
+### 版本控制标准
+- **提交必须**原子化并包含描述性消息
+- **Notebook应该**清除输出后提交（使用nbstripout）
+- **实验跟踪**通过MLflow，不用代码注释
+- **功能分支**用于实验性策略，仅合并已验证的工作
+
+### 协作标准
+- **研究发现**用markdown文档化，供团队知识共享
+- **工具模块和生产配置**需要代码审查
+- **Notebook**应该自包含，带清晰的叙述流程
+- **依赖管理**通过environment.yml，变更时更新
+
+## 治理规则
+
+### 修订流程
+- 宪法变更必须文档化理由和版本升级
+- 主版本（MAJOR）: 核心原则或不可协商要求的变更
+- 次版本（MINOR）: 新增原则或重大扩展
+- 补丁版本（PATCH）: 澄清、措辞改进、非语义变更
+
+### 合规验证
+- 所有功能规范必须引用适用的宪法原则
+- 计划文档必须包含"宪法检查"章节验证合规性
+- 代码审查必须验证对结构和质量标准的遵守
+- 合规失败必须证明合理并记录为技术债务
+
+### 冲突解决
+- 宪法原则优先于所有其他文档
+- 当原则与便利性冲突时，默认原则获胜
+- 例外情况需要明确证明并在specs/中文档化
+- 系统性违规触发宪法修订讨论
+
+### 标准层次
+1. **宪法原则**: 不可协商的要求
+2. **Qlib官方模式**: 遵循，除非与宪法冲突
+3. **项目约定**: 本项目内部一致性
+4. **个人偏好**: 最不重要，遵从以上标准
+
+**版本**: 1.0.0 | **批准日期**: 2025-10-10 | **最后修订**: 2025-10-10
