@@ -223,9 +223,10 @@ async def generate_quarter_end_batches(
     try:
         # 1. 定义数据源：获取季度末日期字符串列表
         async def get_quarter_ends_callable() -> List[str]:
+            # pandas 2.0+使用"Q"表示季度末，旧版本使用"QE"
             return [
-                d.strftime(date_format) 
-                for d in pd.date_range(start=start_date, end=end_date, freq="QE")
+                d.strftime(date_format)
+                for d in pd.date_range(start=start_date, end=end_date, freq="Q")
             ]
         
         quarter_ends_source = Source.from_callable(get_quarter_ends_callable)
