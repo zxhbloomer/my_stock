@@ -11,6 +11,7 @@ aiohttp>=3.8.0         # 异步 HTTP 客户端（Tushare API）
 tushare>=1.2.89        # Tushare 数据源
 appdirs>=1.4.4         # 应用程序目录工具（配置管理）
 aiolimiter>=1.0.0      # 异步速率限制
+python-dotenv>=1.0.0   # 环境变量管理（.env文件支持）
 
 # 可选：深度学习模型
 # torch==1.7.0

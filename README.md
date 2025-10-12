@@ -120,14 +120,33 @@ conda activate mystock
 pip install -r requirements.txt
 ```
 
-### 第三步：下载 Qlib 数据
+### 第三步：配置环境变量
+
+**方式1: 使用配置向导（推荐）**
+```bash
+python setup_env.py
+```
+
+**方式2: 手动创建.env文件**
+```bash
+# 复制示例文件
+cp .env.example .env
+
+# 编辑.env文件，填入实际配置
+# TUSHARE_TOKEN=你的token
+# DATABASE_URL=postgresql://user:pass@localhost:5432/db
+```
+
+📖 **详细配置说明**: [配置管理文档](docs/CONFIGURATION.md) | [环境设置指南](docs/ENV_SETUP_GUIDE.md)
+
+### 第四步：下载 Qlib 数据
 
 ```bash
 # 下载中国A股数据
 python -m qlib.run.get_data qlib_data --target_dir ~/.qlib/qlib_data/cn_data --region cn
 ```
 
-### 第四步：运行工作流
+### 第五步：运行工作流
 
 ```bash
 # 使用Python脚本运行
@@ -137,7 +156,7 @@ python run_workflow.py
 python run_workflow.py configs/workflow_config_lightgbm_Alpha158_csi500.yaml
 ```
 
-### 第五步：查看结果
+### 第六步：查看结果
 
 ```bash
 # 查看回测结果
