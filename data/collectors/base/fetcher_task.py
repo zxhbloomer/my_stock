@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, date
 from typing import Any, Dict, List, Optional
@@ -154,8 +155,15 @@ class FetcherTask(BaseTask, ABC):
             return []
             
         semaphore = asyncio.Semaphore(self.concurrent_limit)
-        progress_bar = tqdm(total=len(batches), desc=f"Executing {self.name}", unit="batch")
-        
+        # 在GUI环境中,sys.stdout可能为None,需要禁用进度条或重定向到stderr
+        progress_bar = tqdm(
+            total=len(batches),
+            desc=f"Executing {self.name}",
+            unit="batch",
+            file=sys.stderr if sys.stdout is None else sys.stdout,
+            disable=sys.stdout is None
+        )
+
         async def process_batch_with_retry(batch):
             for attempt in range(self.max_retries):
                 if stop_event and stop_event.is_set():

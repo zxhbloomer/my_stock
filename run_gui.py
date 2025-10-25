@@ -35,12 +35,19 @@ pip install async-tkinter-loop tkcalendar
 
 if __name__ == "__main__":
     import os
+    import sys
     from pathlib import Path
     from dotenv import load_dotenv
 
-    # 确保从项目根目录加载.env文件
-    project_root = Path(__file__).parent
-    env_file = project_root / ".env"
+    # 获取exe所在目录（打包后）或脚本所在目录（开发时）
+    if getattr(sys, 'frozen', False):
+        # 打包后的exe运行时
+        app_dir = Path(sys.executable).parent
+    else:
+        # 开发时直接运行py文件
+        app_dir = Path(__file__).parent
+
+    env_file = app_dir / ".env"
 
     if env_file.exists():
         load_dotenv(dotenv_path=env_file)
