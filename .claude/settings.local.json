@@ -5,7 +5,10 @@
       "Bash(cmd /c \"del /F nul 2>nul\")",
       "Bash(git reset:*)",
       "Bash(nul)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(tree:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
