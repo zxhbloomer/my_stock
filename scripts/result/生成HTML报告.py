@@ -10,8 +10,19 @@ from pathlib import Path
 from qlib.workflow import R
 import yaml
 
-# 初始化Qlib
-qlib.init(provider_uri="D:/Data/my_stock", region="cn")
+def _ensure_qlib_initialized():
+    """确保Qlib已初始化(避免重复初始化)"""
+    try:
+        # 检查Qlib是否已经初始化
+        # 如果已初始化,qlib.config.C应该有provider_uri属性
+        if hasattr(qlib.config.C, 'provider_uri') and qlib.config.C.provider_uri:
+            # 已经初始化,直接返回
+            return
+    except:
+        pass
+
+    # 未初始化则执行初始化
+    qlib.init(provider_uri="D:/Data/my_stock", region="cn")
 
 def find_latest_backtest():
     """查找最新的回测记录"""
@@ -35,6 +46,7 @@ def find_latest_backtest():
 
 def create_html_report(output_file="backtest_report.html", auto_open=True):
     """生成交互式HTML分析报告"""
+    _ensure_qlib_initialized()  # 确保Qlib已初始化
     recorder_id, exp_name = find_latest_backtest()
     if not recorder_id:
         print("错误: 未找到回测记录")

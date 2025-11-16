@@ -179,7 +179,7 @@ port_analysis_config: &port_analysis_config
 #   # 将优化结果更新到本配置文件的model.kwargs部分
 #
 # Step 3: 运行完整workflow
-#   python run_workflow.py configs/workflow_config_custom.yaml
+#   python scripts/30_运行工作流.py configs/workflow_config_custom.yaml
 #
 # Step 4: 查看结果
 #   python view_results.py  # 或使用 view_charts.py 查看中文图表

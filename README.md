@@ -94,7 +94,7 @@ my_stock/
 │   └── TUSHARE_TABLES_LIST.md  # Tushare数据表列表
 ├── tests/                       # 测试文件
 ├── mlruns/                      # MLflow 实验记录（自动生成）
-├── run_workflow.py              # 主工作流执行脚本
+├── scripts/30_运行工作流.py      # 主工作流执行脚本
 ├── run_gui.py                   # GUI数据同步界面启动脚本
 ├── view_results.py              # 结果分析脚本
 ├── view_charts.py               # 中文图表展示
@@ -161,10 +161,10 @@ python -m qlib.run.get_data qlib_data --target_dir ~/.qlib/qlib_data/cn_data --r
 
 ```bash
 # 使用Python脚本运行
-python run_workflow.py
+python scripts/30_运行工作流.py
 
 # 或使用配置文件运行
-python run_workflow.py configs/workflow_config_lightgbm_Alpha158_csi500.yaml
+python scripts/30_运行工作流.py configs/workflow_config_lightgbm_Alpha158_csi500.yaml
 ```
 
 ### 第六步：使用GUI管理数据（可选）
@@ -245,7 +245,7 @@ from qlib.constant import REG_CN
 qlib.init(provider_uri='~/.qlib/qlib_data/cn_data', region=REG_CN)
 
 # 使用配置文件运行完整工作流
-# 详见 run_workflow.py
+# 详见 scripts/30_运行工作流.py
 ```
 
 ## 配置说明

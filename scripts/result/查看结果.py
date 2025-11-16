@@ -184,7 +184,7 @@ def main():
 
     results = load_backtest_results()
     if not results:
-        print("无法加载回测结果，请先运行 python run_workflow.py")
+        print("无法加载回测结果，请先运行 python scripts/30_运行工作流.py")
         return
 
     # 显示回测指标

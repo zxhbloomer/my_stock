@@ -49,7 +49,7 @@ python scripts/result/检查数据范围.py
 
 ## ⚙️ 自动化
 
-运行 `python run_workflow.py configs/xxx.yaml` 后，会**自动生成HTML报告**并打开浏览器。
+运行 `python scripts/30_运行工作流.py configs/xxx.yaml` 后，会**自动生成HTML报告**并打开浏览器。
 
 如果自动生成失败，可以手动运行上述脚本。
 
