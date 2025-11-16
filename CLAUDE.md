@@ -54,16 +54,6 @@ mlflow ui
 # Access at http://localhost:5000
 ```
 
-### Jupyter Notebooks
-
-```bash
-# Start Jupyter
-jupyter notebook
-
-# Open analysis notebook
-notebooks/01_workflow_by_code.ipynb
-```
-
 ## Architecture
 
 ### Workflow Pipeline
@@ -102,9 +92,11 @@ my_stock/
 ├── utils/                # Utility modules
 │   └── chinese_charts.py # Chinese-labeled chart functions
 ├── mlruns/               # MLflow experiment tracking (auto-generated)
-├── notebooks/            # Jupyter analysis notebooks
-├── scripts/              # Setup and data download scripts
-├── doc/                  # Tushare API documentation
+├── scripts/              # Analysis and utility scripts
+│   ├── check_environment.py      # Environment validation
+│   ├── model_optimization.py     # LightGBM parameter tuning
+│   └── ic_analysis.py            # Factor IC analysis
+├── docs/                 # Documentation and design docs
 ├── run_workflow.py       # Main workflow execution script
 ├── view_results.py       # Results analysis and chart generation
 └── view_charts.py        # Chinese chart visualization
@@ -188,3 +180,9 @@ PostgreSQL connection (if using MCP):
 **Analysis Categories**:
 - `excess_return_without_cost`: Returns before trading costs
 - `excess_return_with_cost`: Net returns after trading costs
+
+**Qlib的数据目录**
+- windows环境 D:\Data\my_stock
+
+
+D:\2025_project\99_quantify\python\my_stock\docs\数据库表结构清单_带注释.md

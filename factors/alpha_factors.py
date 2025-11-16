@@ -137,8 +137,8 @@ class AlphaFactors:
             "($close - Ref($close, 20)) / Std($close, 20)",              # 趋势强度
 
             # 2. 新高新低
-            "($close == Max($close, 20)) ? 1 : 0",                        # 是否创20日新高
-            "($close == Min($close, 20)) ? 1 : 0",                        # 是否创20日新低
+            "If($close == Max($close, 20), 1, 0)",                        # 是否创20日新高
+            "If($close == Min($close, 20), 1, 0)",                        # 是否创20日新低
 
             # 3. 缺口
             "($open - Ref($close, 1)) / Ref($close, 1)",                 # 跳空缺口

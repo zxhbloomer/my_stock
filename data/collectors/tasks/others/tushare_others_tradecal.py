@@ -23,6 +23,7 @@ class TushareOthersTradecalTask(TushareTask):
     """获取A股及中国大陆期货交易所交易日历 (trade_cal)"""
 
     # 核心任务属性
+    task_type: str = "fetch"  # 任务类型，用于过滤
     name: str = "tushare_others_tradecal"  # 更新任务名称
     description: str = "获取A股及中国大陆期货交易所交易日历 (trade_cal)"  # 更新描述
     table_name: str = "others_calendar"  # 两个日历任务共享此表
@@ -77,7 +78,7 @@ class TushareOthersTradecalTask(TushareTask):
         {"name": "idx_shared_cal_update", "columns": ["update_time"]},
     ]
 
-    def get_batch_list(
+    async def get_batch_list(
         self, start_date: str, end_date: str, **kwargs: Any
     ) -> List[Dict]:
         """为每个中国大陆交易所生成批处理参数。"""

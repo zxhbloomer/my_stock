@@ -131,8 +131,32 @@ def run_workflow(config_path):
         print(f"\n训练记录: {rid}")
         print(f"回测记录: {ba_rid}")
         print(f"\n实验记录保存在: {R.get_uri()}")
-        print("\n查看图表:")
-        print("  运行: python view_results.py")
+
+        # 自动生成HTML报告
+        print("\n" + "=" * 70)
+        print("正在生成交互式HTML报告...")
+        print("=" * 70)
+        try:
+            import sys
+            from pathlib import Path
+            # 添加scripts/result到Python路径
+            result_dir = Path(__file__).parent / "scripts" / "result"
+            sys.path.insert(0, str(result_dir))
+
+            # 导入模块（使用exec因为中文模块名无法直接import）
+            html_module = {}
+            with open(result_dir / "生成HTML报告.py", 'r', encoding='utf-8') as f:
+                exec(f.read(), html_module)
+
+            html_file = html_module['create_html_report'](output_file="backtest_report.html", auto_open=True)
+            print(f"\n[OK] HTML报告已自动打开: {html_file}")
+        except Exception as e:
+            print(f"\n[WARNING] HTML报告生成失败: {e}")
+            print("   您可以手动运行: python scripts/result/生成HTML报告.py")
+
+        print("\n其他查看方式:")
+        print("  静态PNG图表: python scripts/result/生成图表.py")
+        print("  终端结果: python scripts/result/查看结果.py")
 
 if __name__ == "__main__":
     import sys

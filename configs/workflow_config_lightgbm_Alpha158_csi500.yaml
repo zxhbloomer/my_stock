@@ -2,7 +2,7 @@
 # 参考: qlib/examples/benchmarks/LightGBM
 
 qlib_init:
-    provider_uri: "~/.qlib/qlib_data/cn_data"
+    provider_uri: "D:\\Data\\my_stock"
     region: cn
 
 market: &market csi500

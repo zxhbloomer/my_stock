@@ -20,9 +20,9 @@ class Config:
     DB_PASSWORD: str = ""
 
     # 数据目录配置
-    DATA_DIR: str = os.path.expanduser("~/.qlib/qlib_data/cn_data")
-    SOURCE_DIR: str = os.path.expanduser("~/.qlib/stock_data/source")
-    NORMALIZED_DIR: str = os.path.expanduser("~/.qlib/stock_data/normalized")
+    DATA_DIR: str = "D:/Data/my_stock"
+    SOURCE_DIR: str = "D:/Data/my_stock/source"
+    NORMALIZED_DIR: str = "D:/Data/my_stock/normalized"
 
     @classmethod
     def load_from_env(cls):

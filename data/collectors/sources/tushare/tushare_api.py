@@ -266,15 +266,29 @@ class TushareAPI:
                             f"首次请求 ({api_name}): offset={offset}, limit={page_params['limit']}, params={params}"
                         )
 
+                    # 动态获取token：优先使用环境变量（支持热更新），fallback到初始化时的token
+                    import os
+                    current_token = os.getenv("TUSHARE_TOKEN", self.token)
+
                     payload = {
                         "api_name": api_name,
-                        "token": self.token,
+                        "token": current_token,
                         "params": page_params,
                         "fields": fields or "",
                     }
 
-                    async with aiohttp.ClientSession() as session:
-                        async with session.post(self.http_url, json=payload) as response:
+                    # 打印完整的HTTP请求信息（隐藏token敏感信息）
+                    safe_payload = payload.copy()
+                    safe_payload["token"] = f"{current_token[:10]}...{current_token[-6:]}" if current_token else "None"
+                    self.logger.info(
+                        f"📡 Tushare API请求: URL={self.http_url}, Payload={safe_payload}"
+                    )
+
+                    # 使用或创建session（复用连接，避免频繁创建）
+                    if self._session is None or self._session.closed:
+                        self._session = aiohttp.ClientSession()
+
+                    async with self._session.post(self.http_url, json=payload) as response:
                             if response.status != 200:
                                 error_text = await response.text()
                                 self.logger.error(

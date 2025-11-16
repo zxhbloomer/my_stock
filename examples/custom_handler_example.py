@@ -24,7 +24,7 @@ def main():
 
     # 初始化Qlib
     print("\n【步骤1】初始化Qlib")
-    qlib.init(provider_uri="~/.qlib/qlib_data/cn_data", region=REG_CN)
+    qlib.init(provider_uri="D:/Data/my_stock", region=REG_CN)
     print("✓ Qlib初始化成功")
 
     # 示例1：使用SimpleAlphaHandler（精简版，适合快速实验）

@@ -1,0 +1,38 @@
+tushare_hk_basic	hk_basic	获取港股上市公司基本信息
+tushare_index_basic     	index_basic     	获取股票基本信息
+tushare_fund_basic      	fund_basic      	获取公募基金基本信息    
+tushare_index_cimember  	index_cimember  	获取中信行业指数成分股及权重 (分级) 数据
+tushare_fina_express    	fina_express    	获取上市公司业绩快报    
+tushare_fund_portfolio  	fund_portfolio  	获取公募基金持仓数据    
+tushare_macro_cpi	macro_cpi	获取中国国民消费价格指数(CPI)   
+tushare_others_hktradecal	others_hktradecal	获取港股交易日历 (hk_tradecal)  
+tushare_others_tradecal 	others_tradecal 	获取A股及中国大陆期货交易所交易日历 (trade_cal)
+tushare_fund_nav	fund_nav	获取公募基金净值数据    
+tushare_stock_dailybasic	stock_dailybasic	获取股票每日基本面指标  
+tushare_stock_chips     	stock_chips     	获取A股每日筹码平均成本和胜率情况
+tushare_stock_adjfactor 	stock_adjfactor 	获取股票复权因子
+tushare_index_swdaily   	index_swdaily   	获取申万行业指数日线行情
+tushare_index_weight    	index_weight    	获取指数成分股及权重(月度)      
+tushare_fund_etf_index  	fund_etf_index  	获取ETF基础数据 
+tushare_fina_income     	fina_income     	获取上市公司利润表数据  
+tushare_fina_balancesheet	fina_balancesheet	获取上市公司资产负债表数据      
+tushare_fina_cashflow   	fina_cashflow   	获取上市公司现金流量表数据  
+tushare_fina_disclosure 	fina_disclosure 	获取上市公司财报披露计划数据
+tushare_fina_forecast   	fina_forecast   	获取上市公司业绩预告数据
+tushare_fina_indicator  	fina_indicator  	获取上市公司财务指标数据
+tushare_fund_etf_basic  	fund_etf_basic  	获取ETF基础信息 (含QDII)
+tushare_future_basic    	future_basic    	获取期货合约基础信息    
+tushare_future_daily    	future_daily    	获取期货品种的每日行情数据      
+tushare_macro_shibor    	macro_shibor    	获取上海银行间同业拆放利率Shibor
+tushare_option_basic    	option_basic    	获取期货及股指期权合约基础信息 
+tushare_option_daily    	option_daily    	获取期货及股指期权日线行情数据 
+tushare_stock_basic     	stock_basic     	获取上市公司基本信息   
+tushare_stock_dividend  	stock_dividend  	获取分红送转数据
+tushare_stock_report_rc 	stock_report_rc 	获取券商盈利预测数据    
+tushare_stock_daily     	stock_daily     	获取A股股票日线行情数据 
+tushare_fund_adjfactor  	fund_adjfactor  	获取公募基金复权因子    
+tushare_fund_daily      	fund_daily      	获取场内基金日线行情    
+tushare_fund_share      	fund_share      	获取基金规模数据 (含ETF)
+tushare_future_holding  	future_holding  	获取期货持仓数据
+tushare_index_cidaily   	index_cidaily   	获取中信行业指数日线行情数据   
+tushare_index_factor_pro	index_factor_pro	获取指数技术面因子数据 (专业版) 

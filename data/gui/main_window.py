@@ -369,6 +369,16 @@ def main():
                 date_format="%H:%M:%S",
             )
             await UnifiedTaskFactory.initialize()
+
+            # 启动Token自动重载（用于长时间运行任务）
+            try:
+                from ..collectors.sources.tushare.token_auto_reload import start_token_auto_reload
+                # 每1分钟检查一次.env文件中的TUSHARE_TOKEN变化（测试模式）
+                # 生产环境建议改为3600秒: start_token_auto_reload(check_interval=3600)
+                start_token_auto_reload(check_interval=60)
+                get_logger("main_window").info("✅ Tushare Token自动重载已启动（每60秒检查一次）")
+            except Exception as token_err:
+                get_logger("main_window").warning(f"Token自动重载启动失败（不影响主功能）: {token_err}")
         except Exception as e:
             messagebox.showerror(
                 "Fatal Error", f"Core application services failed to initialize.\n\nError: {e}"

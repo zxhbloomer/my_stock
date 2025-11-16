@@ -2,7 +2,7 @@
 # 参考: qlib/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml
 
 qlib_init:
-    provider_uri: "~/.qlib/qlib_data/cn_data"
+    provider_uri: "D:\\Data\\my_stock"
     region: cn
 
 market: &market csi300
