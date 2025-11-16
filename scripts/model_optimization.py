@@ -19,6 +19,13 @@ LightGBM参数优化脚本
 日期：2025-11-15
 """
 import sys
+from pathlib import Path
+
+# 添加项目根目录到Python路径
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -261,7 +268,7 @@ class LightGBMOptimizer:
 
     def save_results(
         self,
-        output_path='../docs/lightgbm_optimization_results.txt'
+        output_path=None
     ) -> None:
         """
         保存优化结果
@@ -269,6 +276,14 @@ class LightGBMOptimizer:
         Args:
             output_path: 输出文件路径
         """
+        # 默认保存到项目根目录的docs目录
+        if output_path is None:
+            project_root = Path(__file__).parent.parent
+            output_path = project_root / 'docs' / 'lightgbm_optimization_results.txt'
+
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write("="*80 + "\\n")
             f.write("LightGBM参数优化结果\\n")
@@ -300,12 +315,12 @@ class LightGBMOptimizer:
 
             f.write("="*80 + "\\n")
 
-        print(f"\\n✅ 优化结果已保存至: {output_path}")
+        print(f"\\n[OK] 优化结果已保存至: {output_path}")
 
         # 同时保存为CSV
-        csv_path = output_path.replace('.txt', '.csv')
+        csv_path = output_path.parent / output_path.name.replace('.txt', '.csv')
         history_df.to_csv(csv_path, index=False, encoding='utf-8-sig')
-        print(f"✅ 优化历史已保存至: {csv_path}")
+        print(f"[OK] 优化历史已保存至: {csv_path}")
 
 
 # 命令行运行
@@ -383,7 +398,7 @@ if __name__ == "__main__":
     # 保存结果
     optimizer.save_results()
 
-    print("\\n✅ 参数优化完成！")
+    print("\\n[OK] 参数优化完成！")
     print("\\n下一步：")
     print("   1. 将最优参数更新到 configs/workflow_config_custom.yaml")
     print("   2. 运行完整workflow验证性能提升")

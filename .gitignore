@@ -71,3 +71,5 @@ fix_*.py
 list_*.py
 *_temp.py
 nul
+backtest_report.html
+validation_results/
