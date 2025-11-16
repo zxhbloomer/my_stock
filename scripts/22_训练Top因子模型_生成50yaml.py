@@ -171,7 +171,7 @@ def main():
     print("[OK] 配置生成完成")
     print("=" * 80)
     print("\n下一步:")
-    print("  1. 运行优化模型: python run_workflow.py configs/workflow_config_top50.yaml")
+    print("  1. 运行优化模型: python scripts/30_运行工作流.py configs/workflow_config_top50.yaml")
     print("  2. 对比性能: 原始255因子 vs Top50因子")
     print("  3. 查看回测结果: python view_results.py")
 
