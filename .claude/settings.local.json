@@ -20,7 +20,9 @@
       "Bash(C:UsersAdministratorminiconda3envsmystockpython.exe -c \"import qlib; from qlib.workflow import R; import pandas as pd; print(''Qlib prediction columns info'')\")",
       "Bash(del \"D:\\2025_project\\99_quantify\\python\\my_stock\\scripts\\51_滚动验证可视化.py\")",
       "Bash(cmd /c \"del /F D:\\2025_project\\99_quantify\\python\\my_stock\\scripts\\51_滚动验证可视化.py\")",
-      "Bash(cmd /c \"del /Q D:\\2025_project\\99_quantify\\python\\my_stock\\validation_results\\charts\\*.png 2>nul\")"
+      "Bash(cmd /c \"del /Q D:\\2025_project\\99_quantify\\python\\my_stock\\validation_results\\charts\\*.png 2>nul\")",
+      "Bash(docker exec:*)",
+      "Bash(Get-Date -Format \"yyyy-MM-dd-HHmmss\")"
     ],
     "deny": [],
     "ask": []

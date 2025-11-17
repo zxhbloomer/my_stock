@@ -103,7 +103,7 @@ def generate_handler_config(top_factors):
         "module_path": "qlib.contrib.data.handler",
         "kwargs": {
             "start_time": "2008-01-01",
-            "end_time": "2020-12-31",
+            "end_time": "2025-11-14",        # 更新为最新数据日期
             "instruments": "csi300",
             "data_loader": {
                 "class": "QlibDataLoader",
@@ -116,7 +116,7 @@ def generate_handler_config(top_factors):
                 }
             },
             "infer_processors": [
-                {"class": "RobustZScoreNorm", "kwargs": {"fields_group": "feature", "clip_outlier": True, "fit_start_time": "2008-01-01", "fit_end_time": "2014-12-31"}},
+                {"class": "RobustZScoreNorm", "kwargs": {"fields_group": "feature", "clip_outlier": True, "fit_start_time": "2015-01-01", "fit_end_time": "2022-12-31"}},
                 {"class": "Fillna", "kwargs": {"fields_group": "feature"}}
             ],
             "learn_processors": [

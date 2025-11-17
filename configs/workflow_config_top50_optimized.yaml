@@ -1,13 +1,13 @@
 qlib_init:
   provider_uri: D:\Data\my_stock
   region: cn
-market: csi500
-benchmark: SH000905
+market: csi300
+benchmark: SH000300
 data_handler_config:
   start_time: 2008-01-01
-  end_time: 2020-08-01
-  fit_start_time: 2008-01-01
-  fit_end_time: 2014-12-31
+  end_time: 2025-11-14
+  fit_start_time: 2015-01-01
+  fit_end_time: 2022-12-31
   instruments: csi300
 port_analysis_config: &id001
   strategy:
@@ -18,10 +18,10 @@ port_analysis_config: &id001
       n_drop: 5
       signal: <PRED>
   backtest:
-    start_time: 2017-01-01
-    end_time: 2020-08-01
+    start_time: 2025-01-01
+    end_time: 2025-11-14
     account: 100000000
-    benchmark: SH000905
+    benchmark: SH000300
     exchange_kwargs:
       limit_threshold: 0.095
       deal_price: close
@@ -35,16 +35,16 @@ task:
     kwargs:
       loss: mse
       colsample_bytree: 0.8879
-      learning_rate: 0.02846218323419268
+      learning_rate: 0.0763756261483076
       subsample: 0.8789
       lambda_l1: 205.6999
       lambda_l2: 580.9768
       max_depth: 9
-      num_leaves: 205
+      num_leaves: 38
       num_threads: 20
-      bagging_fraction: 0.8190560310015437
-      feature_fraction: 0.8722761099810419
-      min_data_in_leaf: 10
+      bagging_fraction: 0.9013614919669344
+      feature_fraction: 0.7928586508664787
+      min_data_in_leaf: 16
   dataset:
     class: DatasetH
     module_path: qlib.data.dataset
@@ -54,8 +54,8 @@ task:
         module_path: qlib.contrib.data.handler
         kwargs:
           start_time: '2008-01-01'
-          end_time: '2020-12-31'
-          instruments: csi500
+          end_time: '2025-11-14'
+          instruments: csi300
           data_loader:
             class: QlibDataLoader
             kwargs:
@@ -68,56 +68,57 @@ task:
                   0.095),         2,         If($close / Ref($close, 1) - 1 >= 0.095,
                   1, 0)    ))
                 - If($close / Ref($close, 1) - 1 >= 0.095, 1, 0)
-                - ($open - Ref($close, 1)) / Ref($close, 1)
                 - If($close / Ref($close, 1) - 1 <= -0.095, 1, 0)
                 - Sum(If($close / Ref($close, 1) - 1 >= 0.095, 1, 0), 5)
-                - Slope($close, 60)/$close
-                - Slope($close, 30)/$close
+                - ($open - Ref($close, 1)) / Ref($close, 1)
+                - (Less($open, $close)-$low)/$open
+                - (2*$close-$high-$low)/($high-$low+1e-12)
+                - ($close - $low) / ($high - $low)
+                - ($high - $close) / ($high - $low)
+                - (Less($open, $close)-$low)/($high-$low+1e-12)
                 - If(    $close / Ref($close, 1) - 1 >= 0.095,     1 - ($volume /
                   Mean($volume, 5)),     0)
+                - (2*$close-$high-$low)/$open
+                - Slope($close, 60)/$close
+                - Slope($close, 30)/$close
                 - Slope($close, 20)/$close
+                - $close / $high
+                - $low/$close
+                - $high/$close
+                - Std($close, 20) / Mean($close, 20)
+                - Min($low, 20)/$close
+                - (Max($high, 20) - Min($low, 20)) / Mean($close, 20)
                 - Min($low, 5)/$close
-                - Min($low, 10)/$close
                 - Sum(Greater($close-Ref($close, 1), 0), 60)/(Sum(Abs($close-Ref($close,
+                  1)), 60)+1e-12)
+                - Sum(Greater(Ref($close, 1)-$close, 0), 60)/(Sum(Abs($close-Ref($close,
                   1)), 60)+1e-12)
                 - (Sum(Greater($close-Ref($close, 1), 0), 60)-Sum(Greater(Ref($close,
                   1)-$close, 0), 60))/(Sum(Abs($close-Ref($close, 1)), 60)+1e-12)
-                - Sum(Greater(Ref($close, 1)-$close, 0), 60)/(Sum(Abs($close-Ref($close,
-                  1)), 60)+1e-12)
-                - Std($close, 5)/$close
-                - Quantile($close, 5, 0.2)/$close
-                - ($close - $low) / ($high - $low)
-                - ($high - $close) / ($high - $low)
-                - (2*$close-$high-$low)/($high-$low+1e-12)
-                - (Less($open, $close)-$low)/($high-$low+1e-12)
-                - $volume / Sum($volume, 20)
-                - Min($low, 20)/$close
-                - Slope($close, 10)/$close
-                - Std($close, 10)/$close
-                - Std($close, 20) / Mean($close, 20)
-                - (Max($high, 20) - Min($low, 20)) / Mean($close, 20)
                 - Min($low, 30)/$close
-                - Min($low, 60)/$close
-                - Slope($close, 5)/$close
-                - $close / $high
-                - $close / Mean($close, 5) - 1
-                - Mean($close<Ref($close, 1), 60)
-                - $high/$close
-                - Mean($close>Ref($close, 1), 60)-Mean($close<Ref($close, 1), 60)
-                - Quantile($close, 10, 0.2)/$close
-                - (2*$close-$high-$low)/$open
-                - ($high-Greater($open, $close))/$open
-                - Std($close, 20)/$close
-                - Mean($close, 5)/$close
-                - Std($close, 60)/$close
-                - Ref($low, 1)/$close
-                - Ref($close, 2)/$close
+                - Min($low, 10)/$close
+                - Std($close, 5)/$close
                 - Std($close, 30)/$close
-                - Ref($low, 2)/$close
-                - Ref($close, 1) / $close - 1
-                - Ref($close, 1)/$close
-                - (Less($open, $close)-$low)/$open
-                - $close / Mean($close, 10) - 1
+                - Mean($close<Ref($close, 1), 60)
+                - Std($close, 20)/$close
+                - Std($close, 60)/$close
+                - Quantile($close, 5, 0.2)/$close
+                - ($high-Greater($open, $close))/$open
+                - Mean($close>Ref($close, 1), 60)-Mean($close<Ref($close, 1), 60)
+                - Slope($close, 10)/$close
+                - Min($low, 60)/$close
+                - ($close-$open)/($high-$low+1e-12)
+                - $close / Mean($close, 5) - 1
+                - ($high-Greater($open, $close))/($high-$low+1e-12)
+                - Ref($close, 2)/$close
+                - Slope($close, 5)/$close
+                - Quantile($close, 20, 0.2)/$close
+                - Ref($low, 1)/$close
+                - Rsquare($close, 60)
+                - Std($close, 10)/$close
+                - ($close-Min($low, 30))/(Max($high, 30)-Min($low, 30)+1e-12)
+                - Sum(Greater(Ref($close, 1)-$close, 0), 20)/(Sum(Abs($close-Ref($close,
+                  1)), 20)+1e-12)
                 label:
                 - Ref($close, -2)/Ref($close, -1) - 1
               freq: day
@@ -126,8 +127,8 @@ task:
             kwargs:
               fields_group: feature
               clip_outlier: true
-              fit_start_time: '2008-01-01'
-              fit_end_time: '2014-12-31'
+              fit_start_time: '2015-01-01'
+              fit_end_time: '2022-12-31'
           - class: Fillna
             kwargs:
               fields_group: feature
@@ -138,14 +139,14 @@ task:
               fields_group: label
       segments:
         train:
-        - 2008-01-01
-        - 2014-12-31
-        valid:
         - 2015-01-01
-        - 2016-12-31
+        - 2022-12-31
+        valid:
+        - 2023-01-01
+        - 2024-12-31
         test:
-        - 2017-01-01
-        - 2020-08-01
+        - 2025-01-01
+        - 2025-11-14
   record:
   - class: SignalRecord
     module_path: qlib.workflow.record_temp

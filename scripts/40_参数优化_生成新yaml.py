@@ -115,9 +115,9 @@ class ImprovedLightGBMOptimizer:
                 'kwargs': {
                     'instruments': self.instruments,
                     'start_time': '2008-01-01',
-                    'end_time': '2020-12-31',
-                    'fit_start_time': '2008-01-01',
-                    'fit_end_time': '2014-12-31',
+                    'end_time': '2025-11-14',        # 更新为最新数据日期
+                    'fit_start_time': '2015-01-01',  # 更新拟合开始时间
+                    'fit_end_time': '2022-12-31',    # 避免测试期泄漏
                     'infer_processors': [
                         {
                             'class': 'RobustZScoreNorm',
@@ -428,9 +428,9 @@ class ImprovedLightGBMOptimizer:
                 'benchmark': 'SH000300' if self.instruments == 'csi300' else 'SH000905',
                 'data_handler_config': {
                     'start_time': '2008-01-01',
-                    'end_time': '2020-08-01',
-                    'fit_start_time': '2008-01-01',
-                    'fit_end_time': '2014-12-31',
+                    'end_time': '2025-11-14',        # 更新为最新数据日期
+                    'fit_start_time': '2015-01-01',  # 更新拟合开始时间
+                    'fit_end_time': '2022-12-31',    # 避免测试期泄漏
                     'instruments': self.instruments
                 },
                 'port_analysis_config': {
@@ -444,8 +444,8 @@ class ImprovedLightGBMOptimizer:
                         }
                     },
                     'backtest': {
-                        'start_time': '2017-01-01',
-                        'end_time': '2020-08-01',
+                        'start_time': '2025-01-01',  # 回测使用最新一年
+                        'end_time': '2025-11-14',    # 更新为最新数据日期
                         'account': 100000000,
                         'benchmark': 'SH000300' if self.instruments == 'csi300' else 'SH000905',
                         'exchange_kwargs': {
@@ -477,9 +477,9 @@ class ImprovedLightGBMOptimizer:
                         'kwargs': {
                             'handler': self.handler_config,  # 使用保存的handler配置
                             'segments': {
-                                'train': ['2008-01-01', '2014-12-31'],
-                                'valid': ['2015-01-01', '2016-12-31'],
-                                'test': ['2017-01-01', '2020-08-01']
+                                'train': ['2015-01-01', '2022-12-31'],  # 8年训练期
+                                'valid': ['2023-01-01', '2024-12-31'],  # 2年验证期
+                                'test': ['2025-01-01', '2025-11-14']    # 最新年份测试
                             }
                         }
                     },
@@ -557,13 +557,16 @@ if __name__ == "__main__":
     print("[OK] Qlib初始化完成\n")
 
     # 创建优化器
+    # 使用更近期的数据进行参数优化：
+    # - 训练集：2015-2022（8年，覆盖完整牛熊周期）
+    # - 验证集：2023-2024（2年，用于参数调优）
     optimizer = ImprovedLightGBMOptimizer(
         config_path=args.config,  # 传入配置文件路径
         instruments=args.instruments,  # 如果有config,此参数会被配置覆盖
-        train_start='2008-01-01',
-        train_end='2014-12-31',
-        valid_start='2015-01-01',
-        valid_end='2016-12-31'
+        train_start='2015-01-01',
+        train_end='2022-12-31',
+        valid_start='2023-01-01',
+        valid_end='2024-12-31'
     )
 
     # 执行优化

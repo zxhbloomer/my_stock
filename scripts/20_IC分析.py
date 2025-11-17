@@ -492,12 +492,12 @@ def main():
         # 加载股票池（默认csi300）
         instruments = load_stock_pool('csi300')
 
-        # 运行IC分析（使用默认参数）
+        # 运行IC分析（使用最近7年数据,覆盖完整牛熊周期）
         ic_df, strong_factors, recorder_id = run_ic_analysis(
             instruments=instruments,
             pool_name='csi300',
-            start_time='2017-01-01',
-            end_time='2020-12-31',
+            start_time='2018-01-01',  # 覆盖2018-2025完整牛熊周期
+            end_time='2025-11-14',    # 使用数据库最新日期
             ic_threshold=0.01
         )
 

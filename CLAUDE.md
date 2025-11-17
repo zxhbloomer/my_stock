@@ -187,5 +187,8 @@ PostgreSQL connection (if using MCP):
 **Qlib的数据目录**
 - windows环境 D:\Data\my_stock
 
-
+**关于数据库的结构说明**
 D:\2025_project\99_quantify\python\my_stock\docs\数据库表结构清单_带注释.md
+
+**关于数据库登录方式**
+如果需要确认一下数据时，可以登录docker，通过D:\2025_project\00_docker\postgresql\docker-compose.yml，登录postgresql，数据库是my_stock,schema是tushare，
