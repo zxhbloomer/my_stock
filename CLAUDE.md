@@ -33,10 +33,10 @@ C:\Users\Administrator\miniconda3\envs\mystock\python.exe
 
 ```bash
 # Run complete workflow with default config
-python scripts/30_运行工作流.py
+python scripts/30_模型训练/30_单模型训练.py
 
 # Run with specific config
-python scripts/30_运行工作流.py configs/workflow_config_lightgbm_Alpha158_csi500.yaml
+python scripts/30_模型训练/30_单模型训练.py configs/workflow_config_lightgbm_Alpha158_csi500.yaml
 
 # View backtest results and charts
 python view_results.py
@@ -64,7 +64,7 @@ The workflow follows Qlib's standard pipeline:
    - Loads data from `~/.qlib/qlib_data/cn_data`
    - Region: `cn` (China)
 
-2. **Model Training** (`scripts/30_运行工作流.py`)
+2. **Model Training** (`scripts/30_模型训练/30_单模型训练.py`)
    - Model: LightGBM (`qlib.contrib.model.gbdt.LGBModel`)
    - Dataset: DatasetH with Alpha158 features
    - Training period: 2008-2014
@@ -93,13 +93,20 @@ my_stock/
 │   └── chinese_charts.py # Chinese-labeled chart functions
 ├── mlruns/               # MLflow experiment tracking (auto-generated)
 ├── scripts/              # Analysis and utility scripts
-│   ├── 00_Tushare转Qlib.py      # Data conversion from Tushare
-│   ├── 10_检查环境.py            # Environment validation
-│   ├── 20_IC分析.py              # Factor IC analysis
-│   ├── 21_使用IC结果.py          # IC results utilities
-│   ├── 22_训练Top因子模型.py     # Train with top factors
-│   ├── 30_运行工作流.py          # Main workflow execution script
-│   └── 参数优化_改进版.py        # LightGBM parameter tuning
+│   ├── 10_数据准备/
+│   │   ├── 10_Tushare转Qlib.py    # Data conversion from Tushare
+│   │   └── 11_检查环境.py          # Environment validation
+│   ├── 20_因子分析/
+│   │   ├── 20_IC分析.py            # Factor IC analysis
+│   │   ├── 21_使用IC结果.py        # IC results utilities
+│   │   └── 22_生成Top50配置.py     # Generate top 50 factors config
+│   ├── 30_模型训练/
+│   │   ├── 30_单模型训练.py        # Single model training workflow
+│   │   ├── 31_参数优化.py          # LightGBM parameter optimization
+│   │   └── 32_多模型集成.py        # Multi-model ensemble training
+│   ├── 40_模型验证/
+│   │   └── 40_滚动窗口验证.py      # Rolling window validation
+│   └── result/           # Result viewing tools
 ├── docs/                 # Documentation and design docs
 ├── view_results.py       # Results analysis and chart generation
 └── view_charts.py        # Chinese chart visualization

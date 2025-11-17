@@ -94,7 +94,12 @@ my_stock/
 │   └── TUSHARE_TABLES_LIST.md  # Tushare数据表列表
 ├── tests/                       # 测试文件
 ├── mlruns/                      # MLflow 实验记录（自动生成）
-├── scripts/30_运行工作流.py      # 主工作流执行脚本
+├── scripts/                     # 主要分析脚本
+│   ├── 10_数据准备/              # 数据准备脚本
+│   ├── 20_因子分析/              # 因子分析脚本
+│   ├── 30_模型训练/              # 模型训练脚本
+│   ├── 40_模型验证/              # 模型验证脚本
+│   └── result/                  # 结果查看工具
 ├── run_gui.py                   # GUI数据同步界面启动脚本
 ├── view_results.py              # 结果分析脚本
 ├── view_charts.py               # 中文图表展示
@@ -161,10 +166,10 @@ python -m qlib.run.get_data qlib_data --target_dir ~/.qlib/qlib_data/cn_data --r
 
 ```bash
 # 使用Python脚本运行
-python scripts/30_运行工作流.py
+python scripts/30_模型训练/30_单模型训练.py
 
 # 或使用配置文件运行
-python scripts/30_运行工作流.py configs/workflow_config_lightgbm_Alpha158_csi500.yaml
+python scripts/30_模型训练/30_单模型训练.py configs/workflow_config_lightgbm_Alpha158_csi500.yaml
 ```
 
 ### 第六步：使用GUI管理数据（可选）

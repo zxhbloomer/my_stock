@@ -1,126 +1,147 @@
 # Scripts 目录说明
 
-本目录包含项目的所有工具脚本，按功能分类。
+> **注意**: 2025-11-17重构 - 脚本目录已重组为层级化功能分类结构，提升可维护性和逻辑清晰度。
 
-  优秀因子 (可直接使用):
-  - |IC_mean| > 0.03
-  - IR > 1.0
-  - IC胜率 > 60%
+本目录包含项目的所有工具脚本，按功能分类组织。
 
-  可用因子 (组合使用):
-  - |IC_mean| > 0.01
-  - IR > 0.5
-  - IC胜率 > 55%
+## 📊 因子质量标准
 
-  淘汰因子:
-  - |IC_mean| < 0.01
-  - IR < 0.2
-  - IC胜率 < 50%
+### 优秀因子 (可直接使用)
+- |IC_mean| > 0.03
+- IR > 1.0
+- IC胜率 > 60%
 
+### 可用因子 (组合使用)
+- |IC_mean| > 0.01
+- IR > 0.5
+- IC胜率 > 55%
 
-  # 1. IC分析（筛选高质量因子）
-  python scripts/20_IC分析.py
+### 淘汰因子
+- |IC_mean| < 0.01
+- IR < 0.2
+- IC胜率 < 50%
 
-  # 2. 训练Top因子模型并生成50因子配置
-  python scripts/22_训练Top因子模型_生成50yaml.py
+## 🚀 快速开始工作流
 
-  # 3. 参数优化（生成优化后的新YAML配置）
-  python scripts/40_参数优化_生成新yaml.py --config configs/workflow_config_top50.yaml --n-iter 30
+```bash
+# 1. IC分析（筛选高质量因子）
+python scripts/20_因子分析/20_IC分析.py
 
-  # 4. 使用优化后的配置运行回测
-  python scripts/30_运行工作流.py configs/workflow_config_top50_optimized.yaml
+# 2. 生成Top50因子配置
+python scripts/20_因子分析/22_生成Top50配置.py
 
-  # 5. 查看结果
-  python view_results.py
+# 3. 参数优化（生成优化后的新YAML配置）
+python scripts/30_模型训练/31_参数优化.py --config configs/workflow_config_top50.yaml --n-iter 30
 
+# 4. 使用优化后的配置运行单模型训练
+python scripts/30_模型训练/30_单模型训练.py configs/workflow_config_top50_optimized.yaml
 
- 你的模型训练时间:
-  - Train: 2008-2014 (7年)
-  - Valid: 2015-2016 (2年)
-  - Test: 2017-2020 (3.7年)
+# 5. 多模型集成训练（提升预测稳定性）
+python scripts/30_模型训练/32_多模型集成.py --config configs/workflow_config_top50_optimized.yaml
 
-  今天日期: 2025-11-16
+# 6. 滚动窗口验证（评估时间稳定性）
+python scripts/40_模型验证/40_滚动窗口验证.py --config configs/workflow_config_top50_optimized.yaml --train-years 7 --valid-years 2 --test-years 1 --start-year 2008 --end-year 2025
 
-  🎯 推荐的滚动窗口参数
-
-  根据Qlib最佳实践,我推荐使用与原训练周期一致的窗口大小:
-
-python.exe scripts\50_滚动窗口验证.py --config configs\workflow_config_top50_optimized.yaml --train-years 7 --valid-years 2 --test-years 1 --start-year 2008 --end-year 2025
-
-  📋 参数解释
-
-  | 参数            | 值    | 理由                   |
-  |---------------|------|----------------------|
-  | --train-years | 7    | 与原配置一致(2008-2014共7年) |
-  | --valid-years | 2    | 与原配置一致(2015-2016共2年) |
-  | --test-years  | 1    | 每年滚动一次,更细粒度评估        |
-  | --start-year  | 2008 | 从数据起始年份开始            |
-  | --end-year    | 2025 | 验证到当前年份              |
-
-  🔄 这会生成的测试期
-
-  Test_2017: 训练2008-2014, 验证2015-2016, 测试2017
-  Test_2018: 训练2009-2015, 验证2016-2017, 测试2018
-  Test_2019: 训练2010-2016, 验证2017-2018, 测试2019
-  Test_2020: 训练2011-2017, 验证2018-2019, 测试2020
-  Test_2021: 训练2012-2018, 验证2019-2020, 测试2021
-  Test_2022: 训练2013-2019, 验证2020-2021, 测试2022
-  Test_2023: 训练2014-2020, 验证2021-2022, 测试2023
-  Test_2024: 训练2015-2021, 验证2022-2023, 测试2024
-  Test_2025: 训练2016-2022, 验证2023-2024, 测试2025
-
-  共9个测试期, 覆盖2017-2025年所有数据!
-
+# 7. 查看结果
+python view_results.py
+```
 
 ## 📂 目录结构
 
 ```
 scripts/
-├── result/                    # 📊 结果查看和分析工具
-│   ├── README.md              # 使用说明
-│   ├── 查看结果.py            # 终端查看回测结果
-│   ├── 生成图表.py            # 生成PNG静态图表
-│   ├── 生成HTML报告.py        # 生成交互式HTML报告
-│   └── 检查数据范围.py        # 检查Qlib数据时间范围
+├── 10_数据准备/                     # 📥 数据准备和环境检查
+│   ├── 10_Tushare转Qlib.py           # Tushare数据转Qlib格式
+│   └── 11_检查环境.py                 # 环境验证工具
 │
-├── run/                       # 🖥️ GUI运行工具
-│   └── run_gui.py             # 图形界面启动器
+├── 20_因子分析/                     # 📈 因子筛选和配置生成
+│   ├── 20_IC分析.py                   # IC分析（从255个因子筛选强因子）
+│   ├── 21_使用IC结果.py               # IC结果查看和导出工具
+│   └── 22_生成Top50配置.py            # 生成Top50因子配置文件
 │
-├── 00_Tushare转Qlib.py       # 📥 Tushare数据转Qlib格式
-├── 10_检查环境.py             # ✅ 环境检查工具
-├── 20_IC分析.py               # 📈 因子IC分析（从255个因子筛选强因子）
-├── 21_使用IC结果.py           # 📊 查看和使用IC分析结果
-├── 22_训练Top因子模型.py      # 🚀 用Top因子生成配置并训练
-├── 一键运行.py                # ⚡ 完整工作流执行器（训练+回测+报告）
-└── model_optimization.py      # 🔧 模型参数优化工具
+├── 30_模型训练/                     # 🤖 模型训练和优化
+│   ├── 30_单模型训练.py               # 单模型训练工作流
+│   ├── 31_参数优化.py                 # LightGBM参数优化（贝叶斯优化）
+│   └── 32_多模型集成.py               # 多模型集成训练（提升稳定性）
+│
+├── 40_模型验证/                     # ✅ 模型验证和回测
+│   └── 40_滚动窗口验证.py             # 滚动窗口时间序列验证
+│
+├── result/                          # 📊 结果查看和分析工具
+│   ├── README.md                      # 使用说明
+│   ├── 查看结果.py                    # 终端查看回测结果
+│   ├── 生成图表.py                    # 生成PNG静态图表
+│   ├── 生成HTML报告.py                # 生成交互式HTML报告
+│   └── 检查数据范围.py                # 检查Qlib数据时间范围
+│
+├── run/                             # 🖥️ GUI运行工具
+│   └── run_gui.py                     # 图形界面启动器
+│
+├── 一键运行.py                       # ⚡ 完整工作流执行器（训练+回测+报告）
+└── model_optimization.py             # 🔧 模型参数优化工具（旧版）
 ```
 
-## 🔢 文件编号规则
+## 🔢 编号规则
 
-- **00-09**：数据准备和环境检查
-- **10-19**：环境和工具检查
-- **20-29**：因子分析和筛选
-- **30+**：（预留）其他功能
+- **10-19**: 数据准备和环境检查
+- **20-29**: 因子分析和配置生成
+- **30-39**: 模型训练和优化
+- **40-49**: 模型验证和回测
 
-## 📋 核心工作流程
+每个分类预留10个编号空间，便于未来扩展。
 
-### **标准流程**（推荐）
+## 📋 标准工作流程
+
+### 工作流1: 因子筛选和配置生成
 
 ```bash
 # 步骤1: 检查环境
-python scripts/10_检查环境.py
+python scripts/10_数据准备/11_检查环境.py
 
 # 步骤2: IC分析（筛选强因子）
-python scripts/20_IC分析.py
+python scripts/20_因子分析/20_IC分析.py
 
 # 步骤3: 生成Top因子配置
-python scripts/22_训练Top因子模型.py --top 50
+python scripts/20_因子分析/22_生成Top50配置.py --top 50
 
-# 步骤4: 执行完整工作流（训练+回测+报告）
-python scripts/一键运行.py configs/workflow_config_top50.yaml
+# 输出: configs/workflow_config_top50.yaml
 ```
 
-### **快速查看结果**
+### 工作流2: 参数优化和模型训练
+
+```bash
+# 步骤1: 参数优化（可选但推荐）
+python scripts/30_模型训练/31_参数优化.py \
+    --config configs/workflow_config_top50.yaml \
+    --n-iter 30
+
+# 输出: configs/workflow_config_top50_optimized.yaml
+
+# 步骤2: 单模型训练
+python scripts/30_模型训练/30_单模型训练.py \
+    configs/workflow_config_top50_optimized.yaml
+
+# 步骤3: 多模型集成训练（提升稳定性）
+python scripts/30_模型训练/32_多模型集成.py \
+    --config configs/workflow_config_top50_optimized.yaml
+```
+
+### 工作流3: 模型验证
+
+```bash
+# 滚动窗口验证（评估时间稳定性）
+python scripts/40_模型验证/40_滚动窗口验证.py \
+    --config configs/workflow_config_top50_optimized.yaml \
+    --train-years 7 \
+    --valid-years 2 \
+    --test-years 1 \
+    --start-year 2008 \
+    --end-year 2025
+
+# 输出: 9个测试期的回测结果（2017-2025）
+```
+
+### 工作流4: 结果查看
 
 ```bash
 # 终端查看
@@ -133,27 +154,29 @@ python scripts/result/生成图表.py
 python scripts/result/生成HTML报告.py
 ```
 
-## 📖 详细说明
+## 📖 脚本详细说明
 
-### **数据准备脚本**
+### 10_数据准备/
 
-#### `00_Tushare转Qlib.py`
-**功能**：将Tushare Pro数据转换为Qlib格式
+#### `10_Tushare转Qlib.py`
+**功能**: 将Tushare Pro数据转换为Qlib格式
+
 ```bash
-python scripts/00_Tushare转Qlib.py
+python scripts/10_数据准备/10_Tushare转Qlib.py
 ```
-**输出**：`D:/Data/my_stock/` 目录下的Qlib数据
+
+**输出**: `D:/Data/my_stock/` 目录下的Qlib数据
 
 ---
 
-### **环境检查脚本**
+#### `11_检查环境.py`
+**功能**: 检查Qlib、数据、环境是否正常
 
-#### `10_检查环境.py`
-**功能**：检查Qlib、数据、环境是否正常
 ```bash
-python scripts/10_检查环境.py
+python scripts/10_数据准备/11_检查环境.py
 ```
-**检查项**：
+
+**检查项**:
 - Qlib是否安装
 - 数据路径是否存在
 - 数据时间范围
@@ -161,126 +184,234 @@ python scripts/10_检查环境.py
 
 ---
 
-### **因子分析脚本**
+### 20_因子分析/
 
 #### `20_IC分析.py`
-**功能**：计算255个因子的IC值，筛选强因子
+**功能**: 计算255个因子的IC值，筛选强因子
+
 ```bash
-python scripts/20_IC分析.py
+python scripts/20_因子分析/20_IC分析.py
 ```
-**参数**：
-- `--pool`：股票池（csi300/csi500，默认csi300）
-- `--start`：开始时间（默认2017-01-01）
-- `--end`：结束时间（默认2020-12-31）
-- `--threshold`：IC阈值（默认0.01）
 
-**输出**：
-- MLflow实验记录：`mlruns/ic_analysis`
-- IC排序结果：保存在实验中
+**参数**:
+- `--pool`: 股票池（csi300/csi500，默认csi300）
+- `--start`: 开始时间（默认2017-01-01）
+- `--end`: 结束时间（默认2020-12-31）
+- `--threshold`: IC阈值（默认0.01）
 
-**示例**：
+**输出**:
+- MLflow实验记录: `mlruns/ic_analysis`
+- IC排序结果: 保存在实验中
+
+**示例**:
 ```bash
 # 在CSI500上分析
-python scripts/20_IC分析.py --pool csi500
+python scripts/20_因子分析/20_IC分析.py --pool csi500
 
 # 自定义IC阈值
-python scripts/20_IC分析.py --threshold 0.02
+python scripts/20_因子分析/20_IC分析.py --threshold 0.02
 ```
 
 ---
 
 #### `21_使用IC结果.py`
-**功能**：查看和导出IC分析结果
+**功能**: 查看和导出IC分析结果
+
 ```bash
-python scripts/21_使用IC结果.py
+python scripts/20_因子分析/21_使用IC结果.py
 ```
-**输出**：
+
+**输出**:
 - 显示Top因子列表
 - 导出CSV文件（可选）
 
 ---
 
-#### `22_训练Top因子模型.py`
-**功能**：根据IC分析结果生成配置文件
-```bash
-python scripts/22_训练Top因子模型.py --top 50
-```
-**参数**：
-- `--top`：选择Top N个因子（默认50）
-- `--output`：输出配置文件路径
+#### `22_生成Top50配置.py`
+**功能**: 根据IC分析结果生成配置文件
 
-**输出**：
+```bash
+python scripts/20_因子分析/22_生成Top50配置.py --top 50
+```
+
+**参数**:
+- `--top`: 选择Top N个因子（默认50）
+- `--output`: 输出配置文件路径
+
+**输出**:
 - `configs/workflow_config_top50.yaml`（或自定义）
 
 ---
 
-### **核心执行脚本**
+### 30_模型训练/
 
-#### `一键运行.py`
-**功能**：执行完整工作流（训练+回测+自动生成报告）
+#### `30_单模型训练.py`
+**功能**: 执行单模型训练工作流（训练+回测）
+
 ```bash
 # 使用默认配置
-python scripts/一键运行.py
+python scripts/30_模型训练/30_单模型训练.py
 
 # 使用指定配置
-python scripts/一键运行.py configs/workflow_config_top50.yaml
+python scripts/30_模型训练/30_单模型训练.py configs/workflow_config_top50.yaml
 ```
 
-**执行流程**：
+**执行流程**:
 1. 读取配置文件
 2. 初始化Qlib
 3. 训练模型（2008-2014）
 4. 验证模型（2015-2016）
 5. 回测分析（2017-2020）
-6. 自动生成HTML报告并打开浏览器
 
-**输出**：
-- MLflow实验记录：`mlruns/train_model` 和 `mlruns/backtest_analysis`
-- HTML报告：`backtest_report.html`
+**输出**:
+- MLflow实验记录: `mlruns/train_model`
+- 预测结果: 保存在MLflow recorder中
 
 ---
 
-### **优化工具**
+#### `31_参数优化.py`
+**功能**: LightGBM参数优化（贝叶斯优化）
 
-#### `model_optimization.py`
-**功能**：LightGBM参数优化
 ```bash
-python scripts/model_optimization.py
+python scripts/30_模型训练/31_参数优化.py \
+    --config configs/workflow_config_top50.yaml \
+    --n-iter 30
 ```
-**功能**：
-- 网格搜索最佳参数
-- 交叉验证
-- 生成优化报告
+
+**参数**:
+- `--config`: 基础配置文件路径
+- `--n-iter`: 优化迭代次数（默认30）
+- `--output`: 输出优化后配置文件路径
+
+**输出**:
+- `configs/workflow_config_top50_optimized.yaml`
+- 优化日志和最佳参数
+
+---
+
+#### `32_多模型集成.py`
+**功能**: 训练多个模型并集成预测（提升稳定性）
+
+```bash
+python scripts/30_模型训练/32_多模型集成.py \
+    --config configs/workflow_config_top50_optimized.yaml
+```
+
+**特点**:
+- 训练3个不同配置的模型（2个LightGBM + 1个XGBoost）
+- 平均集成预测结果
+- 降低单模型过拟合风险
+- 提升IC稳定性
+
+**输出**:
+- MLflow实验记录: `mlruns/ensemble_models`
+- 集成预测结果和个体模型预测
+
+---
+
+### 40_模型验证/
+
+#### `40_滚动窗口验证.py`
+**功能**: 滚动窗口时间序列验证
+
+```bash
+python scripts/40_模型验证/40_滚动窗口验证.py \
+    --config configs/workflow_config_top50_optimized.yaml \
+    --train-years 7 \
+    --valid-years 2 \
+    --test-years 1 \
+    --start-year 2008 \
+    --end-year 2025
+```
+
+**参数说明**:
+| 参数 | 值 | 理由 |
+|-----|-----|------|
+| --train-years | 7 | 与原配置一致(2008-2014共7年) |
+| --valid-years | 2 | 与原配置一致(2015-2016共2年) |
+| --test-years | 1 | 每年滚动一次，更细粒度评估 |
+| --start-year | 2008 | 从数据起始年份开始 |
+| --end-year | 2025 | 验证到当前年份 |
+
+**生成的测试期** (共9个):
+```
+Test_2017: 训练2008-2014, 验证2015-2016, 测试2017
+Test_2018: 训练2009-2015, 验证2016-2017, 测试2018
+Test_2019: 训练2010-2016, 验证2017-2018, 测试2019
+Test_2020: 训练2011-2017, 验证2018-2019, 测试2020
+Test_2021: 训练2012-2018, 验证2019-2020, 测试2021
+Test_2022: 训练2013-2019, 验证2020-2021, 测试2022
+Test_2023: 训练2014-2020, 验证2021-2022, 测试2023
+Test_2024: 训练2015-2021, 验证2022-2023, 测试2024
+Test_2025: 训练2016-2022, 验证2023-2024, 测试2025
+```
+
+覆盖2017-2025年所有数据！
+
+**输出**:
+- 每个测试期的回测报告
+- 汇总统计: IC均值、IC_IR、年化收益等
+
+---
+
+### result/
+
+详见 `scripts/result/README.md`
 
 ---
 
 ## 💡 使用建议
 
-### **首次使用**
-1. 运行 `10_检查环境.py` 确保环境正常
+### 首次使用
+1. 运行 `11_检查环境.py` 确保环境正常
 2. 运行 `20_IC分析.py` 分析因子质量
-3. 运行 `22_训练Top因子模型.py` 生成配置
-4. 运行 `一键运行.py` 执行完整流程
+3. 运行 `22_生成Top50配置.py` 生成配置
+4. 运行 `31_参数优化.py` 优化参数（可选但推荐）
+5. 运行 `30_单模型训练.py` 执行训练
+6. 运行 `32_多模型集成.py` 集成训练（可选）
+7. 运行 `40_滚动窗口验证.py` 验证稳定性
 
-### **日常使用**
-- 直接运行 `一键运行.py` 进行回测
+### 日常使用
+- 直接运行 `30_单模型训练.py` 进行回测
 - 使用 `result/` 目录下的工具查看结果
 
-### **参数调优**
+### 参数调优
 1. 修改 `configs/*.yaml` 配置文件
-2. 运行 `一键运行.py` 测试效果
-3. 使用 `model_optimization.py` 优化参数
+2. 运行 `31_参数优化.py` 自动优化参数
+3. 使用优化后的配置运行训练
 
 ## 🔧 注意事项
 
-1. **中文文件名**：所有脚本使用中文命名，便于识别，但不能被其他模块import
-2. **独立运行**：每个脚本都可以独立运行
-3. **数据依赖**：确保 `D:/Data/my_stock/` 有数据
-4. **环境依赖**：需要激活 `mystock` conda环境
+1. **中文文件名**: 所有脚本使用中文命名，便于识别，但不能被其他模块import
+2. **独立运行**: 每个脚本都可以独立运行
+3. **数据依赖**: 确保 `D:/Data/my_stock/` 有数据
+4. **环境依赖**: 需要激活 `mystock` conda环境
+5. **目录结构**: 2025-11-17重构后采用层级化结构，旧文档中的路径已失效
 
 ## 📊 输出文件位置
 
-- **MLflow实验**：`mlruns/`
-- **配置文件**：`configs/`
-- **HTML报告**：项目根目录 `backtest_report.html`
-- **PNG图表**：项目根目录 `backtest_analysis.png`
+- **MLflow实验**: `mlruns/`
+- **配置文件**: `configs/`
+- **HTML报告**: 项目根目录 `backtest_report.html`
+- **PNG图表**: 项目根目录 `backtest_analysis.png`
+
+## 🔄 目录重构说明
+
+2025-11-17重构：将扁平化编号结构升级为层级化功能分类结构。
+
+**变更映射**:
+```
+旧路径                              → 新路径
+─────────────────────────────────────────────────────────────────
+scripts/00_Tushare转Qlib.py        → scripts/10_数据准备/10_Tushare转Qlib.py
+scripts/10_检查环境.py              → scripts/10_数据准备/11_检查环境.py
+scripts/20_IC分析.py                → scripts/20_因子分析/20_IC分析.py
+scripts/21_使用IC结果.py            → scripts/20_因子分析/21_使用IC结果.py
+scripts/22_训练Top因子模型_生成50yaml.py → scripts/20_因子分析/22_生成Top50配置.py
+scripts/30_运行工作流.py            → scripts/30_模型训练/30_单模型训练.py
+scripts/40_参数优化_生成新yaml.py   → scripts/30_模型训练/31_参数优化.py
+scripts/60_多模型集成.py            → scripts/30_模型训练/32_多模型集成.py
+scripts/50_滚动窗口验证.py          → scripts/40_模型验证/40_滚动窗口验证.py
+```
+
+详见设计文档: `docs/design/2025-11-17-205729-脚本目录重构-方案.md`
