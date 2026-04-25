@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en" style="height:100%">
+
+<!-- Mirrored from tushare.pro/document/1?doc_id=68 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:15:55 GMT -->
+<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=UTF-8" /><!-- /Added by HTTrack -->
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tushare数据</title>
+<meta content="免费股票数据,开源股票数据接口,股票数据,股票数据接口,python股票数据,财经数据,金融数据,行业大数据,区块链数据,量化投资,知识图谱" name="keywords"/>
+<meta name="description" content="Tushare为金融数据分析提供便捷、快速的接口，与投研和量化策略无缝对接"/>
+<meta content="index,follow" name="robots"/>
+<meta name="application-name" content="Tushare"/>
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-192x192039e.png?v=811d9139fa2ea47f5595907da1f3c34d" sizes="192x192">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-160x160.html" sizes="160x160">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-96x9674d3.png?v=4960eb8103c873c586ad41ef3f53db84" sizes="96x96">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-16x16f0cc.png?v=f7299bbce2cff4db7e3dfa6fb8c6a73c" sizes="16x16">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-32x327e67.png?v=a5df4bdd9f96de59f57bb9a7a50d8f96" sizes="32x32">
+<link href="../static/vendors/bootstrap/dist/css/bootstrap.min5aee.css?v=d7ac98c842e4ec59d2c21fef89fce09c" rel="stylesheet">
+<link href="../static/vendors/jstree/themes/default/style.min8060.css?v=779fc4b400d1748ec2fb99685ad80550" rel="stylesheet">
+<link href="../static/frontend/css/custom08a0.css?v=afa9fcaf1ec38d2c9d46d41a0615a077" rel="stylesheet">
+
+
+<link rel="stylesheet" href="../static/vendors/codemirror/lib/codemirrorfc50.css?v=fc217d502b05f65616356459c0ec1d62">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor13d7.css?v=144c2e273b8a0e79b208d0d86ccd3999">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor-contentsfa16.css?v=3ed3a3154a2304c111075714324b0e7b">
+<link rel="stylesheet" href="../static/vendors/highlightjs/styles/github259f.css?v=bf6c14925e66edb1526b6c9489b3c042">
+<link rel="stylesheet" href="../static/common/css/md230c.css?v=087ce310ed8e685ac6526e2a54db3c68">
+
+<!--[if lt IE 9]>
+<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+<script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+<![endif]-->
+<script type="text/javascript" src="../static/vendors/requirejs/require58ef.js?v=6da8be361b9ee26c5e721e76c6d4afce"></script>
+<script type="text/javascript" src="../static/frontend/js/config5b09.js?v=85f0040a930464e1c6dbc61026f79de8"></script>
+</head>
+<body style="height:100%">
+<div id="page" style="height:100%;">
+<header id="header" class="site-header">
+<nav id="navbar" class="site-navbar navbar navbar-static-top" role="navigation">
+<div class="container">
+<div class="navbar-header">
+<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse-1">
+<span class="sr-only">Toggle navigation</span>
+<i class="fa fa-bars" style="font-size: 1.5em; padding: 15px 0;"></i>
+</button>
+<h1 class="navbar-brand">
+<a href="https://tushare.pro/"><img src="../static/frontend/images/logod8e3.png?v=39c50795cb540b4463114d1bf3135d6e" alt="tushare"></a>
+</h1>
+</div>
+<div class="collapse navbar-collapse" id="navbar-collapse-1">
+<ul id="navigation" class="nav navbar-nav navbar-right">
+<li><a href="https://tushare.pro/">首页</a></li>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<!-- <li><a href="/document/41">另类数据</a></li>-->
+<li><a href="https://tushare.pro/news/sina">资讯数据</a></li>
+<li><a href="https://tushare.pro/webclient">数据工具</a></li>
+<li><a href="https://tushare.pro/weborder/#/permission">社区捐助</a></li>
+
+<li class="navbar-tail"><a href="https://tushare.pro/weborder/#/login" class="nav-login">登录/注册</a></li>
+
+</ul>
+</div>
+</div>
+</nav>
+</header>
+
+
+<section id="document" class="whole">
+<div class="container">
+<div class="document">
+<nav class="sidebar col-md-3 col-sm-4 col-xs-12">
+
+            <div id="jstree">
+                <ul class="list-unstyled components">
+                    <li ><a href="10454.html?doc_id=450">Tushare skills</a></li>  
+                    <li class="  in"><a href="10c80.html?doc_id=5">平台介绍</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14b41.html?doc_id=6">使用对象</a></li> <li ><a href="1cd35.html?doc_id=29">Python安装</a></li> <li ><a href="145ad.html?doc_id=7">Tushare安装</a></li> <li ><a href="172c5.html?doc_id=8">版本升级</a></li> <li ><a href="19a2a.html?doc_id=9">上新及变更</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="135a1.html?doc_id=37">操作手册</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14dd7.html?doc_id=38">用户注册</a></li> <li ><a href="16272.html?doc_id=39">获取token</a></li> <li ><a href="1e8ce.html?doc_id=40">调取数据</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1484e.html?doc_id=129">获取方式</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14346.html?doc_id=130">通过HTTP获取数据</a></li> <li ><a href="1b3f2.html?doc_id=131">通过Python SDK获取</a></li> <li ><a href="17091.html?doc_id=132">通过Matlab SDK获取</a></li> <li ><a href="1999e.html?doc_id=133">通过R SDK获取</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1bc5e.html?doc_id=229">踩坑记录</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="187bb.html?doc_id=455">如何在“龙虾”里用好数据</a></li> <li ><a href="1196b.html?doc_id=230">如何优雅撸数据</a></li> <li ><a href="168c7.html?doc_id=231">如何存入MySQL数据库</a></li> <li ><a href="17298.html?doc_id=232">数据存入MongoDB</a></li> <li ><a href="1c633.html?doc_id=234">如何获取分钟数据</a></li> <li ><a href="1a06a.html?doc_id=122">常见问题整理</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="14673.html?doc_id=10">平台服务</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1ecce.html?doc_id=11">API服务</a></li> <li ><a href="12e9e.html?doc_id=12">定制服务</a></li> <li ><a href="1a06c.html?doc_id=13">平台积分</a></li> <li ><a href="193e4.html?doc_id=108">数据更新说明</a></li> <li ><a href="13600.html?doc_id=290">积分频次对应表</a></li> <li ><a href="1ee27.html?doc_id=307">积分到期查询</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class=" jstree-open  in"><a href="1501f.html?doc_id=30">相关工具</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="10ed4.html?doc_id=42">IDE开发工具介绍</a></li> <li ><a href="19306.html?doc_id=63">数据采集预处理与建模</a></li> <li ><a href="1fb44.html?doc_id=65">pip安装超时的解决方案</a></li> <li class="active jstree-clicked "  ><a href="13729.html?doc_id=68">模型评估与仓位管理</a></li> <li ><a href="12451.html?doc_id=90">模拟交易与回测</a></li> <li ><a href="17380.html?doc_id=89">DLL载入问题之查询依赖的DLL</a></li> <li ><a href="179e8.html?doc_id=91">python过滤HTML标签</a></li> <li ><a href="164bf.html?doc_id=287">Excel常用快捷键</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="179bd.html?doc_id=167">培训课程</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="13f4d.html?doc_id=168">金融数据深入解析及经验分享</a></li> <li ><a href="1451b.html?doc_id=169">股票实时行情及数据应用实战</a></li> <li ><a href="1ffc5.html?doc_id=203">数据实操和量化策略入门指引</a></li> <li ><a href="17516.html?doc_id=282">读懂研报课程培训</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1a511.html?doc_id=205">机构招聘</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1bc5e-2.html?doc_id=379">外资公募—对客科技团队</a></li> <li ><a href="1b4f4.html?doc_id=380">外资公募—投研科技团队</a></li> <li ><a href="180e0.html?doc_id=381">外资公募—运营科技团队</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="15f19.html?doc_id=306">高校服务</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1ba41.html?doc_id=360">学生积分</a></li> <li ><a href="1d1d1.html?doc_id=361">教师积分</a></li>
+                        </ul>
+                    </li>
+                  <li ><a href="1ceff.html?doc_id=270">专业微群</a></li>  <li ><a href="1e53d.html?doc_id=243">社区捐助</a></li>  
+                    <li class="  in"><a href="1e06e.html?doc_id=411">社区协议</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="186b4.html?doc_id=409">用户协议</a></li> <li ><a href="1422b.html?doc_id=410">隐私政策</a></li> <li ><a href="18da9.html?doc_id=405">服务协议</a></li> <li ><a href="13272.html?doc_id=443">注销须知</a></li>
+                        </ul>
+                    </li>
+                
+                </ul>
+            </div>
+        
+</nav>
+<div class="content col-md-9 col-sm-8 col-xs-12">
+<div class="search-panel">
+<div class="search-container">
+<span class="fa fa-search search-icon"></span>
+<input type="text" class="search-input" placeholder="Search">
+</div>
+</div>
+<h2 id="机器量化分析（二）模型评估与仓位管理">机器量化分析（二）——模型评估与仓位管理</h2>
+<p>作者：Tushare社区用户</p>
+<hr>
+<p>在上一篇中，我们介绍了简单的数据收集，数据预处理与建模案例，本篇承接上篇内容，主要介绍两部分：<strong style="color: #5B9BD5">模型评估，仓位管理</strong>。</p>
+<h3 id="--模型评估--"><font style="background-color: #3DAAD6;    font-weight: bold; padding: 5px;"> &gt;&gt; 模型评估 &lt;&lt; </font></h3>
+<p>在机器学习领域，有诸多评估模型的方法和指标，本篇介绍一个最简单常用的指标——<strong>F1分值</strong>。</p>
+<p>要计算模型的F1分值，就要了解<strong>混淆矩阵</strong>。但在介绍混淆矩阵之前，我们先从实际场景出发，去理解模型评估的思路。</p>
+<p>当我们想设计一个模型评估的指标时，一个朴素的想法就是准确率，即模型正确预测的数量，<strong style="color: #5B9BD5">Acc = T（正确预测的次数）/ N（总预测次数）</strong>。但在实际的场景中，我们关注的往往是单边的预测准确率，比如在上篇的数据建模里，想要盈利，我们最关心的是预测股价上涨的概率，而预测不上涨的概率则不那么重要；那么公式就需要稍微修改一下：<strong style="color: #5B9BD5">Acc = Tp（预测为上涨且预测正确的次数）/ N（总预测次数）</strong>。这个公式虽然能描述正样本的预测准确率，但却有个<strong style="color: red">致命缺陷——当模型把所有样本都预测为正样本时，该公式的准确率是100%</strong>！反映在实际场景中，就是无脑买多，这显然是不合理的。究其根本，问题出在公式的分母中，由于无论如何预测，分母都是不变的，那么显然把所有样本点都预测为正得到的准确率最大。为此，我们还需要修改公式，而且是从分母入手，可以有两种方案：</p>
+<ul style="color:#5B9BD5; font-weight:bold;">
+    <li style="list-style-type:none;">1. Acc（Precision） = Tp（预测为上涨且正确的次数）/ Tp + Fp(预测为上涨但实际不上涨的次数)。 该公式的分母，是所有预测为上涨（无论实际上涨与否）的次数。</li>
+    <li style="list-style-type:none;">2. Acc（Recall） = Tp（预测为上涨且正确的次数）/ Tp + Fn(预测不上涨但实际上涨的次数)。 该公式的分母，是所有实际上涨（无论预测上涨与否）的次数。</li>
+</ul>
+
+<p>这两个公式没有好坏优劣之分，而是通过不同的角度来对模型进行评价。</p>
+<p>现在，我们再来看混淆矩阵就非常简单了：<br><img src="../files/pro/u1/ml_qta2_001.jpg" alt=""></p>
+<p>上面的两个公式，实际上是有区分的，第一个公式计算得到的值叫<strong style="color: #5B9BD5">精度（也叫查准率）</strong>，反映的是<strong style="color: #5B9BD5">预测能力</strong>。第二个公式计算得到的值叫<strong style="color: #5B9BD5">召回率（也叫查全率）</strong>，反映的是对正样本的<strong style="color: #5B9BD5">拟合能力</strong>。<br>下面我们结合一个实际的场景来解释这个混淆矩阵（图片来自sklearn官档，略作修改，侵删）：</p>
+<p><img src="../files/pro/u1/ml_qta2_002.jpg" alt=""></p>
+<p><strong>样本背景</strong>：在过去n个交易日中（即图中圆点个数），个股股价相较于前一交易日，<strong>涨的话是红色点，不涨是蓝色点</strong>。横纵坐标分别是个股的两个自定义的<strong>状态</strong>（比如上篇中的收盘价和成交量）。</p>
+<p>现在我们有一个最简单粗暴的分类预测器——<strong>画线，而且是直线</strong>。</p>
+<p>用第一个公式计算的话，<strong style="color: #5B9BD5">Precision = 图中直线右上的所有红点个数 / 图中直线右上所有（红点 + 蓝点）的个数</strong>。显然图中红灰黑三条直线中，<strong>黑线的Precision最高，高达100%</strong>，但在所有红点中占比很小，反映在实际场景中，即遇到机会非常少，实用性下降。</p>
+<p>再看第二个公式，<strong style="color: #5B9BD5">Recall= 图中直线右上的所有红点个数 / 图中所有红点个数</strong>。显然图中红灰黑三条直线中，<strong>红线的Recall最大，接近100%</strong>，但同时也会有许多误判（红线右上的蓝点都被预测成了红点），反映在实际场景中，即遇到的机会增大，但误判的概率也变大了。</p>
+<p>回到这个场景和图片本身，一个真正好的分类预测模型，应该是类似图中灰色直线的效果，<strong>在Precision和Recall之间取一个平衡，在两者间取加权平均值的话就是F1分值</strong>：</p>
+<p><strong style="color: #5B9BD5">F1 = ( 2 * Precision * Recall ) / ( Precision + Recall )</strong></p>
+<p>图中红灰黑三条直线的F1分值，灰色线的F1最高，而红线由于Precision较低，黑线由于Recall较低，F1分值不会太高。</p>
+<p>接下来，我们通过代码来实现计算F1分值并评估模型，在实践中，我们不仅记录F1分值，同时还记录Precision和Recall以及负样本的Precision，综合这几个指标<strong>可以粗略判断出模型的状态，过拟合或欠拟合，从而为优化指出方向</strong>。</p>
+<p>代码的实现需要用到数据库操作，主要用到两张表，一张是<strong>结果表</strong>，用于记录模型的F1分值等。另一张是<strong>中间表</strong>，用于存储F1计算过程的一些变量，功能上与内存相似。</p>
+<p><strong>结果表——库名：stock &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;表名：model_ev_resu</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>字段类型</th>
+<th>字段说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>state_dt</td>
+<td>varchar2(45)</td>
+<td>评估日期</td>
+</tr>
+<tr>
+<td>stock_code</td>
+<td>varchar2(45)</td>
+<td>股票代码</td>
+</tr>
+<tr>
+<td>acc</td>
+<td>decimal(20, 4)</td>
+<td>查准率</td>
+</tr>
+<tr>
+<td>recall</td>
+<td>decimal(20, 4)</td>
+<td>查全率</td>
+</tr>
+<tr>
+<td>f1</td>
+<td>decimal(20, 4)</td>
+<td>f1分值</td>
+</tr>
+<tr>
+<td>acc_neg</td>
+<td>decimal(20, 4)</td>
+<td>查准率（负样本）</td>
+</tr>
+<tr>
+<td>bz</td>
+<td>varchar2(45)</td>
+<td>用于标注模型类别，比如svm、决策树等</td>
+</tr>
+<tr>
+<td>predict</td>
+<td>varchar2(45)</td>
+<td>对评估日后一个交易日的预测值</td>
+</tr>
+</tbody></table>
+<p><strong>中间表——库名：stock &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;表名：model_ev_mid</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>字段类型</th>
+<th>字段说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>state_dt</td>
+<td>varchar2(45)</td>
+<td>回测日期</td>
+</tr>
+<tr>
+<td>stock_code</td>
+<td>varchar2(45)</td>
+<td>股票代码</td>
+</tr>
+<tr>
+<td>resu_predict</td>
+<td>decimal(20, 2)</td>
+<td>预测值</td>
+</tr>
+<tr>
+<td>resu_real</td>
+<td>decimal(20, 2)</td>
+<td>真实值</td>
+</tr>
+</tbody></table>
+<p>在数据库内建好两张表，就可以对模型进行评估了，本篇代码用的是推进式建模（即每天获得最新的股票数据后添加到训练集中，重新建模并对第二天进行预测），部分代码如下：</p>
+<pre><code># 计算查全率
+sql_resu_recall_son = &quot;select count(*) from model_ev_mid a where a.resu_real is not null and a.resu_predict = 1 and a.resu_real = 1&quot;
+cursor.execute(sql_resu_recall_son)
+recall_son = cursor.fetchall()[0][0]
+sql_resu_recall_mon = &quot;select count(*) from model_ev_mid a where a.resu_real is not null and a.resu_real = 1&quot;
+cursor.execute(sql_resu_recall_mon)
+recall_mon = cursor.fetchall()[0][0]
+recall = recall_son / recall_mon
+# 计算查准率
+sql_resu_acc_son = &quot;select count(*) from model_ev_mid a where a.resu_real is not null and a.resu_predict = 1 and a.resu_real = 1&quot;
+cursor.execute(sql_resu_acc_son)
+acc_son = cursor.fetchall()[0][0]
+sql_resu_acc_mon = &quot;select count(*) from model_ev_mid a where a.resu_real is not null and a.resu_predict = 1&quot;
+cursor.execute(sql_resu_acc_mon)
+acc_mon = cursor.fetchall()[0][0]
+if acc_mon == 0:
+    acc = recall = acc_neg = f1 = 0
+else:
+    acc = acc_son / acc_mon
+</code></pre>
+<p>基本的实现思路是：</p>
+<ul style="color:#5B9BD5; font-weight:bold;">
+    <li style="list-style-type:none;">1. 建回测时间序列。</li>
+    <li style="list-style-type:none;">2. 进行第一次时间序列的遍历，推进式建模，向中间表存入相关过程变量（包含每次的预测值）。</li>
+    <li style="list-style-type:none;">3. 进行第二次时间序列的遍历，向中间表中更新每次迭代的真实值。</li>
+    <li style="list-style-type:none;">4. 对中间表进行统计，计算Precision，Recall，F1分值等，并存入结果表。</li>
+</ul>
+
+<p><font color="red">（完整的模型评估代码详见 <a href="https://tushare.pro/files/pro/u1/k2.rar">Model_Evaluate.py</a> 文件）</font></p>
+<h3 id="--仓位管理--"><font style="background-color: #3DAAD6;    font-weight: bold; padding: 5px;"> &gt;&gt; 仓位管理 &lt;&lt; </font></h3>
+<p>在投资领域，交易择时和风险控制是同等重要的两大模块。前述机器学习的模型解决了交易择时的问题，而马科维茨投资组合理论，则是在投资组合确定的条件下，通过仓位配比来实现风险控制的强大工具。</p>
+<p>我们取下面5只股票作为一套投资组合</p>
+<table>
+<thead>
+<tr>
+<th>股票代码</th>
+<th>名称</th>
+<th>行业</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>603912</td>
+<td>佳力图</td>
+<td>通用设备/5G/次新股</td>
+</tr>
+<tr>
+<td>300666</td>
+<td>江丰电子</td>
+<td>半导体/芯片/次新股</td>
+</tr>
+<tr>
+<td>300618</td>
+<td>寒锐钴业</td>
+<td>有色金属/锂电池</td>
+</tr>
+<tr>
+<td>002049</td>
+<td>紫光国芯</td>
+<td>半导体/5G/两融股</td>
+</tr>
+<tr>
+<td>300672</td>
+<td>国科微</td>
+<td>半导体/芯片/次新股</td>
+</tr>
+</tbody></table>
+<p>现在我们计算一下2018年1月1日的<strong>风险系数</strong>和其对应的<strong>头寸比例</strong>，采样长度90天。</p>
+<p>计算的过程非常简单，步骤如下：</p>
+<ul style="color:#5B9BD5;">
+    <li style="list-style-type:none;">1. 计算投资组合在采样区间内的<strong>每日收益率</strong>，组成一个 m*n 的矩阵A（其中m为交易日天数，n为投资组合股票或基金数，m必须大于n）。</li>
+    <li style="list-style-type:none;">2. 计算该矩阵A的<strong>协方差矩阵</strong>。</li>
+    <li style="list-style-type:none;">3. 求解该协方差矩阵的<strong>特征值和特征向量</strong>。</li>
+    <li style="list-style-type:none;">4. （可选） 计算<strong>夏普率</strong>。</li>
+</ul>
+
+<p>在求解特征值和特征向量后，我们能得到若干（不大于n）个特征值和其对应的特征向量。这些特征值就是马科维茨理论中的投资组合的<strong>风险</strong>，其对应的特征向量做<strong>归一化处理</strong>后就是投资组合中各个股票或基金的<strong>头寸比例</strong>。</p>
+<p>注意，特征向量中会有负值，一起归一化后是作为卖空账户的保证金头寸比例的，鉴于A股融券市场的高门槛和扭曲，不建议做空操作。号主是将特征向量中的负值剔除，将剩余的做归一化处理。</p>
+<p>由于特征值和特征向量有多组，显然我们倾向于选风险小的，也即特征值最小的，这代表着市场的方向。本篇的这套portfolio运算后的风险和头寸如下：</p>
+<p><img src="../files/pro/u1/ml_qta2_003.jpg" alt=""></p>
+<p>市场的方向往往也是大盘的方向，投资组合的收益围绕大盘小范围波动。对于激进型投资者来说，需要一个风险稍稍提高但收益带来明显提升的方案。对于这种需求，则是取<strong>次最小的特征值和特征向量</strong>，剔除负值并归一化，如下图：</p>
+<p><img src="../files/pro/u1/ml_qta2_004.jpg" alt=""></p>
+<p><font color="red">（完整的模型评估代码详见 <a href="https://tushare.pro/files/pro/u1/k2.rar">Portfolio.py</a> 文件）</font></p>
+<p>可见，两套头寸配比差异较大，那么这两套方案的实际表现如何呢，请关注下期内容：</p>
+<p><strong style="color: #5B9BD5">请关注下期内容【机器量化分析（三）——模拟交易与回测】</strong></p>
+
+</div>
+</div>
+</div>
+</section>
+
+<footer id="footer" class="site-footer">
+<div class="container">
+<div class="row footer-panel">
+<div class="col-md-4">
+<div class=""><img src="../static/frontend/images/wechat_public5b2f.png?v=847e8d705d3a409d000dce413ab5c257" alt=""></div>
+</div>
+<div class="col-md-4">
+<div class="title">使用文档</div>
+<div class="content">
+<ul>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<li><a href="41.html">区块链</a></li>
+<li><a href="https://tushare.pro/news">资讯数据</a></li>
+</ul>
+</div>
+</div>
+<div class="col-md-4">
+<div class="title">关注我们</div>
+<div class="content">
+<ul>
+<li>公众号：waditu</li>
+<li>Github：<a href="https://github.com/waditu" target="_blank">https://github.com/waditu</a></li>
+<li>雪 球：<a href="https://xueqiu.com/u/9103835084" target="_blank">https://xueqiu.com/u/9103835084</a></li>
+<li>微 博：<a href="https://weibo.com/u/1304687120" target="_blank">https://weibo.com/u/1304687120</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="row footer-footer">
+<div class="copyright"><p>&copy; 2018 Tushare <a href='https://beian.miit.gov.cn/' target="_blank">
+"沪ICP备2020031644号"
+</a></p></div>
+</div>
+</div>
+</footer>
+
+</div>
+<div class="scroll-to-top" data-spy="affix" data-offset-top="200">
+<a href="#page" class="smooth-scroll">置顶</a>
+</div>
+</body>
+<script type="text/javascript">
+require(['custom']);
+</script>
+
+
+<script type="text/javascript">
+require([
+'jquery',
+'jstree'
+], function ($, jstree) {
+$(document).ready(function() {
+const tree = $('#jstree').jstree({
+// plugins : ['state']
+plugins : ['wholerow'],
+core: {
+themes: {
+multiple: false,
+icons: false,
+stripes: false,
+expand_selected_onload: true
+}
+}
+});
+tree.on("select_node.jstree", function (e, data) {
+window.location = `${location.protocol}//${location.host}${data.node.a_attr.href}`;
+});
+const searchInput = document.querySelector('.search-input');
+const searchIcon = document.querySelector('.search-icon');
+const onSearch = () => {
+const query = searchInput.value;
+if (query) {
+window.location = `${location.protocol}//${location.host}/document/search?q=${encodeURIComponent(query)}`;
+}
+}
+searchInput.addEventListener('change', onSearch);
+searchIcon.addEventListener('click', onSearch);
+});
+});
+</script>
+
+
+<!-- Mirrored from tushare.pro/document/1?doc_id=68 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:15:55 GMT -->
+</html>

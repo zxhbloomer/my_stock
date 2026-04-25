@@ -1,0 +1,82 @@
+#document #viewer{
+    background-color: #fff;
+}
+
+.tui-editor-contents *:not(table) {
+    line-height: 100%;
+}
+
+.tui-editor-contents h1 {
+    font-size: 3.5rem;
+    margin-top: 5px;
+    margin-bottom: 2px;
+    border-bottom: 0;
+}
+
+.tui-editor-contents h2 {
+    font-size: 2.5rem;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    border-bottom: 0;
+}
+
+.tui-editor-contents h3 {
+    font-size: 2.0rem;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    border-bottom: 0;
+}
+
+.tui-editor-contents h4 {
+    font-size: 1.6rem;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    border-bottom: 0;
+}
+
+.tui-editor-contents hr {
+    border-top: 1px solid #eee;
+    margin: -10px;
+}
+
+.tui-editor-contents ul, .tui-editor-contents menu, .tui-editor-contents ol, .tui-editor-contents dir {
+    margin: 0;
+}
+
+.tui-editor-contents table {
+    width: 100%;
+}
+
+.tui-editor-contents p {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.414;
+}
+
+.tui-editor-contents pre {
+    margin: 0;
+    padding: 10px 20px;
+    background: #f4f8f1;
+    border-left: 5px solid #f8981d;
+}
+
+.tui-editor-contents pre code {
+}
+
+.tui-editor-contents table th {
+    border: 1px solid #ddd;
+    background-color: #eee;
+    color: #335;
+    font-weight: bold;
+}
+
+.tui-editor-contents table td {
+    border: 1px solid #ddd;
+}
+
+.tui-editor-contents {
+    font-size: 16px;
+    margin: 0;
+    padding: 0;
+}

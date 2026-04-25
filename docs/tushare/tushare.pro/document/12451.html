@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en" style="height:100%">
+
+<!-- Mirrored from tushare.pro/document/1?doc_id=90 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:15:55 GMT -->
+<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=UTF-8" /><!-- /Added by HTTrack -->
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tushare数据</title>
+<meta content="免费股票数据,开源股票数据接口,股票数据,股票数据接口,python股票数据,财经数据,金融数据,行业大数据,区块链数据,量化投资,知识图谱" name="keywords"/>
+<meta name="description" content="Tushare为金融数据分析提供便捷、快速的接口，与投研和量化策略无缝对接"/>
+<meta content="index,follow" name="robots"/>
+<meta name="application-name" content="Tushare"/>
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-192x192039e.png?v=811d9139fa2ea47f5595907da1f3c34d" sizes="192x192">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-160x160.html" sizes="160x160">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-96x9674d3.png?v=4960eb8103c873c586ad41ef3f53db84" sizes="96x96">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-16x16f0cc.png?v=f7299bbce2cff4db7e3dfa6fb8c6a73c" sizes="16x16">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-32x327e67.png?v=a5df4bdd9f96de59f57bb9a7a50d8f96" sizes="32x32">
+<link href="../static/vendors/bootstrap/dist/css/bootstrap.min5aee.css?v=d7ac98c842e4ec59d2c21fef89fce09c" rel="stylesheet">
+<link href="../static/vendors/jstree/themes/default/style.min8060.css?v=779fc4b400d1748ec2fb99685ad80550" rel="stylesheet">
+<link href="../static/frontend/css/custom08a0.css?v=afa9fcaf1ec38d2c9d46d41a0615a077" rel="stylesheet">
+
+
+<link rel="stylesheet" href="../static/vendors/codemirror/lib/codemirrorfc50.css?v=fc217d502b05f65616356459c0ec1d62">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor13d7.css?v=144c2e273b8a0e79b208d0d86ccd3999">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor-contentsfa16.css?v=3ed3a3154a2304c111075714324b0e7b">
+<link rel="stylesheet" href="../static/vendors/highlightjs/styles/github259f.css?v=bf6c14925e66edb1526b6c9489b3c042">
+<link rel="stylesheet" href="../static/common/css/md230c.css?v=087ce310ed8e685ac6526e2a54db3c68">
+
+<!--[if lt IE 9]>
+<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+<script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+<![endif]-->
+<script type="text/javascript" src="../static/vendors/requirejs/require58ef.js?v=6da8be361b9ee26c5e721e76c6d4afce"></script>
+<script type="text/javascript" src="../static/frontend/js/config5b09.js?v=85f0040a930464e1c6dbc61026f79de8"></script>
+</head>
+<body style="height:100%">
+<div id="page" style="height:100%;">
+<header id="header" class="site-header">
+<nav id="navbar" class="site-navbar navbar navbar-static-top" role="navigation">
+<div class="container">
+<div class="navbar-header">
+<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse-1">
+<span class="sr-only">Toggle navigation</span>
+<i class="fa fa-bars" style="font-size: 1.5em; padding: 15px 0;"></i>
+</button>
+<h1 class="navbar-brand">
+<a href="https://tushare.pro/"><img src="../static/frontend/images/logod8e3.png?v=39c50795cb540b4463114d1bf3135d6e" alt="tushare"></a>
+</h1>
+</div>
+<div class="collapse navbar-collapse" id="navbar-collapse-1">
+<ul id="navigation" class="nav navbar-nav navbar-right">
+<li><a href="https://tushare.pro/">首页</a></li>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<!-- <li><a href="/document/41">另类数据</a></li>-->
+<li><a href="https://tushare.pro/news/sina">资讯数据</a></li>
+<li><a href="https://tushare.pro/webclient">数据工具</a></li>
+<li><a href="https://tushare.pro/weborder/#/permission">社区捐助</a></li>
+
+<li class="navbar-tail"><a href="https://tushare.pro/weborder/#/login" class="nav-login">登录/注册</a></li>
+
+</ul>
+</div>
+</div>
+</nav>
+</header>
+
+
+<section id="document" class="whole">
+<div class="container">
+<div class="document">
+<nav class="sidebar col-md-3 col-sm-4 col-xs-12">
+
+            <div id="jstree">
+                <ul class="list-unstyled components">
+                    <li ><a href="10454.html?doc_id=450">Tushare skills</a></li>  
+                    <li class="  in"><a href="10c80.html?doc_id=5">平台介绍</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14b41.html?doc_id=6">使用对象</a></li> <li ><a href="1cd35.html?doc_id=29">Python安装</a></li> <li ><a href="145ad.html?doc_id=7">Tushare安装</a></li> <li ><a href="172c5.html?doc_id=8">版本升级</a></li> <li ><a href="19a2a.html?doc_id=9">上新及变更</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="135a1.html?doc_id=37">操作手册</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14dd7.html?doc_id=38">用户注册</a></li> <li ><a href="16272.html?doc_id=39">获取token</a></li> <li ><a href="1e8ce.html?doc_id=40">调取数据</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1484e.html?doc_id=129">获取方式</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14346.html?doc_id=130">通过HTTP获取数据</a></li> <li ><a href="1b3f2.html?doc_id=131">通过Python SDK获取</a></li> <li ><a href="17091.html?doc_id=132">通过Matlab SDK获取</a></li> <li ><a href="1999e.html?doc_id=133">通过R SDK获取</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1bc5e.html?doc_id=229">踩坑记录</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="187bb.html?doc_id=455">如何在“龙虾”里用好数据</a></li> <li ><a href="1196b.html?doc_id=230">如何优雅撸数据</a></li> <li ><a href="168c7.html?doc_id=231">如何存入MySQL数据库</a></li> <li ><a href="17298.html?doc_id=232">数据存入MongoDB</a></li> <li ><a href="1c633.html?doc_id=234">如何获取分钟数据</a></li> <li ><a href="1a06a.html?doc_id=122">常见问题整理</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="14673.html?doc_id=10">平台服务</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1ecce.html?doc_id=11">API服务</a></li> <li ><a href="12e9e.html?doc_id=12">定制服务</a></li> <li ><a href="1a06c.html?doc_id=13">平台积分</a></li> <li ><a href="193e4.html?doc_id=108">数据更新说明</a></li> <li ><a href="13600.html?doc_id=290">积分频次对应表</a></li> <li ><a href="1ee27.html?doc_id=307">积分到期查询</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class=" jstree-open  in"><a href="1501f.html?doc_id=30">相关工具</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="10ed4.html?doc_id=42">IDE开发工具介绍</a></li> <li ><a href="19306.html?doc_id=63">数据采集预处理与建模</a></li> <li ><a href="1fb44.html?doc_id=65">pip安装超时的解决方案</a></li> <li ><a href="13729.html?doc_id=68">模型评估与仓位管理</a></li> <li class="active jstree-clicked "  ><a href="12451.html?doc_id=90">模拟交易与回测</a></li> <li ><a href="17380.html?doc_id=89">DLL载入问题之查询依赖的DLL</a></li> <li ><a href="179e8.html?doc_id=91">python过滤HTML标签</a></li> <li ><a href="164bf.html?doc_id=287">Excel常用快捷键</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="179bd.html?doc_id=167">培训课程</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="13f4d.html?doc_id=168">金融数据深入解析及经验分享</a></li> <li ><a href="1451b.html?doc_id=169">股票实时行情及数据应用实战</a></li> <li ><a href="1ffc5.html?doc_id=203">数据实操和量化策略入门指引</a></li> <li ><a href="17516.html?doc_id=282">读懂研报课程培训</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1a511.html?doc_id=205">机构招聘</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1bc5e-2.html?doc_id=379">外资公募—对客科技团队</a></li> <li ><a href="1b4f4.html?doc_id=380">外资公募—投研科技团队</a></li> <li ><a href="180e0.html?doc_id=381">外资公募—运营科技团队</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="15f19.html?doc_id=306">高校服务</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1ba41.html?doc_id=360">学生积分</a></li> <li ><a href="1d1d1.html?doc_id=361">教师积分</a></li>
+                        </ul>
+                    </li>
+                  <li ><a href="1ceff.html?doc_id=270">专业微群</a></li>  <li ><a href="1e53d.html?doc_id=243">社区捐助</a></li>  
+                    <li class="  in"><a href="1e06e.html?doc_id=411">社区协议</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="186b4.html?doc_id=409">用户协议</a></li> <li ><a href="1422b.html?doc_id=410">隐私政策</a></li> <li ><a href="18da9.html?doc_id=405">服务协议</a></li> <li ><a href="13272.html?doc_id=443">注销须知</a></li>
+                        </ul>
+                    </li>
+                
+                </ul>
+            </div>
+        
+</nav>
+<div class="content col-md-9 col-sm-8 col-xs-12">
+<div class="search-panel">
+<div class="search-container">
+<span class="fa fa-search search-icon"></span>
+<input type="text" class="search-input" placeholder="Search">
+</div>
+</div>
+<h2 id="机器量化分析（三）模拟交易与回测">机器量化分析（三）——模拟交易与回测</h2>
+<p>作者：Tushare社区用户</p>
+<hr>
+<p>当我们的经验和策略通过代码的方式实现时，除了一些机器学习的评估方法，还需要通过模拟交易的方式来回测整个策略。策略整体在市场中的表现效果如何，该如何用量化的手段来评估，则是本篇要向大家介绍的内容——<strong>模拟交易与回测</strong>。</p>
+<p>话不多说马上进入正题，我们现在要做的，就是构建一套自己的模拟交易系统，并用这套系统来回测各种策略。为了让本文更接地气，作者不打算画各种程序流程图或拓扑图等，这样的 “<strong>PPT Style</strong>” 太不接地气了，我们换成以一个<strong>交易员</strong>的视角来思考问题。</p>
+<h3 id="--模拟交易--"><font style="background-color: #3DAAD6;    font-weight: bold; padding: 5px;"> &gt;&gt; 模拟交易 &lt;&lt; </font></h3>
+<p>股市的交易规则是实时的撮合交易，我们没办法也没必要做到实时的撮合交易，所以在模拟交易系统里，交易规则要简化为：<strong>以下单当日的收盘价作为成交价</strong>。实际上，各大量化平台也是这么做的，做得更细致一点的，可以设定一个参数：“<strong>滑点</strong>”——来控制模拟交易和实盘交易的误差。</p>
+<p>有了这样一种简化，模拟交易就变得十分简单了——复杂的撮合交易机制简化成了以股票行情的收盘价作为成交价，剩下的只是简单的“<strong>买</strong>”和“<strong>卖</strong>”的交易动作。作为交易的基本动作，号主专门用一个程序来封装，代码如下：Operator.py</p>
+<pre><code>import pymysql.cursors
+import Deal
+
+def buy(stock_code, opdate, buy_money):...
+
+def sell(stock_code, opdate, predict):...
+</code></pre>
+<p>可见只是封装了 <strong>buy</strong> 和 <strong>sell</strong> 两个函数而已。</p>
+<p>在buy函数里我定义了几个参数，分别是<strong>股票代码、交易日期、交易金额</strong>；在sell函数里定义的几个参数分别是 <strong>股票代码、交易日期、交易量、交易类型（主动卖或止损卖）</strong>。这几个参数见名知意，这里就不多解释了。</p>
+<p>现在我们有了模拟交易的两个基本操作函数，但交易是双向的，我们买和卖的结果体现在哪里呢，这就需要一个<strong>资产账户</strong>来记录。细心的读者肯定发现了，上面的截图里引入了两个包，一个是数据库框架pymysql，另一个则是Deal包，这其实是号主自定义的一个python程序，也就是模拟交易中的<strong>资产账户</strong>。先来看一下这个Deal文件到底是什么：</p>
+<pre><code>import pymysql.cursors
+
+class Deal(object):
+    cur_capital = 0.00
+    cur_money_lock = 0.00
+    cur_money_rest = 0.00
+    stock_pool = []
+    stock_map1 = {}
+    stock_map2 = {}
+    stock_map3 = {}
+    stock_all = []
+    ban_list = []
+
+    ...
+    
+</code></pre>
+<p>可见，<strong>Deal</strong>类封装了一些参数，初始化函数就是为了更新这些参数。实际上，这些参数分别是<strong>账户总资产，股票资产，现金资产，股票池，股票资产详情</strong>等，整个Deal类就是一份<strong>资产账户详单</strong>。</p>
+<p>关于资产账户的数据架构，底层的实现是mysql数据库，分成两张sql表来实现，一张是<strong>账本表</strong>（记录每一次的买和卖操作），表结构如下： </p>
+<p>库名：<strong>stock</strong> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 表名：<strong>my_capital</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>字段类型</th>
+<th>字段说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>capital</td>
+<td>DECIMAL(20, 4)</td>
+<td>总资产</td>
+</tr>
+<tr>
+<td>money_lock</td>
+<td>DECIMAL(20, 4)</td>
+<td>股票资产</td>
+</tr>
+<tr>
+<td>money_rest</td>
+<td>DECIMAL(20, 4)</td>
+<td>现金资产</td>
+</tr>
+<tr>
+<td>deal_action</td>
+<td>VARCHAR2(45)</td>
+<td>交易动作</td>
+</tr>
+<tr>
+<td>stock_code</td>
+<td>VARCHAR2(45)</td>
+<td>股票代码</td>
+</tr>
+<tr>
+<td>deal_price</td>
+<td>DECIMAL(20, 4)</td>
+<td>成交价</td>
+</tr>
+<tr>
+<td>stock_vol</td>
+<td>INT(11)</td>
+<td>成交量</td>
+</tr>
+<tr>
+<td>profit</td>
+<td>DECIMAL(20, 4)</td>
+<td>收益额</td>
+</tr>
+<tr>
+<td>profit_rate</td>
+<td>DECIMAL(20, 4)</td>
+<td>收益率</td>
+</tr>
+<tr>
+<td>bz</td>
+<td>VARCHAR2(45)</td>
+<td>备注</td>
+</tr>
+<tr>
+<td>state_dt</td>
+<td>VARCHAR2(45</td>
+<td>交易日期</td>
+</tr>
+<tr>
+<td>seq</td>
+<td>INT(11)</td>
+<td>序号（用作表主键）</td>
+</tr>
+</tbody></table>
+<p>另一张则是持仓表，表结构如下： </p>
+<p>库名：<strong>stock</strong> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 表名：<strong>my_stock_pool</strong></p>
+<table>
+<thead>
+<tr>
+<th>字段名</th>
+<th>字段类型</th>
+<th>字段说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>stock_code</td>
+<td>VARCHAR2(45)</td>
+<td>股票代码</td>
+</tr>
+<tr>
+<td>buy_price</td>
+<td>DECIMAL(20, 2)</td>
+<td>买入价</td>
+</tr>
+<tr>
+<td>hold_vol</td>
+<td>INT(11)</td>
+<td>持仓量（单位：股）</td>
+</tr>
+<tr>
+<td>hold_days</td>
+<td>INT(11)</td>
+<td>持仓天数（只计算交易日）</td>
+</tr>
+</tbody></table>
+<p>对于交易来说，只需要持仓股票代码和持仓量即可，买入价是为了测算收益，持仓天数则是为了某些策略用的（比如策略对持仓天数有限制时）。</p>
+<p>至此，一个最简单的模拟交易过程就完成了，从交易的角度来看，就是通过buy和sell函数对<strong>Deal类（资产账户）</strong>里的数据做<strong>写操作</strong>，比如，买入股票就是扣除现金资产，增加股票资产，同时在持仓表中增加相应记录；卖出股票则是反向操作。</p>
+<h3 id="--策略回测--"><font style="background-color: #3DAAD6;    font-weight: bold; padding: 5px;"> &gt;&gt; 策略回测 &lt;&lt; </font></h3>
+<p>有了上述一套模拟交易过程，接下来我们要考虑的就是策略层面的问题了。从交易的角度来看，策略是整个交易过程的入口，是逻辑和决策层。笔者直接用main函数来写策略了：</p>
+<pre><code>if __name__ == &#39;__main__&#39;:
+    # 先清空之前的测试记录
+
+    # 建回测时间序列
+
+    # 开始模拟交易
+    for i in range(1, len(date_seq)):
+        # 选股初始化模块
+
+        # 交易预警模块
+
+        # 模型训练模块
+
+        # 买卖点判断模块（包括但不限于模型的预测结果）
+
+        # 仓位管理
+
+        # 交易执行模块
+
+    # 结果数据可视化模块
+</code></pre>
+<p>代码中简明清晰地展示了号主策略的回测框架：首先清空之前的测试记录，然后<strong>取回测时间段内的交易日序列</strong>，通过for循环来遍历这个序列，每一次迭代，都是一个交易日，都包含了策略的多个功能模块，上一篇的策略并非全部用到这些模块，未用到的下面以“可选”标记：</p>
+<p><strong style="color: red;">选股初始化模块（可选）：</strong><font color= "#5B9BD5">这个模块的功能主要是选股，由于涉及的逻辑和计算量可能非常庞大，并非每日执行，可以每隔x个交易日执行一次。</font></p>
+<p><strong style="color: red;">交易预警模块（可选）：</strong><font color= "#5B9BD5">当模型的预测存在结构性误差时，往往需要该预警模块来作为买卖点判断的补充，比如大趋势转变，基本面变化，政策变化等。</font></p>
+<p><strong style="color: red;">模型训练模块：</strong><font color= "#5B9BD5">在策略中，建模方式分单次建模和推进建模，区别是推进建模每日收盘后会根据最新交易日的数据进行重训练，对于推进建模，该模块是必须的（在上篇的策略中，就是应用的推进建模）。</font></p>
+<p><strong style="color: red;">买卖点判断：</strong><font color= "#5B9BD5">包含但不限于模型的预测结果，往往结合其他的逻辑或信号进行判断（比如预警模块给出的信号），最终确定是否买卖。</font></p>
+<p><strong style="color: red;">仓位管理：</strong><font color= "#5B9BD5">确定交易股票的配仓（买入金额或卖出股数）。</font></p>
+<p><strong style="color: red;">交易执行模块：</strong><font color= "#5B9BD5">即上文详述的模拟交易过程，Operator.py里的buy和sell函数。</font></p>
+<p><strong style="color: red;">结果数据可视化模块：</strong><font color= "#5B9BD5">当跑完回测后，给出一个直观的结果（折线图，柱图等）。</font></p>
+<p>接下来，让我们看一下上一篇中的那套portfolio的回测结果。为了跟测试集的时间序列保持连续，现在<strong style="color: red;">取2018.03.01~2018.04.01区间的交易日序列作为回测区间</strong>。首先来看一下投资组合的<strong style="color: #5B9BD5;">市场方向（特征值最小）</strong>的收益情况：</p>
+<p><img src="../files/pro/img/ml_qta3_001.jpg" alt=""></p>
+<p>图中<strong>蓝线</strong>代表<strong>大盘的收益曲线</strong>（收益 = 当日收盘价 / 首日收盘价），在这一个月的回测周期中，<strong>大盘指数</strong>由 <strong style="color: red;">3273</strong> 点震荡到 <strong style="color: red;">3168</strong> 点，<strong>投资组合</strong>的收益曲线跟大盘趋势基本<strong>保持一致</strong>，在期末的收益率为 <strong style="color: red;">0.39%</strong> ，略微跑赢大盘。</p>
+<p>接下来再看这套投资组合的账单表：</p>
+<p><img src="../files/pro/img/ml_qta3_002.jpg" alt=""></p>
+<p>总计 <strong style="color: red;">7</strong> 次卖出操作，其中 <strong style="color: red;">3</strong> 次止盈，<strong style="color: red;">3</strong> 次超时平仓，<strong style="color: red;">1</strong> 次止损。从收益情况来看，<strong style="color: red;">7</strong> 次操作中 <strong style="color: red;">5</strong> 次盈利，<strong style="color: red;">2</strong> 次亏损。</p>
+<p>作为对比，我们再来看一下投资组合的<strong style="color: #5B9BD5;">最大收益方向（次最小特征值）</strong>：</p>
+<p><img src="../files/pro/img/ml_qta3_003.jpg" alt=""></p>
+<p>可见，投资组合的收益曲线<strong>背离大盘</strong>。在期末的收益率达到 <strong style="color: red;">9.45%</strong>，明显跑赢市场。接下来再看这套投资组合的账单详情：</p>
+<p><img src="../files/pro/img/ml_qta3_004.jpg" alt=""></p>
+<p>总计 <strong style="color: red;">9</strong> 次卖出操作，其中 <strong style="color: red;">4</strong> 次止盈，<strong style="color: red;">2</strong> 次超时平仓，<strong style="color: red;">2</strong> 次止损，<strong style="color: red;">1</strong> 次预测卖。从收益情况来看，<strong style="color: red;">7</strong> 次盈利，<strong style="color: red;">2</strong> 次亏损。</p>
+<p><strong style="color: red;">与市场方向相比，操作数变多，止盈和止损次数均多于前次。从操作和收益来看也印证了“高风险高收益”的道理。</strong></p>
+<p>至此，<strong>构建投资组合==&gt;回测验证策略</strong> 的流程已经结束。详细代码清单与功能如下（<a href="https://tushare.pro/files/pro/code_3.rar">点击这里下载全部代码</a>）：</p>
+<table>
+<thead>
+<tr>
+<th>文件名</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DC.py</td>
+<td>【数据预处理】将本地存储的日基础行情整合成一份训练集。</td>
+</tr>
+<tr>
+<td>Model_Evaluate.py</td>
+<td>【模型评估】通过回测+推进式建模的方式对模型进行评估，主要计算查准率Precision，查全率Recall，F1分值，并存入结果表。</td>
+</tr>
+<tr>
+<td>Portfolio.py</td>
+<td>【仓位管理】基于马科维茨投资组合理论，计算一段时间序列内投资组合的风险、仓位配比和夏普率，有市场方向和最佳收益方向两种结果。</td>
+</tr>
+<tr>
+<td>Deal.py.py</td>
+<td>【模拟交易】封装类，用于模拟交易过程中获取最新的资产账户相关数据。</td>
+</tr>
+<tr>
+<td>Operator.py</td>
+<td>【模拟交易】封装函数，用于模拟交易过程中执行买和卖操作。</td>
+</tr>
+<tr>
+<td>Cap_Update_daily.py</td>
+<td>【模拟交易】封装函数，用于在回测过程中，每日更新资产表中相关数据。</td>
+</tr>
+<tr>
+<td>Filter.py</td>
+<td>【策略回测】封装函数，用于在回测过程中，处理一些简单的逻辑（更新持仓天数，买卖顺序等）。</td>
+</tr>
+<tr>
+<td>main.py</td>
+<td>【策略回测】策略的框架，回测的主函数。</td>
+</tr>
+</tbody></table>
+
+</div>
+</div>
+</div>
+</section>
+
+<footer id="footer" class="site-footer">
+<div class="container">
+<div class="row footer-panel">
+<div class="col-md-4">
+<div class=""><img src="../static/frontend/images/wechat_public5b2f.png?v=847e8d705d3a409d000dce413ab5c257" alt=""></div>
+</div>
+<div class="col-md-4">
+<div class="title">使用文档</div>
+<div class="content">
+<ul>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<li><a href="41.html">区块链</a></li>
+<li><a href="https://tushare.pro/news">资讯数据</a></li>
+</ul>
+</div>
+</div>
+<div class="col-md-4">
+<div class="title">关注我们</div>
+<div class="content">
+<ul>
+<li>公众号：waditu</li>
+<li>Github：<a href="https://github.com/waditu" target="_blank">https://github.com/waditu</a></li>
+<li>雪 球：<a href="https://xueqiu.com/u/9103835084" target="_blank">https://xueqiu.com/u/9103835084</a></li>
+<li>微 博：<a href="https://weibo.com/u/1304687120" target="_blank">https://weibo.com/u/1304687120</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="row footer-footer">
+<div class="copyright"><p>&copy; 2018 Tushare <a href='https://beian.miit.gov.cn/' target="_blank">
+"沪ICP备2020031644号"
+</a></p></div>
+</div>
+</div>
+</footer>
+
+</div>
+<div class="scroll-to-top" data-spy="affix" data-offset-top="200">
+<a href="#page" class="smooth-scroll">置顶</a>
+</div>
+</body>
+<script type="text/javascript">
+require(['custom']);
+</script>
+
+
+<script type="text/javascript">
+require([
+'jquery',
+'jstree'
+], function ($, jstree) {
+$(document).ready(function() {
+const tree = $('#jstree').jstree({
+// plugins : ['state']
+plugins : ['wholerow'],
+core: {
+themes: {
+multiple: false,
+icons: false,
+stripes: false,
+expand_selected_onload: true
+}
+}
+});
+tree.on("select_node.jstree", function (e, data) {
+window.location = `${location.protocol}//${location.host}${data.node.a_attr.href}`;
+});
+const searchInput = document.querySelector('.search-input');
+const searchIcon = document.querySelector('.search-icon');
+const onSearch = () => {
+const query = searchInput.value;
+if (query) {
+window.location = `${location.protocol}//${location.host}/document/search?q=${encodeURIComponent(query)}`;
+}
+}
+searchInput.addEventListener('change', onSearch);
+searchIcon.addEventListener('click', onSearch);
+});
+});
+</script>
+
+
+<!-- Mirrored from tushare.pro/document/1?doc_id=90 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:15:56 GMT -->
+</html>

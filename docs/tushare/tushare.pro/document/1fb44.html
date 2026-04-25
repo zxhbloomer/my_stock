@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" style="height:100%">
+
+<!-- Mirrored from tushare.pro/document/1?doc_id=65 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:15:55 GMT -->
+<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=UTF-8" /><!-- /Added by HTTrack -->
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tushare数据</title>
+<meta content="免费股票数据,开源股票数据接口,股票数据,股票数据接口,python股票数据,财经数据,金融数据,行业大数据,区块链数据,量化投资,知识图谱" name="keywords"/>
+<meta name="description" content="Tushare为金融数据分析提供便捷、快速的接口，与投研和量化策略无缝对接"/>
+<meta content="index,follow" name="robots"/>
+<meta name="application-name" content="Tushare"/>
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-192x192039e.png?v=811d9139fa2ea47f5595907da1f3c34d" sizes="192x192">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-160x160.html" sizes="160x160">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-96x9674d3.png?v=4960eb8103c873c586ad41ef3f53db84" sizes="96x96">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-16x16f0cc.png?v=f7299bbce2cff4db7e3dfa6fb8c6a73c" sizes="16x16">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-32x327e67.png?v=a5df4bdd9f96de59f57bb9a7a50d8f96" sizes="32x32">
+<link href="../static/vendors/bootstrap/dist/css/bootstrap.min5aee.css?v=d7ac98c842e4ec59d2c21fef89fce09c" rel="stylesheet">
+<link href="../static/vendors/jstree/themes/default/style.min8060.css?v=779fc4b400d1748ec2fb99685ad80550" rel="stylesheet">
+<link href="../static/frontend/css/custom08a0.css?v=afa9fcaf1ec38d2c9d46d41a0615a077" rel="stylesheet">
+
+
+<link rel="stylesheet" href="../static/vendors/codemirror/lib/codemirrorfc50.css?v=fc217d502b05f65616356459c0ec1d62">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor13d7.css?v=144c2e273b8a0e79b208d0d86ccd3999">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor-contentsfa16.css?v=3ed3a3154a2304c111075714324b0e7b">
+<link rel="stylesheet" href="../static/vendors/highlightjs/styles/github259f.css?v=bf6c14925e66edb1526b6c9489b3c042">
+<link rel="stylesheet" href="../static/common/css/md230c.css?v=087ce310ed8e685ac6526e2a54db3c68">
+
+<!--[if lt IE 9]>
+<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+<script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+<![endif]-->
+<script type="text/javascript" src="../static/vendors/requirejs/require58ef.js?v=6da8be361b9ee26c5e721e76c6d4afce"></script>
+<script type="text/javascript" src="../static/frontend/js/config5b09.js?v=85f0040a930464e1c6dbc61026f79de8"></script>
+</head>
+<body style="height:100%">
+<div id="page" style="height:100%;">
+<header id="header" class="site-header">
+<nav id="navbar" class="site-navbar navbar navbar-static-top" role="navigation">
+<div class="container">
+<div class="navbar-header">
+<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse-1">
+<span class="sr-only">Toggle navigation</span>
+<i class="fa fa-bars" style="font-size: 1.5em; padding: 15px 0;"></i>
+</button>
+<h1 class="navbar-brand">
+<a href="https://tushare.pro/"><img src="../static/frontend/images/logod8e3.png?v=39c50795cb540b4463114d1bf3135d6e" alt="tushare"></a>
+</h1>
+</div>
+<div class="collapse navbar-collapse" id="navbar-collapse-1">
+<ul id="navigation" class="nav navbar-nav navbar-right">
+<li><a href="https://tushare.pro/">首页</a></li>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<!-- <li><a href="/document/41">另类数据</a></li>-->
+<li><a href="https://tushare.pro/news/sina">资讯数据</a></li>
+<li><a href="https://tushare.pro/webclient">数据工具</a></li>
+<li><a href="https://tushare.pro/weborder/#/permission">社区捐助</a></li>
+
+<li class="navbar-tail"><a href="https://tushare.pro/weborder/#/login" class="nav-login">登录/注册</a></li>
+
+</ul>
+</div>
+</div>
+</nav>
+</header>
+
+
+<section id="document" class="whole">
+<div class="container">
+<div class="document">
+<nav class="sidebar col-md-3 col-sm-4 col-xs-12">
+
+            <div id="jstree">
+                <ul class="list-unstyled components">
+                    <li ><a href="10454.html?doc_id=450">Tushare skills</a></li>  
+                    <li class="  in"><a href="10c80.html?doc_id=5">平台介绍</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14b41.html?doc_id=6">使用对象</a></li> <li ><a href="1cd35.html?doc_id=29">Python安装</a></li> <li ><a href="145ad.html?doc_id=7">Tushare安装</a></li> <li ><a href="172c5.html?doc_id=8">版本升级</a></li> <li ><a href="19a2a.html?doc_id=9">上新及变更</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="135a1.html?doc_id=37">操作手册</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14dd7.html?doc_id=38">用户注册</a></li> <li ><a href="16272.html?doc_id=39">获取token</a></li> <li ><a href="1e8ce.html?doc_id=40">调取数据</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1484e.html?doc_id=129">获取方式</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14346.html?doc_id=130">通过HTTP获取数据</a></li> <li ><a href="1b3f2.html?doc_id=131">通过Python SDK获取</a></li> <li ><a href="17091.html?doc_id=132">通过Matlab SDK获取</a></li> <li ><a href="1999e.html?doc_id=133">通过R SDK获取</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1bc5e.html?doc_id=229">踩坑记录</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="187bb.html?doc_id=455">如何在“龙虾”里用好数据</a></li> <li ><a href="1196b.html?doc_id=230">如何优雅撸数据</a></li> <li ><a href="168c7.html?doc_id=231">如何存入MySQL数据库</a></li> <li ><a href="17298.html?doc_id=232">数据存入MongoDB</a></li> <li ><a href="1c633.html?doc_id=234">如何获取分钟数据</a></li> <li ><a href="1a06a.html?doc_id=122">常见问题整理</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="14673.html?doc_id=10">平台服务</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1ecce.html?doc_id=11">API服务</a></li> <li ><a href="12e9e.html?doc_id=12">定制服务</a></li> <li ><a href="1a06c.html?doc_id=13">平台积分</a></li> <li ><a href="193e4.html?doc_id=108">数据更新说明</a></li> <li ><a href="13600.html?doc_id=290">积分频次对应表</a></li> <li ><a href="1ee27.html?doc_id=307">积分到期查询</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class=" jstree-open  in"><a href="1501f.html?doc_id=30">相关工具</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="10ed4.html?doc_id=42">IDE开发工具介绍</a></li> <li ><a href="19306.html?doc_id=63">数据采集预处理与建模</a></li> <li class="active jstree-clicked "  ><a href="1fb44.html?doc_id=65">pip安装超时的解决方案</a></li> <li ><a href="13729.html?doc_id=68">模型评估与仓位管理</a></li> <li ><a href="12451.html?doc_id=90">模拟交易与回测</a></li> <li ><a href="17380.html?doc_id=89">DLL载入问题之查询依赖的DLL</a></li> <li ><a href="179e8.html?doc_id=91">python过滤HTML标签</a></li> <li ><a href="164bf.html?doc_id=287">Excel常用快捷键</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="179bd.html?doc_id=167">培训课程</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="13f4d.html?doc_id=168">金融数据深入解析及经验分享</a></li> <li ><a href="1451b.html?doc_id=169">股票实时行情及数据应用实战</a></li> <li ><a href="1ffc5.html?doc_id=203">数据实操和量化策略入门指引</a></li> <li ><a href="17516.html?doc_id=282">读懂研报课程培训</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1a511.html?doc_id=205">机构招聘</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1bc5e-2.html?doc_id=379">外资公募—对客科技团队</a></li> <li ><a href="1b4f4.html?doc_id=380">外资公募—投研科技团队</a></li> <li ><a href="180e0.html?doc_id=381">外资公募—运营科技团队</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="15f19.html?doc_id=306">高校服务</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1ba41.html?doc_id=360">学生积分</a></li> <li ><a href="1d1d1.html?doc_id=361">教师积分</a></li>
+                        </ul>
+                    </li>
+                  <li ><a href="1ceff.html?doc_id=270">专业微群</a></li>  <li ><a href="1e53d.html?doc_id=243">社区捐助</a></li>  
+                    <li class="  in"><a href="1e06e.html?doc_id=411">社区协议</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="186b4.html?doc_id=409">用户协议</a></li> <li ><a href="1422b.html?doc_id=410">隐私政策</a></li> <li ><a href="18da9.html?doc_id=405">服务协议</a></li> <li ><a href="13272.html?doc_id=443">注销须知</a></li>
+                        </ul>
+                    </li>
+                
+                </ul>
+            </div>
+        
+</nav>
+<div class="content col-md-9 col-sm-8 col-xs-12">
+<div class="search-panel">
+<div class="search-container">
+<span class="fa fa-search search-icon"></span>
+<input type="text" class="search-input" placeholder="Search">
+</div>
+</div>
+<h2 id="pip-">pip安装超时的解决方案</h2>
+<p>作者： Tushare社区用户 <b>晓子</b></p>
+<hr>
+<p>在中国大陆使用pip进行python包安装的时候经常会出现socket.timeout: The read operation timed out的问题，下面就讲讲解决方案。</p>
+<h3 id="-font-style-background-color-3daad6-font-"><font style="background-color: #3DAAD6"> &gt;&gt; 解决方案 &lt;&lt; </font></h3>
+<p>使用国内镜像（以安装tushare pro为例）</p>
+<pre><code>pip install tushare -i https://pypi.tuna.tsinghua.edu.cn/simple/</code></pre><h3 id="-font-style-background-color-3daad6-font-"><font style="background-color: #3DAAD6"> &gt;&gt; 深入探讨 &lt;&lt; </font></h3>
+<p>下面仔细说说上述问题并深入探讨下国内镜像的配置。</p>
+<p>出现超时，主要是因为PyPI（pip命令的包）使用的源在国外，导致大陆链接速度过慢，进而引起超时。故而，我们可以使用国内的镜像来下载安装包。下面列举国内常用的一些安装镜像：</p>
+<table>
+<thead>
+<tr>
+<th>镜像</th>
+<th>链接</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>阿里云</td>
+<td><a href="http://mirrors.aliyun.com/pypi/simple/">http://mirrors.aliyun.com/pypi/simple/</a></td>
+</tr>
+<tr>
+<td>中国科技大学</td>
+<td><a href="https://pypi.mirrors.ustc.edu.cn/simple/">https://pypi.mirrors.ustc.edu.cn/simple/</a></td>
+</tr>
+<tr>
+<td>豆瓣(douban)</td>
+<td><a href="http://pypi.douban.com/simple/">http://pypi.douban.com/simple/</a></td>
+</tr>
+<tr>
+<td>清华大学</td>
+<td><a href="https://pypi.tuna.tsinghua.edu.cn/simple/">https://pypi.tuna.tsinghua.edu.cn/simple/</a></td>
+</tr>
+<tr>
+<td>中国科学技术大学</td>
+<td><a href="http://pypi.mirrors.ustc.edu.cn/simple/">http://pypi.mirrors.ustc.edu.cn/simple/</a></td>
+</tr>
+</tbody></table>
+<h4 id="-font-style-background-color-3daad6-font-"><font style="background-color: #3DAAD6"> 镜像的使用方法 </font></h4>
+<p>在使用pip时传递-i及相应的镜像地址即可（见以下tushare pro的安装）</p>
+<pre><code>pip install tushare -i https://pypi.tuna.tsinghua.edu.cn/simple/</code></pre><h4 id="-font-style-background-color-3daad6-not-a-trusted-or-secure-host-font-"><font style="background-color: #3DAAD6"> not a trusted or secure host 问题 </font></h4>
+<p>如果在使用某个镜像时遇到如下的<strong style="background-color:yellow"> not a trusted or secure host </strong>提醒，并且确认该host是可信赖的，可以按照提示添加<strong style="background-color:yellow"> --trusted-host </strong>及该host链接来进行安装。</p>
+<pre><code>The repository located at pypi.douban.com is not a trusted or secure host and is being ignored. If this repository is available via HTTPS we recommend you use HTTPS instead, otherw
+ise you may silence this warning and allow it anyway with &#39;--trusted-host pypi.douban.com&#39;.</code></pre><h4 id="-font-style-background-color-3daad6-font-"><font style="background-color: #3DAAD6"> 配置默认镜像 </font></h4>
+<p>如果觉得每次安装时添加镜像链接比较麻烦，可以将该镜像链接配置成默认源，方法如下：</p>
+<p>需要创建或修改配置文件（一般都是创建，不同系统配置文件路径见下表），</p>
+<table>
+<thead>
+<tr>
+<th>系统</th>
+<th>路径</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>linux</td>
+<td>~/.pip/pip.conf</td>
+</tr>
+<tr>
+<td>windows</td>
+<td>%HOMEPATH%\pip\pip.ini</td>
+</tr>
+</tbody></table>
+<p>注：windows下可以在cmd中使用<strong style="background-color:yellow"> echo %HOMEPATH% </strong>来查看HOMEPATH。</p>
+<p>修改内容为：</p>
+<pre><code>[global]
+index-url = http://pypi.douban.com/simple
+[install]
+trusted-host=pypi.douban.com</code></pre><p>这样在使用pip来安装时，会默认调用该镜像。</p>
+<h4 id="-font-style-background-color-3daad6-python-font-"><font style="background-color: #3DAAD6"> 在python脚本中临时使用镜像 </font></h4>
+<p>临时使用其他源安装软件包的python脚本如下：</p>
+<pre><code>#!/usr/bin/python
+
+import os
+
+package = input(&quot;Input the package:\n&quot;)
+command = &quot;pip install %s -i http://pypi.mirrors.ustc.edu.cn/simple --trusted-host pypi.mirrors.ustc.edu.cn&quot; % package
+os.system(command)</code></pre>
+</div>
+</div>
+</div>
+</section>
+
+<footer id="footer" class="site-footer">
+<div class="container">
+<div class="row footer-panel">
+<div class="col-md-4">
+<div class=""><img src="../static/frontend/images/wechat_public5b2f.png?v=847e8d705d3a409d000dce413ab5c257" alt=""></div>
+</div>
+<div class="col-md-4">
+<div class="title">使用文档</div>
+<div class="content">
+<ul>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<li><a href="41.html">区块链</a></li>
+<li><a href="https://tushare.pro/news">资讯数据</a></li>
+</ul>
+</div>
+</div>
+<div class="col-md-4">
+<div class="title">关注我们</div>
+<div class="content">
+<ul>
+<li>公众号：waditu</li>
+<li>Github：<a href="https://github.com/waditu" target="_blank">https://github.com/waditu</a></li>
+<li>雪 球：<a href="https://xueqiu.com/u/9103835084" target="_blank">https://xueqiu.com/u/9103835084</a></li>
+<li>微 博：<a href="https://weibo.com/u/1304687120" target="_blank">https://weibo.com/u/1304687120</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="row footer-footer">
+<div class="copyright"><p>&copy; 2018 Tushare <a href='https://beian.miit.gov.cn/' target="_blank">
+"沪ICP备2020031644号"
+</a></p></div>
+</div>
+</div>
+</footer>
+
+</div>
+<div class="scroll-to-top" data-spy="affix" data-offset-top="200">
+<a href="#page" class="smooth-scroll">置顶</a>
+</div>
+</body>
+<script type="text/javascript">
+require(['custom']);
+</script>
+
+
+<script type="text/javascript">
+require([
+'jquery',
+'jstree'
+], function ($, jstree) {
+$(document).ready(function() {
+const tree = $('#jstree').jstree({
+// plugins : ['state']
+plugins : ['wholerow'],
+core: {
+themes: {
+multiple: false,
+icons: false,
+stripes: false,
+expand_selected_onload: true
+}
+}
+});
+tree.on("select_node.jstree", function (e, data) {
+window.location = `${location.protocol}//${location.host}${data.node.a_attr.href}`;
+});
+const searchInput = document.querySelector('.search-input');
+const searchIcon = document.querySelector('.search-icon');
+const onSearch = () => {
+const query = searchInput.value;
+if (query) {
+window.location = `${location.protocol}//${location.host}/document/search?q=${encodeURIComponent(query)}`;
+}
+}
+searchInput.addEventListener('change', onSearch);
+searchIcon.addEventListener('click', onSearch);
+});
+});
+</script>
+
+
+<!-- Mirrored from tushare.pro/document/1?doc_id=65 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:15:55 GMT -->
+</html>

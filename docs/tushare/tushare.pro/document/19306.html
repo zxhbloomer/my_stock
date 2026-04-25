@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en" style="height:100%">
+
+<!-- Mirrored from tushare.pro/document/1?doc_id=63 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:15:54 GMT -->
+<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=UTF-8" /><!-- /Added by HTTrack -->
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tushare数据</title>
+<meta content="免费股票数据,开源股票数据接口,股票数据,股票数据接口,python股票数据,财经数据,金融数据,行业大数据,区块链数据,量化投资,知识图谱" name="keywords"/>
+<meta name="description" content="Tushare为金融数据分析提供便捷、快速的接口，与投研和量化策略无缝对接"/>
+<meta content="index,follow" name="robots"/>
+<meta name="application-name" content="Tushare"/>
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-192x192039e.png?v=811d9139fa2ea47f5595907da1f3c34d" sizes="192x192">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-160x160.html" sizes="160x160">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-96x9674d3.png?v=4960eb8103c873c586ad41ef3f53db84" sizes="96x96">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-16x16f0cc.png?v=f7299bbce2cff4db7e3dfa6fb8c6a73c" sizes="16x16">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-32x327e67.png?v=a5df4bdd9f96de59f57bb9a7a50d8f96" sizes="32x32">
+<link href="../static/vendors/bootstrap/dist/css/bootstrap.min5aee.css?v=d7ac98c842e4ec59d2c21fef89fce09c" rel="stylesheet">
+<link href="../static/vendors/jstree/themes/default/style.min8060.css?v=779fc4b400d1748ec2fb99685ad80550" rel="stylesheet">
+<link href="../static/frontend/css/custom08a0.css?v=afa9fcaf1ec38d2c9d46d41a0615a077" rel="stylesheet">
+
+
+<link rel="stylesheet" href="../static/vendors/codemirror/lib/codemirrorfc50.css?v=fc217d502b05f65616356459c0ec1d62">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor13d7.css?v=144c2e273b8a0e79b208d0d86ccd3999">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor-contentsfa16.css?v=3ed3a3154a2304c111075714324b0e7b">
+<link rel="stylesheet" href="../static/vendors/highlightjs/styles/github259f.css?v=bf6c14925e66edb1526b6c9489b3c042">
+<link rel="stylesheet" href="../static/common/css/md230c.css?v=087ce310ed8e685ac6526e2a54db3c68">
+
+<!--[if lt IE 9]>
+<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+<script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+<![endif]-->
+<script type="text/javascript" src="../static/vendors/requirejs/require58ef.js?v=6da8be361b9ee26c5e721e76c6d4afce"></script>
+<script type="text/javascript" src="../static/frontend/js/config5b09.js?v=85f0040a930464e1c6dbc61026f79de8"></script>
+</head>
+<body style="height:100%">
+<div id="page" style="height:100%;">
+<header id="header" class="site-header">
+<nav id="navbar" class="site-navbar navbar navbar-static-top" role="navigation">
+<div class="container">
+<div class="navbar-header">
+<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse-1">
+<span class="sr-only">Toggle navigation</span>
+<i class="fa fa-bars" style="font-size: 1.5em; padding: 15px 0;"></i>
+</button>
+<h1 class="navbar-brand">
+<a href="https://tushare.pro/"><img src="../static/frontend/images/logod8e3.png?v=39c50795cb540b4463114d1bf3135d6e" alt="tushare"></a>
+</h1>
+</div>
+<div class="collapse navbar-collapse" id="navbar-collapse-1">
+<ul id="navigation" class="nav navbar-nav navbar-right">
+<li><a href="https://tushare.pro/">首页</a></li>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<!-- <li><a href="/document/41">另类数据</a></li>-->
+<li><a href="https://tushare.pro/news/sina">资讯数据</a></li>
+<li><a href="https://tushare.pro/webclient">数据工具</a></li>
+<li><a href="https://tushare.pro/weborder/#/permission">社区捐助</a></li>
+
+<li class="navbar-tail"><a href="https://tushare.pro/weborder/#/login" class="nav-login">登录/注册</a></li>
+
+</ul>
+</div>
+</div>
+</nav>
+</header>
+
+
+<section id="document" class="whole">
+<div class="container">
+<div class="document">
+<nav class="sidebar col-md-3 col-sm-4 col-xs-12">
+
+            <div id="jstree">
+                <ul class="list-unstyled components">
+                    <li ><a href="10454.html?doc_id=450">Tushare skills</a></li>  
+                    <li class="  in"><a href="10c80.html?doc_id=5">平台介绍</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14b41.html?doc_id=6">使用对象</a></li> <li ><a href="1cd35.html?doc_id=29">Python安装</a></li> <li ><a href="145ad.html?doc_id=7">Tushare安装</a></li> <li ><a href="172c5.html?doc_id=8">版本升级</a></li> <li ><a href="19a2a.html?doc_id=9">上新及变更</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="135a1.html?doc_id=37">操作手册</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14dd7.html?doc_id=38">用户注册</a></li> <li ><a href="16272.html?doc_id=39">获取token</a></li> <li ><a href="1e8ce.html?doc_id=40">调取数据</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1484e.html?doc_id=129">获取方式</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14346.html?doc_id=130">通过HTTP获取数据</a></li> <li ><a href="1b3f2.html?doc_id=131">通过Python SDK获取</a></li> <li ><a href="17091.html?doc_id=132">通过Matlab SDK获取</a></li> <li ><a href="1999e.html?doc_id=133">通过R SDK获取</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1bc5e.html?doc_id=229">踩坑记录</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="187bb.html?doc_id=455">如何在“龙虾”里用好数据</a></li> <li ><a href="1196b.html?doc_id=230">如何优雅撸数据</a></li> <li ><a href="168c7.html?doc_id=231">如何存入MySQL数据库</a></li> <li ><a href="17298.html?doc_id=232">数据存入MongoDB</a></li> <li ><a href="1c633.html?doc_id=234">如何获取分钟数据</a></li> <li ><a href="1a06a.html?doc_id=122">常见问题整理</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="14673.html?doc_id=10">平台服务</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1ecce.html?doc_id=11">API服务</a></li> <li ><a href="12e9e.html?doc_id=12">定制服务</a></li> <li ><a href="1a06c.html?doc_id=13">平台积分</a></li> <li ><a href="193e4.html?doc_id=108">数据更新说明</a></li> <li ><a href="13600.html?doc_id=290">积分频次对应表</a></li> <li ><a href="1ee27.html?doc_id=307">积分到期查询</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class=" jstree-open  in"><a href="1501f.html?doc_id=30">相关工具</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="10ed4.html?doc_id=42">IDE开发工具介绍</a></li> <li class="active jstree-clicked "  ><a href="19306.html?doc_id=63">数据采集预处理与建模</a></li> <li ><a href="1fb44.html?doc_id=65">pip安装超时的解决方案</a></li> <li ><a href="13729.html?doc_id=68">模型评估与仓位管理</a></li> <li ><a href="12451.html?doc_id=90">模拟交易与回测</a></li> <li ><a href="17380.html?doc_id=89">DLL载入问题之查询依赖的DLL</a></li> <li ><a href="179e8.html?doc_id=91">python过滤HTML标签</a></li> <li ><a href="164bf.html?doc_id=287">Excel常用快捷键</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="179bd.html?doc_id=167">培训课程</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="13f4d.html?doc_id=168">金融数据深入解析及经验分享</a></li> <li ><a href="1451b.html?doc_id=169">股票实时行情及数据应用实战</a></li> <li ><a href="1ffc5.html?doc_id=203">数据实操和量化策略入门指引</a></li> <li ><a href="17516.html?doc_id=282">读懂研报课程培训</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1a511.html?doc_id=205">机构招聘</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1bc5e-2.html?doc_id=379">外资公募—对客科技团队</a></li> <li ><a href="1b4f4.html?doc_id=380">外资公募—投研科技团队</a></li> <li ><a href="180e0.html?doc_id=381">外资公募—运营科技团队</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="15f19.html?doc_id=306">高校服务</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1ba41.html?doc_id=360">学生积分</a></li> <li ><a href="1d1d1.html?doc_id=361">教师积分</a></li>
+                        </ul>
+                    </li>
+                  <li ><a href="1ceff.html?doc_id=270">专业微群</a></li>  <li ><a href="1e53d.html?doc_id=243">社区捐助</a></li>  
+                    <li class="  in"><a href="1e06e.html?doc_id=411">社区协议</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="186b4.html?doc_id=409">用户协议</a></li> <li ><a href="1422b.html?doc_id=410">隐私政策</a></li> <li ><a href="18da9.html?doc_id=405">服务协议</a></li> <li ><a href="13272.html?doc_id=443">注销须知</a></li>
+                        </ul>
+                    </li>
+                
+                </ul>
+            </div>
+        
+</nav>
+<div class="content col-md-9 col-sm-8 col-xs-12">
+<div class="search-panel">
+<div class="search-container">
+<span class="fa fa-search search-icon"></span>
+<input type="text" class="search-input" placeholder="Search">
+</div>
+</div>
+<h2 id="机器量化分析（一）数据采集、预处理与建模">机器量化分析（一）——数据采集、预处理与建模</h2>
+<p>作者：Tushare社区用户 </p>
+<hr>
+<p>本系列主要介绍一套比较简单且完备的量化框架，该框架基于<strong><font color="#5B9BD5">现代投资组合理论</font></strong>，并应用主流的<strong><font color="#5B9BD5">机器学习算法</font></strong>进行分析，旨在帮助大家拓展量化投资的思路，辅助构建科学合理的投资策略。</p>
+<p>作为系列第一篇，根据分析和计算流程，本篇主要介绍三部分：<strong><font color="#5B9BD5">数据采集，数据预处理，利用SVM算法进行建模</font></strong>。</p>
+<h3 id="--数据采集--"><font style="background-color: #3DAAD6"> &gt;&gt; 数据采集 &lt;&lt; </font></h3>
+<p>本系列的量化框架，全部采用本地化计算。为什么要本地化计算呢，因为相比在线获取数据进行分析计算，本地化计算有如下优势：</p>
+<ul style="color:#5B9BD5">
+    <li style="list-style-type:none">1. <strong>稳定</strong>——不会因网络不稳定而导致分析过程中断。</li>
+    <li style="list-style-type:none">2. <strong>快速</strong>——本地化运算对于数据的访问速度比在线获取数据快，当机器学习的算法涉及到海量数据做训练集或迭代训练的时候，这一点尤其重要。</li>
+    <li style="list-style-type:none">3. <strong>可复用</strong>——无论基础的行情数据还是加工处理后的数据，保存在本地后，对于后续进行结果分析或策略优化时更为方便。</li>
+</ul>
+
+<p>我们进行本地化计算，首先要做的，就是将所需的基础数据采集到本地数据库里，本篇的示例源码采用的数据库是<strong>MySQL5.5</strong>，数据源是<strong>tushare pro</strong>接口。</p>
+<p>我们现在要取一批特定股票的日线行情，部分代码如下：</p>
+<pre><code># 设置tushare pro的token并获取连接
+ts.set_token(&#39;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&#39;)
+pro = ts.pro_api()
+# 设定获取日线行情的初始日期和终止日期，其中终止日期设定为昨天。
+start_dt = &#39;20100101&#39;
+time_temp = datetime.datetime.now() - datetime.timedelta(days=1)
+end_dt = time_temp.strftime(&#39;%Y%m%d&#39;)
+# 建立数据库连接,剔除已入库的部分
+db = pymysql.connect(host=&#39;127.0.0.1&#39;, user=&#39;root&#39;, passwd=&#39;admin&#39;, db=&#39;stock&#39;, charset=&#39;utf8&#39;)
+cursor = db.cursor()
+# 设定需要获取数据的股票池
+stock_pool = [&#39;603912.SH&#39;,&#39;300666.SZ&#39;,&#39;300618.SZ&#39;,&#39;002049.SZ&#39;,&#39;300672.SZ&#39;]
+total = len(stock_pool)
+# 循环获取单个股票的日线行情
+for i in range(len(stock_pool)):
+    try:
+        df = pro.daily(ts_code=stock_pool[i], start_date=start_dt, end_date=end_dt)
+        # 打印进度
+        print(&#39;Seq: &#39; + str(i+1) + &#39; of &#39; + str(total) + &#39;   Code: &#39; + str(stock_pool[i]))
+</code></pre>
+<p>上述代码的注释部分已将每行代码的功能解释清楚了，实际上数据采集的程序主要设置三个参数：<font color="red">获取行情的初始日期，终止日期，以及股票代码池</font>。</p>
+<p>当我们获取数据后，就要往本地数据库进行写入（存储）操作了，本篇代码用的是SQL语言，需提前在数据库内建好相应的表，表配置和表结构如下：</p>
+<p><strong>库名：stock &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;表名：stock_all</strong><br><img src="../files/pro/u1/ml_qta_001.jpg" alt=""></p>
+<p>其中 state_dt 和 stock_code 是<strong>主键和索引</strong>。state_dt 的格式是 ‘yyyy-mm-dd’（例：&#39;2018-06-11&#39;）。这样的日期格式便于查询，且在MySQL内部能够进行大小比较。<br><font color="red">（完整的数据采集代码详见 <a href="https://tushare.pro/files/pro/u1/qt_1.rar">Init_StockAll_Sp.py</a> 文件）</font></p>
+<h3 id="--数据预处理--"><font style="background-color: #3DAAD6"> &gt;&gt; 数据预处理 &lt;&lt; </font></h3>
+<p>无论是量化策略还是单纯的机器学习项目，数据预处理都是非常重要的一环。以机器学习的视角来看，数据预处理主要包括数据清洗，排序，缺失值或异常值处理，统计量分析，相关性分析，主成分分析（PCA），归一化等。本篇所要介绍的数据预处理比较简单，只是将存在本地数据库的日线行情数据整合成一份<strong>训练集数据</strong>，以用于后续的机器学习<strong>建模和训练</strong>。</p>
+<p>在介绍具体的示例代码之前，我们需要先思考一个问题，<font color="red">应用有监督学习的算法对个股进行建模，我们的输入数据有哪些，我们期望得到的输出数据又是什么？</font></p>
+<p>这个问题的答案因人而异，因策略而异。这个问题本身是<strong>将市场问题转化为数学问题</strong>的一个过程。依赖的是量化宽客自己的知识体系和对市场的理解。</p>
+<p>回到正题，本篇示例我们将以最简单的数据进行分析，我们<strong>输入端的数据是个股每日基础行情，输出端数据是股价相较前一交易日的涨跌状态。</strong>简单点说就是，我们向模型输入今天的基础行情，让模型预测明天股价是涨还是跌。</p>
+<p>在代码实现方式上，我们采用面向对象的思想，将整个数据预处理过程和结果，<strong>封装成一个类</strong>，每次创建一个类实例，就得到了特定条件下的一份<strong>训练集</strong>。示例代码如下：</p>
+<pre><code>class data_collect(object):
+
+    def __init__(self, in_code,start_dt,end_dt):
+        ans = self.collectDATA(in_code,start_dt,end_dt)
+
+    def collectDATA(self,in_code,start_dt,end_dt):
+        # 建立数据库连接，获取日线基础行情(开盘价，收盘价，最高价，最低价，成交量，成交额)
+        db = pymysql.connect(host=&#39;127.0.0.1&#39;, user=&#39;root&#39;, passwd=&#39;admin&#39;, db=&#39;stock&#39;, charset=&#39;utf8&#39;)
+        cursor = db.cursor()
+        sql_done_set = &quot;SELECT * FROM stock_all a where stock_code = &#39;%s&#39; and state_dt &gt;= &#39;%s&#39; and state_dt &lt;= &#39;%s&#39; order by state_dt asc&quot; % (in_code, start_dt, end_dt)
+        cursor.execute(sql_done_set)
+        done_set = cursor.fetchall()
+        if len(done_set) == 0:
+            raise Exception
+        self.date_seq = []
+        self.open_list = []
+        self.close_list = []
+        self.high_list = []
+        self.low_list = []
+        self.vol_list = []
+        self.amount_list = []
+        for i in range(len(done_set)):
+            self.date_seq.append(done_set[i][0])
+            self.open_list.append(float(done_set[i][2]))
+            self.close_list.append(float(done_set[i][3]))
+            self.high_list.append(float(done_set[i][4]))
+            self.low_list.append(float(done_set[i][5]))
+            self.vol_list.append(float(done_set[i][6]))
+            self.amount_list.append(float(done_set[i][7]))
+        cursor.close()
+        db.close()
+        # 将日线行情整合为训练集(其中self.train是输入集，self.target是输出集，self.test_case是end_dt那天的单条测试输入)
+        self.data_train = []
+        self.data_target = []
+</code></pre>
+<p>最终这个类实例化后是要整合出三个数据：</p>
+<ul style="color:#5B9BD5">
+    <li style="list-style-type:none">1. <strong>self.train</strong> ：训练集中的输入端数据，本例中是每日基础行情。</li>
+    <li style="list-style-type:none">2. <strong>self.target</strong> ：训练集中的输出数据，本例中相较于前一天股价的涨跌，涨为1，不涨为0。并且在排序上，每条 t 交易日的self.train里的数据对应的是 t+1 天股价的涨跌状态。</li>
+    <li style="list-style-type:none">3. <strong>self.test_case</strong> ：在 t 末交易日的基础行情数据，作为输入端，用于模型训练完成后，对第二天的涨跌进行预测。</li>
+</ul>
+
+<p><font color="red">（完整的数据预处理代码详见 <a href="https://tushare.pro/files/pro/u1/qt_1.rar">DC.py</a> 文件）</font></p>
+<h3 id="--svm建模--"><font style="background-color: #3DAAD6"> &gt;&gt; SVM建模 &lt;&lt; </font></h3>
+<p>机器学习中有诸多有监督学习算法，SVM是比较常见的一种，本例采用SVM算法进行建模。关于SVM的理论原理本篇不做详述，以下仅从实践角度进行建模介绍。</p>
+<p>先贴一段建模、训练并进行预测的代码大家感受一下：）</p>
+<pre><code>model = svm.SVC()               # 建模
+model.fit(train, target)        # 训练
+ans2 = model.predict(test_case) # 预测
+</code></pre>
+<p>三行代码，让人想起了把大象装冰箱分几步的冷笑话……</p>
+<p>不过这侧面也说明Python在数据挖掘方面的强大之处：简单，方便，好用。</p>
+<p>本例用的机器学习框架是<strong>scikit-learn</strong>。是个非常强大的算法库，熟悉算法原理的朋友可以查阅官方API文档，可修改模型参数，进一步调优模型；亦可尝试其他算法比如<strong>决策树，逻辑回归，朴素贝叶斯</strong>等。</p>
+<p><font color="red">（完整的SVM建模代码详见 <a href="https://tushare.pro/files/pro/u1/qt_1.rar">SVM.py</a> 文件）</font></p>
+<p>最后，我们虽然顺利建模并作出预测，但仍面对两个主要问题：1.模型预测能力如何？或者说该如何评估一个模型的质量？2.该如何结合模型进行仓位管理？风险如何？如何量化？</p>
+
+</div>
+</div>
+</div>
+</section>
+
+<footer id="footer" class="site-footer">
+<div class="container">
+<div class="row footer-panel">
+<div class="col-md-4">
+<div class=""><img src="../static/frontend/images/wechat_public5b2f.png?v=847e8d705d3a409d000dce413ab5c257" alt=""></div>
+</div>
+<div class="col-md-4">
+<div class="title">使用文档</div>
+<div class="content">
+<ul>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<li><a href="41.html">区块链</a></li>
+<li><a href="https://tushare.pro/news">资讯数据</a></li>
+</ul>
+</div>
+</div>
+<div class="col-md-4">
+<div class="title">关注我们</div>
+<div class="content">
+<ul>
+<li>公众号：waditu</li>
+<li>Github：<a href="https://github.com/waditu" target="_blank">https://github.com/waditu</a></li>
+<li>雪 球：<a href="https://xueqiu.com/u/9103835084" target="_blank">https://xueqiu.com/u/9103835084</a></li>
+<li>微 博：<a href="https://weibo.com/u/1304687120" target="_blank">https://weibo.com/u/1304687120</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="row footer-footer">
+<div class="copyright"><p>&copy; 2018 Tushare <a href='https://beian.miit.gov.cn/' target="_blank">
+"沪ICP备2020031644号"
+</a></p></div>
+</div>
+</div>
+</footer>
+
+</div>
+<div class="scroll-to-top" data-spy="affix" data-offset-top="200">
+<a href="#page" class="smooth-scroll">置顶</a>
+</div>
+</body>
+<script type="text/javascript">
+require(['custom']);
+</script>
+
+
+<script type="text/javascript">
+require([
+'jquery',
+'jstree'
+], function ($, jstree) {
+$(document).ready(function() {
+const tree = $('#jstree').jstree({
+// plugins : ['state']
+plugins : ['wholerow'],
+core: {
+themes: {
+multiple: false,
+icons: false,
+stripes: false,
+expand_selected_onload: true
+}
+}
+});
+tree.on("select_node.jstree", function (e, data) {
+window.location = `${location.protocol}//${location.host}${data.node.a_attr.href}`;
+});
+const searchInput = document.querySelector('.search-input');
+const searchIcon = document.querySelector('.search-icon');
+const onSearch = () => {
+const query = searchInput.value;
+if (query) {
+window.location = `${location.protocol}//${location.host}/document/search?q=${encodeURIComponent(query)}`;
+}
+}
+searchInput.addEventListener('change', onSearch);
+searchIcon.addEventListener('click', onSearch);
+});
+});
+</script>
+
+
+<!-- Mirrored from tushare.pro/document/1?doc_id=63 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:15:55 GMT -->
+</html>

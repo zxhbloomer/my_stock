@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en" style="height:100%">
+
+<!-- Mirrored from tushare.pro/document/1?doc_id=410 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:18:01 GMT -->
+<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=UTF-8" /><!-- /Added by HTTrack -->
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tushare数据</title>
+<meta content="免费股票数据,开源股票数据接口,股票数据,股票数据接口,python股票数据,财经数据,金融数据,行业大数据,区块链数据,量化投资,知识图谱" name="keywords"/>
+<meta name="description" content="Tushare为金融数据分析提供便捷、快速的接口，与投研和量化策略无缝对接"/>
+<meta content="index,follow" name="robots"/>
+<meta name="application-name" content="Tushare"/>
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-192x192039e.png?v=811d9139fa2ea47f5595907da1f3c34d" sizes="192x192">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-160x160.html" sizes="160x160">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-96x9674d3.png?v=4960eb8103c873c586ad41ef3f53db84" sizes="96x96">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-16x16f0cc.png?v=f7299bbce2cff4db7e3dfa6fb8c6a73c" sizes="16x16">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-32x327e67.png?v=a5df4bdd9f96de59f57bb9a7a50d8f96" sizes="32x32">
+<link href="../static/vendors/bootstrap/dist/css/bootstrap.min5aee.css?v=d7ac98c842e4ec59d2c21fef89fce09c" rel="stylesheet">
+<link href="../static/vendors/jstree/themes/default/style.min8060.css?v=779fc4b400d1748ec2fb99685ad80550" rel="stylesheet">
+<link href="../static/frontend/css/custom08a0.css?v=afa9fcaf1ec38d2c9d46d41a0615a077" rel="stylesheet">
+
+
+<link rel="stylesheet" href="../static/vendors/codemirror/lib/codemirrorfc50.css?v=fc217d502b05f65616356459c0ec1d62">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor13d7.css?v=144c2e273b8a0e79b208d0d86ccd3999">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor-contentsfa16.css?v=3ed3a3154a2304c111075714324b0e7b">
+<link rel="stylesheet" href="../static/vendors/highlightjs/styles/github259f.css?v=bf6c14925e66edb1526b6c9489b3c042">
+<link rel="stylesheet" href="../static/common/css/md230c.css?v=087ce310ed8e685ac6526e2a54db3c68">
+
+<!--[if lt IE 9]>
+<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+<script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+<![endif]-->
+<script type="text/javascript" src="../static/vendors/requirejs/require58ef.js?v=6da8be361b9ee26c5e721e76c6d4afce"></script>
+<script type="text/javascript" src="../static/frontend/js/config5b09.js?v=85f0040a930464e1c6dbc61026f79de8"></script>
+</head>
+<body style="height:100%">
+<div id="page" style="height:100%;">
+<header id="header" class="site-header">
+<nav id="navbar" class="site-navbar navbar navbar-static-top" role="navigation">
+<div class="container">
+<div class="navbar-header">
+<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse-1">
+<span class="sr-only">Toggle navigation</span>
+<i class="fa fa-bars" style="font-size: 1.5em; padding: 15px 0;"></i>
+</button>
+<h1 class="navbar-brand">
+<a href="https://tushare.pro/"><img src="../static/frontend/images/logod8e3.png?v=39c50795cb540b4463114d1bf3135d6e" alt="tushare"></a>
+</h1>
+</div>
+<div class="collapse navbar-collapse" id="navbar-collapse-1">
+<ul id="navigation" class="nav navbar-nav navbar-right">
+<li><a href="https://tushare.pro/">首页</a></li>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<!-- <li><a href="/document/41">另类数据</a></li>-->
+<li><a href="https://tushare.pro/news/sina">资讯数据</a></li>
+<li><a href="https://tushare.pro/webclient">数据工具</a></li>
+<li><a href="https://tushare.pro/weborder/#/permission">社区捐助</a></li>
+
+<li class="navbar-tail"><a href="https://tushare.pro/weborder/#/login" class="nav-login">登录/注册</a></li>
+
+</ul>
+</div>
+</div>
+</nav>
+</header>
+
+
+<section id="document" class="whole">
+<div class="container">
+<div class="document">
+<nav class="sidebar col-md-3 col-sm-4 col-xs-12">
+
+            <div id="jstree">
+                <ul class="list-unstyled components">
+                    <li ><a href="10454.html?doc_id=450">Tushare skills</a></li>  
+                    <li class="  in"><a href="10c80.html?doc_id=5">平台介绍</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14b41.html?doc_id=6">使用对象</a></li> <li ><a href="1cd35.html?doc_id=29">Python安装</a></li> <li ><a href="145ad.html?doc_id=7">Tushare安装</a></li> <li ><a href="172c5.html?doc_id=8">版本升级</a></li> <li ><a href="19a2a.html?doc_id=9">上新及变更</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="135a1.html?doc_id=37">操作手册</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14dd7.html?doc_id=38">用户注册</a></li> <li ><a href="16272.html?doc_id=39">获取token</a></li> <li ><a href="1e8ce.html?doc_id=40">调取数据</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1484e.html?doc_id=129">获取方式</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="14346.html?doc_id=130">通过HTTP获取数据</a></li> <li ><a href="1b3f2.html?doc_id=131">通过Python SDK获取</a></li> <li ><a href="17091.html?doc_id=132">通过Matlab SDK获取</a></li> <li ><a href="1999e.html?doc_id=133">通过R SDK获取</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1bc5e.html?doc_id=229">踩坑记录</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="187bb.html?doc_id=455">如何在“龙虾”里用好数据</a></li> <li ><a href="1196b.html?doc_id=230">如何优雅撸数据</a></li> <li ><a href="168c7.html?doc_id=231">如何存入MySQL数据库</a></li> <li ><a href="17298.html?doc_id=232">数据存入MongoDB</a></li> <li ><a href="1c633.html?doc_id=234">如何获取分钟数据</a></li> <li ><a href="1a06a.html?doc_id=122">常见问题整理</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="14673.html?doc_id=10">平台服务</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1ecce.html?doc_id=11">API服务</a></li> <li ><a href="12e9e.html?doc_id=12">定制服务</a></li> <li ><a href="1a06c.html?doc_id=13">平台积分</a></li> <li ><a href="193e4.html?doc_id=108">数据更新说明</a></li> <li ><a href="13600.html?doc_id=290">积分频次对应表</a></li> <li ><a href="1ee27.html?doc_id=307">积分到期查询</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1501f.html?doc_id=30">相关工具</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="10ed4.html?doc_id=42">IDE开发工具介绍</a></li> <li ><a href="19306.html?doc_id=63">数据采集预处理与建模</a></li> <li ><a href="1fb44.html?doc_id=65">pip安装超时的解决方案</a></li> <li ><a href="13729.html?doc_id=68">模型评估与仓位管理</a></li> <li ><a href="12451.html?doc_id=90">模拟交易与回测</a></li> <li ><a href="17380.html?doc_id=89">DLL载入问题之查询依赖的DLL</a></li> <li ><a href="179e8.html?doc_id=91">python过滤HTML标签</a></li> <li ><a href="164bf.html?doc_id=287">Excel常用快捷键</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="179bd.html?doc_id=167">培训课程</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="13f4d.html?doc_id=168">金融数据深入解析及经验分享</a></li> <li ><a href="1451b.html?doc_id=169">股票实时行情及数据应用实战</a></li> <li ><a href="1ffc5.html?doc_id=203">数据实操和量化策略入门指引</a></li> <li ><a href="17516.html?doc_id=282">读懂研报课程培训</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="1a511.html?doc_id=205">机构招聘</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1bc5e-2.html?doc_id=379">外资公募—对客科技团队</a></li> <li ><a href="1b4f4.html?doc_id=380">外资公募—投研科技团队</a></li> <li ><a href="180e0.html?doc_id=381">外资公募—运营科技团队</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="15f19.html?doc_id=306">高校服务</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="1ba41.html?doc_id=360">学生积分</a></li> <li ><a href="1d1d1.html?doc_id=361">教师积分</a></li>
+                        </ul>
+                    </li>
+                  <li ><a href="1ceff.html?doc_id=270">专业微群</a></li>  <li ><a href="1e53d.html?doc_id=243">社区捐助</a></li>  
+                    <li class=" jstree-open  in"><a href="1e06e.html?doc_id=411">社区协议</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="186b4.html?doc_id=409">用户协议</a></li> <li class="active jstree-clicked "  ><a href="1422b.html?doc_id=410">隐私政策</a></li> <li ><a href="18da9.html?doc_id=405">服务协议</a></li> <li ><a href="13272.html?doc_id=443">注销须知</a></li>
+                        </ul>
+                    </li>
+                
+                </ul>
+            </div>
+        
+</nav>
+<div class="content col-md-9 col-sm-8 col-xs-12">
+<div class="search-panel">
+<div class="search-container">
+<span class="fa fa-search search-icon"></span>
+<input type="text" class="search-input" placeholder="Search">
+</div>
+</div>
+<h1 id="tushare">Tushare隐私政策</h1>
+<hr>
+<p>欢迎阅读Tushare隐私政策，本政策适用于上海挖地兔信息技术有限公司（以下“Tushare”或“我们”）就Tushare【https://tushare.pro】， 包括任何承继、重命名网站和任何子域名）提供的所有数据服务。Tushare十分重视对用户隐私的保护，本政策主要针对用户注册使用本网站时涉及到个人信息的部分。<br>
+Tushare深知个人信息对您的重要性，并会尽全力保护您的个人信息安全可靠。我们致力于维持您对我们的信任，将按业界成熟的安全标准，采取相应的安全保护措施来保护您的个人信息。请在使用我们的产品或服务前，仔细阅读并了解本《隐私政策》。为便于您阅读本政策，我们对所有可能与您的合法权益存在重大关系的条款以及涉及敏感个人信息的内容都通过粗体特别标识，请您留意阅读。以下为详细内容：</p>
+<h3 id="_1">一、收集用户信息及如何使用</h3>
+<p>(一) 注册登录<br>
+注册Tushare账户时，如您通过手机号注册账户，需收集您中国境内手机号；如您通过邮箱注册账户，需要收集您的中国境内手机号和Email地址；如您通过微信扫码方式登录并绑定您的微信，我们需要收集您的微信昵称、手机号等信息，但不包含您在微信中的其他可识别到个人的具体信息。在此场景下，还可能需要收集您的中国境内手机号/邮箱接收的验证码用于安全验证。<br>
+(二) 日常使用<br>
+当您使用Tushare服务时，我们会自动收集网络日志，包括登录日志和操作日志，例如登录时间、登录状态、登录方式、IP地址、浏览器类型、操作的网页记录等，用于完善我们的服务，如核对业务信息、优化产品和服务。<br>
+(三) 个人信息完善<br>
+网站提供免费赚积分活动，如您自愿填写名字、邮箱、公司/学校、职位/专业、签名等信息，Tushare将收集这些信息为您提供更有针对性的更优质的服务。<br>
+(四) 相关产品/权限获取<br>
+如您为获取相关数据权限进行捐助支付后需人工提供相关服务，我们可能需要您提供订单信息，如订单号和付款凭证等，用于安全核验。<br>
+您充分知悉，Tushare不会与本公司以外的任何公司、组织和个人共享您的个人信息，除非以下情况Tushare收集、使用个人信息无须征得您的授权同意：<br>
+1.与履行法定职责或法定义务相关的；<br>
+2.与国家安全、国防安全直接相关的；<br>
+3.与公共安全、公共卫生、重大公共利益直接相关的；<br>
+4.与犯罪侦查、起诉、审判和判决执行等直接相关的；<br>
+5. 为应对突发公共卫生事件，或者紧急情况下为保护自然人的生命健康和财产安全所必需的；<br>
+6.合理范围内处理个人信息主体自行公开或其他经合法公开的个人信息的；<br>
+7.为公共利益实施新闻报道、舆论监督等行为，在合理的范围内处理个人信息的；<br>
+8.根据个人信息主体要求签订和履行合同所必需的；<br>
+9.法律、行政法规规定的其他情形；</p>
+<h3 id="_2">二、信息保护及存储</h3>
+<p>(一) 个人信息的保护<br>
+Tushare严格保护您个人信息的安全。通过使用各种安全技术措施和合理可行的方式来保护您的个人信息，采用严格的数据访问权限控制和多重身份认证技术保护个人信息，避免数据被违规使用。Tushare只会在达成本政策所述目的所需的期限内保留您的个人信息，除非需要延长保留期或受到法律的允许。<br>
+在不幸发生个人信息安全事件后，我们将按照法律法规的要求，及时向您告知：安全事件的基本情况和可能的影响、我们已采取或将要采取的处置措施、您可自主防范和降低风险的建议、对您的补救措施等。我们将及时将事件相关情况以邮件、信函、电话、推送通知、官网公告等方式告知您，难以逐一告知个人信息主体时，我们会采取合理、有效的方式发布公告。同时，我们还将按照监管部门要求，主动上报个人信息安全事件的处置情况。<br>
+(二) 个人信息的存储<br>
+Tushare按照相关法律法规允许存储的内容范围和期限进行存储。若法律没有明确规定的，Tushare按照与您签署的各类协议进行处理。</p>
+<h3 id="cookie">三、Cookie及同类技术的使用</h3>
+<p>您了解并同意，Tushare使用cookie或同类技术来使聚合网站对用户更友好便捷。Cookie文件是一种很小的数据文件，这些文件会存储在您的计算机或移动设备上，可以帮您省去为使用我们的服务而重复输入注册信息和跟踪您的浏览器的状态。如果您的浏览器允许设置，您可以拒绝Tushare的"Cookies" 。</p>
+<h3 id="_3">四、用户权利</h3>
+<p>(一) 您可登录Tushare官网注册、查询、修改、删除您的账户信息。建议您使用复杂密码，协助我们保证您的账号安全。您的聚合账户所有操作视为您本人或者征得您本人/本单位的充分授权而操作，尤其是对于购买、消费、承担责任和义务的操作行为，其法律后果需由您承担。若您的账户被盗号或发生异常，请及时与我们联系作出相应处理。<br>
+(二) 您有权访问和复制您的个人信息，法律法规另有规定的除外。如果您想行使数据访问权，可以通过个人中心访问您的账户基本信息、实名认证信息和系统操作日志信息等。如果您无法通过上述方式访问这些个人信息或者想要复制您的个人信息，您可以联系Tushare客服。<br>
+(三) 当您发现我们处理的关于您的个人信息有误时，您有权要求我们作出更正。<br>
+(四) 如您要求我们删除属于您的个人信息，请联系我们，我们会按照您的要求予以删除。在删除之前您如果需要对一些信息或记录进行保存的，您需要自行备份。<br>
+在以下情形中，您可以向我们提出删除个人信息的请求：<br>
+1.如果我们处理用户信息的行为违反法律法规；<br>
+2.如果我们收集、使用您的用户信息，却未征得您的明确同意；<br>
+3. 如果我们处理个人信息的行为严重违反了与您的约定；<br>
+4. 如果您不再使用我们的产品或服务，或您注销了账号；<br>
+5. 如果我们停止提供产品或服务，或者个人信息的保存期限已届满；<br>
+6. 如果我们处理您个人信息的目的已实现、无法实现或者为实现处理目的不再必要；<br>
+7. 如果您撤回同意；<br>
+8. 法律、行政法规规定的其他情形。<br>
+当您从我们的服务中删除信息后，我们可能不会立即在备份系统中删除相应的信息，但会在备份更新时删除这些信息。请您理解，在法律法规规定的保存期限未届满，或者删除从技术上难以实现的，我们将停止除存储和采取必要的安全保护措施之外的处理。<br>
+（五）当您决定不再使用我们的产品时，您可以按照《用户服务协议》的约定申请注销账户。您账户注销后，我们将删除您的个人信息或对其进行匿名化处理。但您知晓并接受，按照有关法律法规的规定，商品和服务信息、交易信息保存时间自交易完成之日起不少于三年；法律、行政法规另有规定的，依照其规定。<br>
+在以下情形中，我们将无法响应您的请求：<br>
+1.与个人信息控制者履行法律法规规定的义务相关的；<br>
+2.与国家安全、国防安全直接相关的；<br>
+3.与公共安全、公共卫生、重大公共利益直接相关的；<br>
+4.与刑事侦查、起诉、审判和执行判决等直接相关的；<br>
+5.个人信息控制者有充分证据表明个人信息主体存在主观恶意或滥用权利的；<br>
+6.出于维护个人信息主体或其他个人的生命、财产等重大合法权益但又很难得到本人同意的；<br>
+7.响应个人信息主体的请求将导致个人信息主体或其他个人、组织的合法权益受到严重损害的；<br>
+8.涉及国家秘密或商业秘密的。</p>
+<h3 id="_4">五、政策更新</h3>
+<p>(一) 本政策适用于Tushare所有相关服务，随着Tushare服务的变动或扩展，隐私政策的内容可由Tushare随时更新，届时请您关注官网上公示的最新版本的隐私政策。<br>
+(二) 未经您明确同意，我们不会削减您依据本隐私政策所应享有的权利。对于重大变更，我们还会提供更为显著的通知（我们会通过包括但不限于邮件、短信或在浏览页面做特别提示等方式，说明隐私政策的具体变更内容）。本政策所指的重大变更包括但不限于：<br>
+1.我们的服务模式发生重大变化。如处理个人信息的目的、处理的个人信息类型、个人信息的使用方式等；<br>
+2.我们在所有权结构、组织架构等方面发生重大变化。如业务调整、破产并购等引起的所有者变更等；<br>
+3.您参与个人信息处理方面的权利及其行使方式发生重大变化；<br>
+4.我们负责处理个人信息安全的责任部门、联络方式及投诉渠道发生变化时；<br>
+5.个人信息安全影响评估报告表明存在高风险时。</p>
+<h3 id="_5">六、其他补充内容</h3>
+<p>1.在法律允许的最大范围内，Tushare保留对本协议及相关政策、指引、规则的最终解释权。<br>
+2. 本协议为动态文档，Tushare有权根据相关法律法规更新或产品运营的需要对其内容进行修改并更新，您应反复查看以便获得最新信息。<br>
+3 如您对本协议有任何问题（包括问题咨询、投诉等），Tushare希望为您提供满意的解决方案，您可以咨询客服。<br>
+4. 本政策条款无论因何种原因部分无效或不可执行，其余条款仍有效，对双方具有约束力。</p>
+</div>
+</div>
+</div>
+</section>
+
+<footer id="footer" class="site-footer">
+<div class="container">
+<div class="row footer-panel">
+<div class="col-md-4">
+<div class=""><img src="../static/frontend/images/wechat_public5b2f.png?v=847e8d705d3a409d000dce413ab5c257" alt=""></div>
+</div>
+<div class="col-md-4">
+<div class="title">使用文档</div>
+<div class="content">
+<ul>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<li><a href="41.html">区块链</a></li>
+<li><a href="https://tushare.pro/news">资讯数据</a></li>
+</ul>
+</div>
+</div>
+<div class="col-md-4">
+<div class="title">关注我们</div>
+<div class="content">
+<ul>
+<li>公众号：waditu</li>
+<li>Github：<a href="https://github.com/waditu" target="_blank">https://github.com/waditu</a></li>
+<li>雪 球：<a href="https://xueqiu.com/u/9103835084" target="_blank">https://xueqiu.com/u/9103835084</a></li>
+<li>微 博：<a href="https://weibo.com/u/1304687120" target="_blank">https://weibo.com/u/1304687120</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="row footer-footer">
+<div class="copyright"><p>&copy; 2018 Tushare <a href='https://beian.miit.gov.cn/' target="_blank">
+"沪ICP备2020031644号"
+</a></p></div>
+</div>
+</div>
+</footer>
+
+</div>
+<div class="scroll-to-top" data-spy="affix" data-offset-top="200">
+<a href="#page" class="smooth-scroll">置顶</a>
+</div>
+</body>
+<script type="text/javascript">
+require(['custom']);
+</script>
+
+
+<script type="text/javascript">
+require([
+'jquery',
+'jstree'
+], function ($, jstree) {
+$(document).ready(function() {
+const tree = $('#jstree').jstree({
+// plugins : ['state']
+plugins : ['wholerow'],
+core: {
+themes: {
+multiple: false,
+icons: false,
+stripes: false,
+expand_selected_onload: true
+}
+}
+});
+tree.on("select_node.jstree", function (e, data) {
+window.location = `${location.protocol}//${location.host}${data.node.a_attr.href}`;
+});
+const searchInput = document.querySelector('.search-input');
+const searchIcon = document.querySelector('.search-icon');
+const onSearch = () => {
+const query = searchInput.value;
+if (query) {
+window.location = `${location.protocol}//${location.host}/document/search?q=${encodeURIComponent(query)}`;
+}
+}
+searchInput.addEventListener('change', onSearch);
+searchIcon.addEventListener('click', onSearch);
+});
+});
+</script>
+
+
+<!-- Mirrored from tushare.pro/document/1?doc_id=410 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:18:01 GMT -->
+</html>

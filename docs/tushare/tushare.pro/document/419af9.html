@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en" style="height:100%">
+
+<!-- Mirrored from tushare.pro/document/41?doc_id=67 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:24:39 GMT -->
+<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=UTF-8" /><!-- /Added by HTTrack -->
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tushare数据</title>
+<meta content="免费股票数据,开源股票数据接口,股票数据,股票数据接口,python股票数据,财经数据,金融数据,行业大数据,区块链数据,量化投资,知识图谱" name="keywords"/>
+<meta name="description" content="Tushare为金融数据分析提供便捷、快速的接口，与投研和量化策略无缝对接"/>
+<meta content="index,follow" name="robots"/>
+<meta name="application-name" content="Tushare"/>
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-192x192039e.png?v=811d9139fa2ea47f5595907da1f3c34d" sizes="192x192">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-160x160.html" sizes="160x160">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-96x9674d3.png?v=4960eb8103c873c586ad41ef3f53db84" sizes="96x96">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-16x16f0cc.png?v=f7299bbce2cff4db7e3dfa6fb8c6a73c" sizes="16x16">
+<link rel="icon" type="image/png" href="../static/frontend/images/favicon-32x327e67.png?v=a5df4bdd9f96de59f57bb9a7a50d8f96" sizes="32x32">
+<link href="../static/vendors/bootstrap/dist/css/bootstrap.min5aee.css?v=d7ac98c842e4ec59d2c21fef89fce09c" rel="stylesheet">
+<link href="../static/vendors/jstree/themes/default/style.min8060.css?v=779fc4b400d1748ec2fb99685ad80550" rel="stylesheet">
+<link href="../static/frontend/css/custom08a0.css?v=afa9fcaf1ec38d2c9d46d41a0615a077" rel="stylesheet">
+
+
+<link rel="stylesheet" href="../static/vendors/codemirror/lib/codemirrorfc50.css?v=fc217d502b05f65616356459c0ec1d62">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor13d7.css?v=144c2e273b8a0e79b208d0d86ccd3999">
+<link rel="stylesheet" href="../static/vendors/tui-editor/dist/tui-editor-contentsfa16.css?v=3ed3a3154a2304c111075714324b0e7b">
+<link rel="stylesheet" href="../static/vendors/highlightjs/styles/github259f.css?v=bf6c14925e66edb1526b6c9489b3c042">
+<link rel="stylesheet" href="../static/common/css/md230c.css?v=087ce310ed8e685ac6526e2a54db3c68">
+
+<!--[if lt IE 9]>
+<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+<script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+<![endif]-->
+<script type="text/javascript" src="../static/vendors/requirejs/require58ef.js?v=6da8be361b9ee26c5e721e76c6d4afce"></script>
+<script type="text/javascript" src="../static/frontend/js/config5b09.js?v=85f0040a930464e1c6dbc61026f79de8"></script>
+</head>
+<body style="height:100%">
+<div id="page" style="height:100%;">
+<header id="header" class="site-header">
+<nav id="navbar" class="site-navbar navbar navbar-static-top" role="navigation">
+<div class="container">
+<div class="navbar-header">
+<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse-1">
+<span class="sr-only">Toggle navigation</span>
+<i class="fa fa-bars" style="font-size: 1.5em; padding: 15px 0;"></i>
+</button>
+<h1 class="navbar-brand">
+<a href="https://tushare.pro/"><img src="../static/frontend/images/logod8e3.png?v=39c50795cb540b4463114d1bf3135d6e" alt="tushare"></a>
+</h1>
+</div>
+<div class="collapse navbar-collapse" id="navbar-collapse-1">
+<ul id="navigation" class="nav navbar-nav navbar-right">
+<li><a href="https://tushare.pro/">首页</a></li>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<!-- <li><a href="/document/41">另类数据</a></li>-->
+<li><a href="https://tushare.pro/news/sina">资讯数据</a></li>
+<li><a href="https://tushare.pro/webclient">数据工具</a></li>
+<li><a href="https://tushare.pro/weborder/#/permission">社区捐助</a></li>
+
+<li class="navbar-tail"><a href="https://tushare.pro/weborder/#/login" class="nav-login">登录/注册</a></li>
+
+</ul>
+</div>
+</div>
+</nav>
+</header>
+
+
+<section id="document" class="whole">
+<div class="container">
+<div class="document">
+<nav class="sidebar col-md-3 col-sm-4 col-xs-12">
+
+            <div id="jstree">
+                <ul class="list-unstyled components">
+                    
+                    <li class=" jstree-open  in"><a href="416cea.html?doc_id=3">基础数据</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="411da5.html?doc_id=54">全球数字货币列表</a></li> <li ><a href="411044.html?doc_id=55">全球区块链项目Logo</a></li> <li ><a href="4105b6.html?doc_id=56">全球区块链项目白皮书</a></li> <li ><a href="41755d.html?doc_id=51">交易所交易对</a></li> <li ><a href="41149f.html?doc_id=66">全球数字货币交易所</a></li> <li class="active jstree-clicked "  ><a href="419af9.html?doc_id=67">全球数字货币交易所Logo</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="419fa1.html?doc_id=52">行情数据</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="4123b8.html?doc_id=57">数字货币每日市值</a></li> <li ><a href="41fc81.html?doc_id=64">交易所交易费率</a></li> <li ><a href="4111fc.html?doc_id=76">比特币每日市值</a></li> <li ><a href="41416d.html?doc_id=77">比特币每日量价</a></li> <li ><a href="415d5e.html?doc_id=99">优币指数成分</a></li> <li ><a href="418903.html?doc_id=238">数字货币k线行情</a></li> <li ><a href="41af8a.html?doc_id=258">交易所交易对（新）</a></li>
+                        </ul>
+                    </li>
+                  
+                    <li class="  in"><a href="4115c8.html?doc_id=69">资讯公告</a>
+                        <ul class="list-unstyled">
+                            <li ><a href="41e7cd.html?doc_id=70">金色财经</a></li> <li ><a href="4162b2.html?doc_id=71">巴比特</a></li> <li ><a href="41a751.html?doc_id=73">币世界</a></li> <li ><a href="4136aa.html?doc_id=74">交易所公告</a></li> <li ><a href="41aa84.html?doc_id=92">交易所Twitter数据</a></li> <li ><a href="41bcb3.html?doc_id=105">Twitter大V数据</a></li>
+                        </ul>
+                    </li>
+                
+                </ul>
+            </div>
+        
+</nav>
+<div class="content col-md-9 col-sm-8 col-xs-12">
+<div class="search-panel">
+<div class="search-container">
+<span class="fa fa-search search-icon"></span>
+<input type="text" class="search-input" placeholder="Search">
+</div>
+</div>
+<h2 id="-logo-">全球数字货币交易所Logo一览</h2>
+<p>作为币圈“食物链”最顶端的机构，交易所越来越多，成为大佬们逐鹿币圈奠定币圈地位的工具。Tushare Pro除了提供全球所有交易所的基础信息以外，还给大家搜集了全部的Logo图标。跟提供全部币种Logo同样的想法，除了让大家看看各币各所的“嘴脸”以外，最重要的是给未来想要搞事情的同志们提供一个Logo全览图，借鉴也好避免趋同也罢，各取所需吧。</p>
+<p>想要一次性下载所有Logo，请关注“挖地兔”公众号留言索取。</p>
+<table border="1"><tr>
+    <td><center><img src="../../tushare.org/pro/ex/bitmex.png"><br>bitmex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/okex.png"><br>okex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/binance.png"><br>binance</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/huobipro.png"><br>huobipro</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitfinex.png"><br>bitfinex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/zb.png"><br>zb</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/upbit.png"><br>upbit</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/hitbtc.png"><br>hitbtc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/lhang.png"><br>lhang</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bibox.png"><br>bibox</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/quoine.png"><br>quoine</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/shuzibi.png"><br>shuzibi</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bit-z.png"><br>bit-z</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinbasepro.png"><br>coinbasepro</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/kraken.png"><br>kraken</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bcex.png"><br>bcex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinw.png"><br>coinw</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/idax.png"><br>idax</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bithumb.png"><br>bithumb</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitstamp.png"><br>bitstamp</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/aex.png"><br>aex</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/bitbank.png"><br>bitbank</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/zaif.png"><br>zaif</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/fisco.png"><br>fisco</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitflyer.png"><br>bitflyer</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/btcbox.png"><br>btcbox</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bittrex.png"><br>bittrex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/allcoin.png"><br>allcoin</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/hb_top.png"><br>hb_top</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cointiger.png"><br>cointiger</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/exrates.png"><br>exrates</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/gate-io.png"><br>gate-io</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/jex.png"><br>jex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/poloniex.png"><br>poloniex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/yex.png"><br>yex</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/rightbtc.png"><br>rightbtc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/qbtc.png"><br>qbtc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/itbit.png"><br>itbit</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/yobit.png"><br>yobit</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/exmo.png"><br>exmo</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/gemini.png"><br>gemini</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/dragonex.png"><br>dragonex</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/coincheck.png"><br>coincheck</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/fatbtc.png"><br>fatbtc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/livecoin.png"><br>livecoin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/winmax.png"><br>winmax</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/oex.png"><br>oex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/biteceo.png"><br>biteceo</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coolcoin.png"><br>coolcoin</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/coinone.png"><br>coinone</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/hadax.png"><br>hadax</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/ubit.png"><br>ubit</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/kucoin.png"><br>kucoin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/chaoex.png"><br>chaoex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinbene.png"><br>coinbene</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/yoexs.png"><br>yoexs</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/xbtce.png"><br>xbtce</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/qryptos.png"><br>qryptos</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/kex.png"><br>kex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/mexc.png"><br>mexc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/rfinex.png"><br>rfinex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitbay.png"><br>bitbay</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/liqui.png"><br>liqui</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/okcoinkr.png"><br>okcoinkr</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/hypex.png"><br>hypex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/hellobts.png"><br>hellobts</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/gdex.png"><br>gdex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/kkcoin.png"><br>kkcoin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cryptopia.png"><br>cryptopia</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/otcbtc.png"><br>otcbtc</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/btc-markets.png"><br>btc-markets</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cobinhood.png"><br>cobinhood</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/wex.png"><br>wex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bx-thailand.png"><br>bx-thailand</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/vnbig.png"><br>vnbig</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/luno.png"><br>luno</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/iquant.png"><br>iquant</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/bitso.png"><br>bitso</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/dsx.png"><br>dsx</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/boxex.png"><br>boxex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/debi.png"><br>debi</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/idex.png"><br>idex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/acx.png"><br>acx</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/okcoin-intl.png"><br>okcoin-intl</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/bigone.png"><br>bigone</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/kuna.png"><br>kuna</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/braziliex.png"><br>braziliex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinnest.png"><br>coinnest</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bleutrade.png"><br>bleutrade</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/kkex.png"><br>kkex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/fex.png"><br>fex</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/coinall.png"><br>coinall</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cex.png"><br>cex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitforex.png"><br>bitforex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/fubt.png"><br>fubt</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitinfi.png"><br>bitinfi</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/zgtop.png"><br>zgtop</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinyee.png"><br>coinyee</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/biclub.png"><br>biclub</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/lcex.png"><br>lcex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/vvbtc.png"><br>vvbtc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/58coin.png"><br>58coin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/ocx.png"><br>ocx</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinmarket.png"><br>coinmarket</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/f8coin.png"><br>f8coin</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/simex.png"><br>simex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/btcdo.png"><br>btcdo</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinsuper.png"><br>coinsuper</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/topbtch.png"><br>topbtch</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/amom.png"><br>amom</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/tokencan.png"><br>tokencan</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinegg.png"><br>coinegg</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/ethfinex.png"><br>ethfinex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/kdaxpro.png"><br>kdaxpro</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/tidex.png"><br>tidex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/uex.png"><br>uex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/7ebit.png"><br>7ebit</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bgjio.png"><br>bgjio</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/hotbit.png"><br>hotbit</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/coin918.png"><br>coin918</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitker.png"><br>bitker</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/idcm.png"><br>idcm</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bizu.png"><br>bizu</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/btktrade.png"><br>btktrade</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/keepbtc.png"><br>keepbtc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/funcoin.png"><br>funcoin</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/btex.png"><br>btex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/btctrade-im.png"><br>btctrade-im</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/btb.png"><br>btb</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/zzex.png"><br>zzex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/wanshare.png"><br>wanshare</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coineal.png"><br>coineal</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/prdae.png"><br>prdae</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/haxi.png"><br>haxi</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/korbit.png"><br>korbit</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/chaobicom.png"><br>chaobicom</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinmex.png"><br>coinmex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitrabbit.png"><br>bitrabbit</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/9coinexchange.png"><br>9coinexchange</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/mercatox.png"><br>mercatox</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/coinx.png"><br>coinx</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/ngoex.png"><br>ngoex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitcoin-indonesia.png"><br>bitcoin-indonesia</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/thinkbit.png"><br>thinkbit</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/stocks-exchange.png"><br>stocks-exchange</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/btc98.png"><br>btc98</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/zhaobi.png"><br>zhaobi</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/bkex.png"><br>bkex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/exx.png"><br>exx</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/xbtc.png"><br>xbtc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinxpro.png"><br>coinxpro</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/zbtone.png"><br>zbtone</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/mbiwcg.png"><br>mbiwcg</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/zbg.png"><br>zbg</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/coinred.png"><br>coinred</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/gaex.png"><br>gaex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/etherflyer.png"><br>etherflyer</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/btcbl.png"><br>btcbl</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bjs.png"><br>bjs</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/usadae.png"><br>usadae</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bbx.png"><br>bbx</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/betop.png"><br>betop</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bgogo.png"><br>bgogo</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/chaince.png"><br>chaince</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/purcow.png"><br>purcow</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/gbcax.png"><br>gbcax</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/crex24.png"><br>crex24</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/ddex.png"><br>ddex</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/dew.png"><br>dew</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/excash.png"><br>excash</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/dextop.png"><br>dextop</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/vbitex.png"><br>vbitex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/topone.png"><br>topone</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/union-coins.png"><br>union-coins</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitsquare.png"><br>bitsquare</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/bilaxy.png"><br>bilaxy</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/dobitrade.png"><br>dobitrade</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/southxchange.png"><br>southxchange</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/ttex.png"><br>ttex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/asbtc.png"><br>asbtc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinex.png"><br>coinex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cryptohub.png"><br>cryptohub</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/coingi.png"><br>coingi</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/wjwcoin.png"><br>wjwcoin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/freiexchange.png"><br>freiexchange</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinba.png"><br>coinba</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/fcoin.png"><br>fcoin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/ore-bz.png"><br>ore-bz</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/rootrex.png"><br>rootrex</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/5yg.png"><br>5yg</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/isx.png"><br>isx</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/abcc.png"><br>abcc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bige.png"><br>bige</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bl3p.png"><br>bl3p</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/c2cx.png"><br>c2cx</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coss.png"><br>coss</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/bit2c.png"><br>bit2c</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitop.png"><br>bitop</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/btc-x.png"><br>btc-x</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/golix.png"><br>golix</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/mbaex.png"><br>mbaex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/nocks.png"><br>nocks</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/usd-x.png"><br>usd-x</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/aacoin.png"><br>aacoin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bihuex.png"><br>bihuex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cex-io.png"><br>cex-io</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cfinex.png"><br>cfinex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/koinex.png"><br>koinex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/koinim.png"><br>koinim</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/ok-bit.png"><br>ok-bit</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/p2pb2b.png"><br>p2pb2b</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/paribu.png"><br>paribu</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/surbtc.png"><br>surbtc</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/zebpay.png"><br>zebpay</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitbitx.png"><br>bitbitx</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitflip.png"><br>bitflip</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitlish.png"><br>bitlish</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/bitonic.png"><br>bitonic</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitsane.png"><br>bitsane</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitthai.png"><br>bitthai</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/btcturk.png"><br>btcturk</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinbbt.png"><br>coinbbt</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/gatehub.png"><br>gatehub</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/lakebtc.png"><br>lakebtc</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/litebit.png"><br>litebit</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/tidebit.png"><br>tidebit</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/vipcoin.png"><br>vipcoin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/zxxcoin.png"><br>zxxcoin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitex-la.png"><br>bitex-la</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinchel.png"><br>coinchel</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinmate.png"><br>coinmate</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/coinpark.png"><br>coinpark</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinrail.png"><br>coinrail</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinrate.png"><br>coinrate</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/easycoin.png"><br>easycoin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/switcheo.png"><br>switcheo</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitmarket.png"><br>bitmarket</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/btc-alpha.png"><br>btc-alpha</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/coinfloor.png"><br>coinfloor</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinsbank.png"><br>coinsbank</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cryptogro.png"><br>cryptogro</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/dgtmarket.png"><br>dgtmarket</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/forkdelta.png"><br>forkdelta</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/hashtoken.png"><br>hashtoken</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/huobicokr.png"><br>huobicokr</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/waves-dex.png"><br>waves-dex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitmaszyna.png"><br>bitmaszyna</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coincoming.png"><br>coincoming</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinfalcon.png"><br>coinfalcon</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinsquare.png"><br>coinsquare</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cryptomate.png"><br>cryptomate</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/leoxchange.png"><br>leoxchange</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/localtrade.png"><br>localtrade</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/openledger.png"><br>openledger</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/quadrigacx.png"><br>quadrigacx</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/heat-wallet.png"><br>heat-wallet</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/aidos-market.png"><br>aidos-market</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitcointoyou.png"><br>bitcointoyou</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bittylicious.png"><br>bittylicious</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/btc-trade-ua.png"><br>btc-trade-ua</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/coinexchange.png"><br>coinexchange</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cryptobridge.png"><br>cryptobridge</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/cryptomarket.png"><br>cryptomarket</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/excambriorex.png"><br>excambriorex</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/guldentrader.png"><br>guldentrader</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/novaexchange.png"><br>novaexchange</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/ripple-china.png"><br>ripple-china</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/tux-exchange.png"><br>tux-exchange</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/negocie-coins.png"><br>negocie-coins</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/otc_huobi_pro.png"><br>otc_huobi_pro</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/trade-satoshi.png"><br>trade-satoshi</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/altcoin-trader.png"><br>altcoin-trader</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/lykke-exchange.png"><br>lykke-exchange</center></td>
+
+</tr>
+<tr>
+    <td><center><img src="../../tushare.org/pro/ex/therocktrading.png"><br>therocktrading</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bits-blockchain.png"><br>bits-blockchain</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/mercado-bitcoin.png"><br>mercado-bitcoin</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/independent-reserve.png"><br>independent-reserve</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/triple-dice-exchange.png"><br>triple-dice-exchange</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/infinitycoin-exchange.png"><br>infinitycoin-exchange</center></td>
+    <td><center><img src="../../tushare.org/pro/ex/bitstamp-ripple-gateway.png"><br>bitstamp-ripple-gateway</center></td>
+
+</tr>
+</table>
+</div>
+</div>
+</div>
+</section>
+
+<footer id="footer" class="site-footer">
+<div class="container">
+<div class="row footer-panel">
+<div class="col-md-4">
+<div class=""><img src="../static/frontend/images/wechat_public5b2f.png?v=847e8d705d3a409d000dce413ab5c257" alt=""></div>
+</div>
+<div class="col-md-4">
+<div class="title">使用文档</div>
+<div class="content">
+<ul>
+<li><a href="1.html">平台介绍</a></li>
+<li><a href="2.html">数据接口</a></li>
+<li><a href="41.html">区块链</a></li>
+<li><a href="https://tushare.pro/news">资讯数据</a></li>
+</ul>
+</div>
+</div>
+<div class="col-md-4">
+<div class="title">关注我们</div>
+<div class="content">
+<ul>
+<li>公众号：waditu</li>
+<li>Github：<a href="https://github.com/waditu" target="_blank">https://github.com/waditu</a></li>
+<li>雪 球：<a href="https://xueqiu.com/u/9103835084" target="_blank">https://xueqiu.com/u/9103835084</a></li>
+<li>微 博：<a href="https://weibo.com/u/1304687120" target="_blank">https://weibo.com/u/1304687120</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="row footer-footer">
+<div class="copyright"><p>&copy; 2018 Tushare <a href='https://beian.miit.gov.cn/' target="_blank">
+"沪ICP备2020031644号"
+</a></p></div>
+</div>
+</div>
+</footer>
+
+</div>
+<div class="scroll-to-top" data-spy="affix" data-offset-top="200">
+<a href="#page" class="smooth-scroll">置顶</a>
+</div>
+</body>
+<script type="text/javascript">
+require(['custom']);
+</script>
+
+
+<script type="text/javascript">
+require([
+'jquery',
+'jstree'
+], function ($, jstree) {
+$(document).ready(function() {
+const tree = $('#jstree').jstree({
+// plugins : ['state']
+plugins : ['wholerow'],
+core: {
+themes: {
+multiple: false,
+icons: false,
+stripes: false,
+expand_selected_onload: true
+}
+}
+});
+tree.on("select_node.jstree", function (e, data) {
+window.location = `${location.protocol}//${location.host}${data.node.a_attr.href}`;
+});
+const searchInput = document.querySelector('.search-input');
+const searchIcon = document.querySelector('.search-icon');
+const onSearch = () => {
+const query = searchInput.value;
+if (query) {
+window.location = `${location.protocol}//${location.host}/document/search?q=${encodeURIComponent(query)}`;
+}
+}
+searchInput.addEventListener('change', onSearch);
+searchIcon.addEventListener('click', onSearch);
+});
+});
+</script>
+
+
+<!-- Mirrored from tushare.pro/document/41?doc_id=67 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 12 Apr 2026 02:26:19 GMT -->
+</html>
