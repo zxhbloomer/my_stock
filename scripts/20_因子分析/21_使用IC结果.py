@@ -106,18 +106,18 @@ def export_strong_factors(strong_factors, output_path='强因子列表.csv'):
     output_file = Path(output_path)
     export_df.to_csv(output_file, index=False, encoding='utf-8-sig')
 
-    print(f"\n✅ 已导出 {len(export_df)} 个强因子到: {output_file}")
+    print(f"\n[OK] 已导出 {len(export_df)} 个强因子到: {output_file}")
     print(f"文件路径: {output_file.absolute()}")
 
 
-def generate_factor_config(strong_factors, top_n=50):
-    """生成因子配置（用于模型训练）"""
+def generate_factor_config(ic_df, top_n=100):
+    """生成因子配置(用于模型训练)"""
     print("\n" + "=" * 80)
     print(f"生成Top {top_n}因子配置")
     print("=" * 80)
 
-    # 按IC绝对值排序，取Top N
-    top_factors = strong_factors.copy()
+    # 按IC绝对值排序,取Top N (从所有因子中选择,不仅是强因子)
+    top_factors = ic_df.copy()
     top_factors['ic_abs'] = top_factors['ic_mean'].abs()
     top_factors = top_factors.sort_values('ic_abs', ascending=False).head(top_n)
 
@@ -135,7 +135,7 @@ def generate_factor_config(strong_factors, top_n=50):
             'ir': row['ir']
         })
 
-    print(f"\n✅ 生成了 {len(factor_list)} 个因子的配置")
+    print(f"\n[OK] 生成了 {len(factor_list)} 个因子的配置")
     print("\n下一步:")
     print("  1. 使用这些因子重新训练模型")
     print("  2. 对比使用全部因子 vs Top因子的模型性能")
@@ -163,11 +163,11 @@ def main():
     # 4. 导出强因子
     export_strong_factors(strong_factors)
 
-    # 5. 生成Top 50因子配置
-    factor_config = generate_factor_config(strong_factors, top_n=50)
+    # 5. 生成Top 100因子配置(使用所有因子ic_df,不仅是强因子)
+    factor_config = generate_factor_config(ic_df, top_n=100)
 
     print("\n" + "=" * 80)
-    print("✅ IC结果分析完成")
+    print("[OK] IC结果分析完成")
     print("=" * 80)
 
 

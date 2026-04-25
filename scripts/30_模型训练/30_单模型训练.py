@@ -2,6 +2,14 @@
 运行Qlib工作流
 基于官方workflow_by_code示例
 """
+import sys
+from pathlib import Path
+
+# 添加项目根目录到Python路径 (从 scripts/30_模型训练/ 回到根目录)
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import qlib
 import yaml
 import pandas as pd
@@ -166,15 +174,18 @@ if __name__ == "__main__":
     import sys
     from pathlib import Path
 
+    # 项目根目录 (从 scripts/30_模型训练/ 回到根目录)
+    project_root = Path(__file__).parent.parent.parent
+
     # 默认配置文件（相对于项目根目录）
-    default_config = Path(__file__).parent.parent / "configs" / "workflow_config_lightgbm_Alpha158.yaml"
+    default_config = project_root / "configs" / "workflow_config_lightgbm_Alpha158.yaml"
     config_file = str(default_config)
 
     if len(sys.argv) > 1:
         # 如果提供的是相对路径，相对于项目根目录
         config_arg = sys.argv[1]
         if not Path(config_arg).is_absolute():
-            config_file = str(Path(__file__).parent.parent / config_arg)
+            config_file = str(project_root / config_arg)
         else:
             config_file = config_arg
 

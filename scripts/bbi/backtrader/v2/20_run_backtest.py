@@ -1,4 +1,6 @@
 # scripts/bbi/backtrader/20_run_backtest.py
+# 数据时序规则：所有盘后数据（moneyflow、cyq_perf 等）必须在 10_prepare_data.py 中 shift(1)
+# 策略代码中使用的任何外部数据列，均已是 T-1 日数据，无需在此处再做处理
 import csv
 import multiprocessing
 import pandas as pd
@@ -6,11 +8,15 @@ import backtrader as bt
 from config import (
     STOCK_DATA_DIR, OUTPUT_DIR, N_WORKERS, INIT_CASH,
     COMMISSION_BUY, COMMISSION_SELL, MIN_COMMISSION,
+    MACD_FAST, MACD_SLOW, MACD_SIGNAL,
+    PYRAMID_FIRST_RATIO, PYRAMID_ADD_TRIGGER,
+    ATR_PERIOD, ATR_MULTIPLIER,
+    MIN_HOLD_DAYS, HARD_STOP_LOSS,
 )
 
 
 class BBIData(bt.feeds.PandasData):
-    lines = ('bbi',)
+    lines = ('bbi', 'ma60',)
     params = (
         ('datetime', None),
         ('open',         'open_qfq'),
@@ -20,6 +26,7 @@ class BBIData(bt.feeds.PandasData):
         ('volume',       'vol'),
         ('openinterest', -1),
         ('bbi',          'bbi_qfq'),
+        ('ma60',         'ma60'),
     )
 
 
@@ -42,20 +49,121 @@ class AShareAllInSizer(bt.Sizer):
         return self.broker.getposition(data).size
 
 
-class BBIStrategy(bt.Strategy):
+class BBIEnhancedStrategy(bt.Strategy):
     def __init__(self):
         self.bbi_line   = self.data.bbi
         self.close_line = self.data.close
+        self.ma60_line  = self.data.ma60
+        macd_ind    = bt.indicators.MACD(
+            self.data.close,
+            period_me1=MACD_FAST,
+            period_me2=MACD_SLOW,
+            period_signal=MACD_SIGNAL,
+        )
+        self.macd_line   = macd_ind.macd
+        self.signal_line = macd_ind.signal
+        self.atr_ind     = bt.indicators.ATR(self.data, period=ATR_PERIOD)
+
+        self.state      = 0
+        self.buy_bar    = -1
+        self.add_order  = None
+        self.trail_stop = None
+        self.peak_close = None
+
+    def _entry_signal(self):
+        if len(self) < 4:
+            return False
+        cross_up  = self.close_line[-1] < self.bbi_line[-1] and self.close_line[0] > self.bbi_line[0]
+        bbi_slope = self.bbi_line[0] > self.bbi_line[-3]
+        macd_ok   = self.macd_line[0] > self.signal_line[0] or self.macd_line[0] > 0
+        return cross_up and bbi_slope and macd_ok
+
+    def _exit_signal(self):
+        cross_down = self.close_line[-1] > self.bbi_line[-1] and self.close_line[0] < self.bbi_line[0]
+        # v2.4: MACD death cross requires BBI also declining — avoids false exits in strong trends
+        bbi_declining = len(self) >= 4 and self.bbi_line[0] < self.bbi_line[-3]
+        macd_dead  = (self.macd_line[0] < self.signal_line[0]
+                      and self.macd_line[0] < 0
+                      and bbi_declining)
+        return cross_down or macd_dead
+
+    def _update_trail(self):
+        c = self.close_line[0]
+        if self.peak_close is None or c > self.peak_close:
+            self.peak_close = c
+        atr_val = self.atr_ind[0]
+        if atr_val and atr_val > 0:
+            new_stop = self.peak_close - ATR_MULTIPLIER * atr_val
+            if self.trail_stop is None or new_stop > self.trail_stop:
+                self.trail_stop = new_stop
+
+    def _trail_triggered(self):
+        if self.trail_stop is None:
+            return False
+        return self.close_line[0] < self.trail_stop
+
+    def _reset_trail(self):
+        self.trail_stop = None
+        self.peak_close = None
+
+    def notify_order(self, order):
+        if order.status == order.Completed:
+            if order.isbuy():
+                self.buy_bar = len(self)
+            if self.add_order is not None and order.ref == self.add_order.ref:
+                self.add_order = None
+                self.state = 2
+
+    def _should_exit(self):
+        """Exit logic with min-hold protection and hard stop."""
+        pos = self.broker.getposition(self.data)
+        if pos.size > 0:
+            loss_pct = (self.close_line[0] - pos.price) / pos.price
+            if loss_pct <= -HARD_STOP_LOSS:
+                return True  # hard stop always fires
+        held = len(self) - self.buy_bar
+        if held < MIN_HOLD_DAYS:
+            return False  # protect early exit
+        return self._exit_signal() or self._trail_triggered()
 
     def next(self):
-        if not self.position:
-            # golden cross: close crossed above BBI
-            if self.close_line[-1] < self.bbi_line[-1] and self.close_line[0] > self.bbi_line[0]:
-                self.buy(exectype=bt.Order.Market)
-        else:
-            # death cross: close crossed below BBI
-            if self.close_line[-1] > self.bbi_line[-1] and self.close_line[0] < self.bbi_line[0]:
-                self.close()
+        if self.state == 0:
+            if self._entry_signal():
+                cash = self.broker.getcash()
+                size = int(cash * PYRAMID_FIRST_RATIO / self.close_line[0] / 100) * 100
+                if size >= 100:
+                    self.buy(size=size, exectype=bt.Order.Market)
+                    self.buy_bar    = len(self)
+                    self.state      = 1
+                    self.peak_close = self.close_line[0]
+                    self.trail_stop = None
+
+        elif self.state == 1:
+            self._update_trail()
+            if len(self) > self.buy_bar:
+                if self._should_exit():
+                    self.order_target_size(target=0)
+                    self.state = 0
+                    self.add_order = None
+                    self._reset_trail()
+                    return
+            pos = self.broker.getposition(self.data)
+            if pos.size > 0:
+                profit_pct = (self.close_line[0] - pos.price) / pos.price
+                if profit_pct >= PYRAMID_ADD_TRIGGER and self.macd_line[0] > 0:
+                    if self.add_order is None:
+                        cash = self.broker.getcash()
+                        size = int(cash / self.close_line[0] / 100) * 100
+                        if size >= 100:
+                            self.add_order = self.buy(size=size, exectype=bt.Order.Market)
+
+        elif self.state == 2:
+            self._update_trail()
+            if len(self) > self.buy_bar and self._should_exit():
+                self.order_target_size(target=0)
+                self.state = 0
+                self.add_order = None
+                self._reset_trail()
 
 
 def run_single_stock(args):
@@ -66,7 +174,7 @@ def run_single_stock(args):
         df = df.sort_index()
 
         cerebro = bt.Cerebro()
-        cerebro.addstrategy(BBIStrategy)
+        cerebro.addstrategy(BBIEnhancedStrategy)
         data = BBIData(dataname=df)
         cerebro.adddata(data)
         cerebro.broker.setcash(INIT_CASH)
@@ -90,7 +198,7 @@ def run_single_stock(args):
         win_rate     = won / total_trades if total_trades > 0 else 0.0
 
         gross_won   = trade_an.get('won',  {}).get('pnl', {}).get('total', 0.0)
-        gross_lost  = abs(trade_an.get('lost', {}).get('pnl', {}).get('total', 1.0))
+        gross_lost  = abs(trade_an.get('lost', {}).get('pnl', {}).get('total', 0.0))
         pl_ratio    = gross_won / gross_lost if gross_lost > 0 else 0.0
 
         annual_ret = ret_an.get('rnorm100', 0.0)
@@ -108,7 +216,22 @@ def run_single_stock(args):
                 size, price, pnlcomm = txn[0], txn[1], txn[4]
                 date_str = dt_obj.strftime('%Y-%m-%d')
                 if size > 0:
-                    open_trade = {'buy_date': date_str, 'buy_price': round(price, 4), 'size': abs(size)}
+                    if open_trade is None:
+                        open_trade = {
+                            'buy_date': date_str, 'buy_price': round(price, 4),
+                            'size': abs(size), 'pyramided': False,
+                            'orders': [{'date': date_str, 'price': round(price, 4),
+                                        'size': abs(size), 'type': '建仓'}],
+                        }
+                    else:
+                        # weighted average cost for scale-in add
+                        total_size = open_trade['size'] + abs(size)
+                        avg_price = (open_trade['buy_price'] * open_trade['size'] + price * abs(size)) / total_size
+                        open_trade['buy_price'] = round(avg_price, 4)
+                        open_trade['size'] = total_size
+                        open_trade['pyramided'] = True
+                        open_trade['orders'].append({'date': date_str, 'price': round(price, 4),
+                                                     'size': abs(size), 'type': '加仓'})
                 elif size < 0 and open_trade:
                     hold = (dt_obj - pd.Timestamp(open_trade['buy_date'])).days
                     ret_pct = round(
@@ -125,6 +248,9 @@ def run_single_stock(args):
                         'return_pct': ret_pct,
                         'hold_days':  hold,
                         'pnl':        pnl,
+                        'pyramided':  open_trade['pyramided'],
+                        'orders':     open_trade['orders'],
+                        'sell_size':  abs(size),
                     })
                     open_trade = None
 
@@ -133,8 +259,10 @@ def run_single_stock(args):
             try:
                 df_last = pd.read_parquet(parquet_path, columns=['trade_date', 'close_qfq'])
                 last_price = round(float(df_last.sort_values('trade_date')['close_qfq'].iloc[-1]), 4)
+                last_date  = pd.Timestamp(df_last['trade_date'].max())
             except Exception:
                 last_price = open_trade['buy_price']
+                last_date  = pd.Timestamp(open_trade['buy_date'])
             ret_pct = round((last_price - open_trade['buy_price']) / open_trade['buy_price'] * 100, 4)
             pnl = round((last_price - open_trade['buy_price']) * open_trade['size'], 2)
             trades_out.append({
@@ -145,8 +273,11 @@ def run_single_stock(args):
                 'sell_date':  '持仓中',
                 'sell_price': last_price,
                 'return_pct': ret_pct,
-                'hold_days':  (pd.Timestamp(df_last['trade_date'].max()) - pd.Timestamp(open_trade['buy_date'])).days,
+                'hold_days':  (last_date - pd.Timestamp(open_trade['buy_date'])).days,
                 'pnl':        pnl,
+                'pyramided':  open_trade.get('pyramided', False),
+                'orders':     open_trade.get('orders', []),
+                'sell_size':  0,
             })
 
         # avg_return_pct: mean of per-trade return_pct (%), closed trades only
@@ -204,7 +335,8 @@ def main():
     ]
     trades_fields = [
         'ts_code', 'name', 'buy_date', 'buy_price', 'sell_date',
-        'sell_price', 'return_pct', 'hold_days', 'pnl',
+        'sell_price', 'return_pct', 'hold_days', 'pnl', 'pyramided',
+        'orders', 'sell_size',
     ]
 
     with open(OUTPUT_DIR / 'stats_summary.csv', 'w', newline='', encoding='utf-8') as f:

@@ -47,6 +47,11 @@ if __name__ == "__main__":
         # 开发时直接运行py文件
         app_dir = Path(__file__).parent
 
+    # 将项目根目录加入 sys.path，确保无论从哪里运行都能找到 data 包
+    project_root = app_dir.parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+
     env_file = app_dir / ".env"
 
     if env_file.exists():

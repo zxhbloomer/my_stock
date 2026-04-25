@@ -163,7 +163,7 @@ if __name__ == "__main__":
     from pathlib import Path
 
     # 默认配置文件（相对于项目根目录）
-    default_config = Path(__file__).parent.parent / "configs" / "workflow_config_lightgbm_Alpha158.yaml"
+    default_config = Path(__file__).parent.parent / "configs" / "workflow_config_lightgbm_BBI.yaml"
     config_file = str(default_config)
 
     if len(sys.argv) > 1:

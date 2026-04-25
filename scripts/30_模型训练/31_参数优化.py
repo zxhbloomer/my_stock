@@ -19,8 +19,8 @@ LightGBM参数优化脚本（改进版）
 import sys
 from pathlib import Path
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
+# 添加项目根目录到Python路径 (从 scripts/30_模型训练/ 回到根目录)
+project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
@@ -312,7 +312,7 @@ class ImprovedLightGBMOptimizer:
     def save_results(self, output_path=None) -> None:
         """保存优化结果"""
         if output_path is None:
-            project_root = Path(__file__).parent.parent
+            project_root = Path(__file__).parent.parent.parent
             output_path = project_root / 'docs' / 'lightgbm_optimization_results_improved.txt'
 
         output_path = Path(output_path)
@@ -326,7 +326,13 @@ class ImprovedLightGBMOptimizer:
             f.write(f"优化时间: {datetime.now()}\n")
             f.write(f"股票池: {self.instruments}\n")
             f.write(f"验证集: {self.valid_start} ~ {self.valid_end}\n")
-            f.write(f"优化迭代: {len(self.optimization_history)}\n\n")
+            f.write(f"优化迭代: {len(self.optimization_history)}\n")
+
+            # 显示handler类型
+            if self.handler_config:
+                handler_class = self.handler_config.get('class', 'Unknown')
+                f.write(f"Handler类型: {handler_class}\n")
+            f.write("\n")
 
             f.write(f"🏆 最优IC均值: {self.best_score:.4f}\n\n")
 

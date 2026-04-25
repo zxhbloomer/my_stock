@@ -1,6 +1,6 @@
 """
 Handler模块
 """
-from .custom_handler import CustomAlphaHandler, SimpleAlphaHandler
+from .custom_handler import BBIAlphaHandler
 
-__all__ = ['CustomAlphaHandler', 'SimpleAlphaHandler']
+__all__ = ['BBIAlphaHandler']

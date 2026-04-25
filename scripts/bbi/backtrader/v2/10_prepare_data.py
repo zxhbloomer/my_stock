@@ -7,6 +7,7 @@ from config import (
     DB_URL, START_DATE, END_DATE,
     FILTER_MIN_CIRC_MV, FILTER_MIN_AMOUNT,
     STOCK_DATA_DIR, OUTPUT_DIR,
+    BBI_PERIODS,
 )
 
 
@@ -62,7 +63,7 @@ def main():
 
     # Step 3: fetch OHLCV + BBI per stock
     sql_data = text("""
-        SELECT trade_date, open_qfq, high_qfq, low_qfq, close_qfq, vol, bbi_qfq
+        SELECT trade_date, open_qfq, high_qfq, low_qfq, close_qfq, vol
         FROM tushare_v2."063_stk_factor_pro"
         WHERE ts_code = :ts_code
           AND trade_date >= CAST(:start_date AS date)
@@ -79,10 +80,24 @@ def main():
                 "start_date": START_DATE,
                 "end_date": end_date,
             })
-            if len(df) < 60:
+            if len(df) < max(BBI_PERIODS) + 10:
+                skipped += 1
+                continue
+            # Calculate BBI(5,10,20,60) in Python; DB bbi_qfq uses different formula
+            for p in BBI_PERIODS:
+                df[f'ma{p}'] = df['close_qfq'].rolling(p).mean()
+            ma_cols = [f'ma{p}' for p in BBI_PERIODS]
+            df['bbi_qfq'] = df[ma_cols].mean(axis=1)
+            # keep ma60 as separate column for MA60 filter in strategy
+            df = df.drop(columns=[f'ma{p}' for p in BBI_PERIODS if p != 60])
+            df = df.dropna(subset=['bbi_qfq'])
+            if len(df) < 10:
                 skipped += 1
                 continue
             df["name"] = row["name"]
+            # 注意：若后续加入 moneyflow/cyq_perf 等盘后数据，必须在此处 shift(1)
+            # 原因：这些数据在 T 日收盘后才可得，只能用于 T+1 日决策，直接用 T 日数据属于未来数据泄露
+            # 示例：df['net_mf_amount'] = df['net_mf_amount'].shift(1)
             df.to_parquet(STOCK_DATA_DIR / f"{ts_code}.parquet", index=False)
             if (i + 1) % 100 == 0:
                 print(f"  {i + 1}/{len(df_stocks)} done...")

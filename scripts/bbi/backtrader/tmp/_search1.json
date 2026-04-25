@@ -1,0 +1,37 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\Administrator\miniconda3\Scripts\tvly.exe\__main__.py", line 5, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\tavily_cli\cli.py", line 156, in main
+    cli()
+    ~~~^^
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\click\core.py", line 1442, in __call__
+    return self.main(*args, **kwargs)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\click\core.py", line 1363, in main
+    rv = self.invoke(ctx)
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\click\core.py", line 1830, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\click\core.py", line 1226, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\click\core.py", line 794, in invoke
+    return callback(*args, **kwargs)
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\tavily_cli\common.py", line 29, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\tavily_cli\commands\search.py", line 101, in search
+    print_search_results(response, json_mode=json_output, output_file=output_file)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\tavily_cli\output.py", line 85, in print_search_results
+    emit(data, json_mode=True, output_file=output_file, pretty=True)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\tavily_cli\output.py", line 76, in emit
+    click.echo(text)
+    ~~~~~~~~~~^^^^^^
+  File "C:\Users\Administrator\miniconda3\Lib\site-packages\click\utils.py", line 321, in echo
+    file.write(out)  # type: ignore
+    ~~~~~~~~~~^^^^^
+UnicodeEncodeError: 'gbk' codec can't encode character '\u2022' in position 365: illegal multibyte sequence

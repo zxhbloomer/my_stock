@@ -1,22 +1,12 @@
 """
 因子IC分析脚本（MLflow集成版）
-替代 notebooks/factor_ic_analysis.ipynb，提供自动化的因子有效性分析
 
 功能：
-1. 加载所有因子库（Alpha158 + AlphaFactors + ChinaMarketFactors）
+1. 加载因子库（Alpha158 + AlphaFactors + ChinaMarketFactors + BBI）
 2. 计算每个因子的IC值（Information Coefficient）
 3. 统计分析：IC均值、标准差、IR（Information Ratio）
 4. 生成可视化图表
 5. 筛选强因子并保存到MLflow实验管理系统
-
-改进：
-- 使用MLflow管理IC分析实验（与train_model、backtest_analysis统一）
-- 支持历史记录查询和实验对比
-- 自动记录参数、指标、数据和图表
-
-作者：Claude Code
-日期：2025-11-15
-更新：2025-11-15（MLflow集成）
 """
 import sys
 import os
@@ -36,9 +26,9 @@ plt.rcParams['axes.unicode_minus'] = False
 # 忽略警告
 warnings.filterwarnings('ignore')
 
-# 添加项目路径
-project_root = Path(__file__).parent.parent
-sys.path.append(str(project_root))
+# 添加项目路径（从 scripts/20_因子分析/ 回到项目根目录）
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 
 def initialize_qlib():
@@ -65,7 +55,7 @@ def load_all_factors():
     Returns:
         tuple: (因子表达式列表, 因子名称列表, 因子库来源列表)
     """
-    from qlib.contrib.data.handler import Alpha158
+    from qlib.contrib.data.handler import Alpha158DL
     from factors.alpha_factors import AlphaFactors
     from factors.china_market_factors import ChinaMarketFactors
 
@@ -78,63 +68,55 @@ def load_all_factors():
     all_libraries = []
 
     # 1. Alpha158因子
-    # 使用Alpha158DL的静态方法获取完整的158因子配置
-    from qlib.contrib.data.handler import Alpha158DL
     conf = {
-        "kbar": {},  # K线特征(9个)
-        "price": {   # 价格特征
-            "windows": [0, 1, 2, 3, 4],
-            "feature": ["OPEN", "HIGH", "LOW", "CLOSE", "VWAP"],
-        },
-        "volume": {  # 成交量特征
-            "windows": [0, 1, 2, 3, 4],
-        },
-        "rolling": {  # 滚动窗口特征(大量技术指标)
-            "windows": [5, 10, 20, 30, 60],
-        },
+        "kbar": {},
+        "price": {"windows": [0, 1, 2, 3, 4], "feature": ["OPEN", "HIGH", "LOW", "CLOSE", "VWAP"]},
+        "volume": {"windows": [0, 1, 2, 3, 4]},
+        "rolling": {"windows": [5, 10, 20, 30, 60]},
     }
-    # get_feature_config返回tuple: (表达式列表, 名称列表)
-    alpha158_result = Alpha158DL.get_feature_config(conf)
-    alpha158_features = alpha158_result[0]  # 只取表达式列表
-    alpha158_count = len(alpha158_features)
-
-    for i, expr in enumerate(alpha158_features, 1):
+    alpha158_fields, _ = Alpha158DL.get_feature_config(conf)
+    for i, expr in enumerate(alpha158_fields, 1):
         all_features.append(expr)
         all_names.append(f"Alpha158_{i}")
         all_libraries.append("Alpha158")
-
-    print(f"[OK] Alpha158: {alpha158_count} 个因子")
+    print(f"[OK] Alpha158: {len(alpha158_fields)} 个因子")
 
     # 2. AlphaFactors因子
     alpha_features = AlphaFactors.get_all_features()
     alpha_names = AlphaFactors.get_feature_names()
-    alpha_count = len(alpha_features)
-
     for expr, name in zip(alpha_features, alpha_names):
         all_features.append(expr)
         all_names.append(f"AlphaFactor_{name}")
         all_libraries.append("AlphaFactors")
-
-    print(f"[OK] AlphaFactors: {alpha_count} 个因子")
+    print(f"[OK] AlphaFactors: {len(alpha_features)} 个因子")
 
     # 3. ChinaMarketFactors因子
     china_features = ChinaMarketFactors.get_all_features()
     china_names = ChinaMarketFactors.get_feature_names()
-    china_count = len(china_features)
-
     for expr, name in zip(china_features, china_names):
         all_features.append(expr)
         all_names.append(f"ChinaFactor_{name}")
         all_libraries.append("ChinaMarketFactors")
+    print(f"[OK] ChinaMarketFactors: {len(china_features)} 个因子")
 
-    print(f"[OK] ChinaMarketFactors: {china_count} 个因子")
+    # 4. BBI因子
+    bbi_expr = "(Mean($close,3)+Mean($close,6)+Mean($close,12)+Mean($close,24))/4"
+    bbi_fields = [
+        f"({bbi_expr})/$close",
+        f"$close/({bbi_expr})-1",
+        f"({bbi_expr})/Ref({bbi_expr},5)-1",
+        f"Sum(If($close>({bbi_expr}),1,0),10)/10",
+        f"($close-({bbi_expr}))/Std({bbi_expr},11)",
+    ]
+    bbi_names = ["BBI", "BBI_DEV", "BBI_SLOPE", "BBI_ABOVE_RATIO", "BBI_BOLL"]
+    for expr, name in zip(bbi_fields, bbi_names):
+        all_features.append(expr)
+        all_names.append(name)
+        all_libraries.append("BBI")
+    print(f"[OK] BBI因子: {len(bbi_fields)} 个因子")
 
     total = len(all_features)
-    print(f"\n总计: {total} 个因子")
-    print(f"   - Alpha158: {alpha158_count}")
-    print(f"   - AlphaFactors: {alpha_count}")
-    print(f"   - ChinaMarketFactors: {china_count}\n")
-
+    print(f"\n总计: {total} 个因子\n")
     return all_features, all_names, all_libraries
 
 
@@ -384,7 +366,7 @@ def run_ic_analysis(
         print(f"  - IC最小值: {strong_factors['ic_mean'].min():.4f}")
 
         print(f"\n按因子库统计:")
-        for lib in ['Alpha158', 'AlphaFactors', 'ChinaMarketFactors']:
+        for lib in ['Alpha158', 'AlphaFactors', 'ChinaMarketFactors', 'BBI']:
             lib_total = len(ic_df[ic_df['library'] == lib])
             lib_strong = len(strong_factors[strong_factors['library'] == lib])
             if lib_total > 0:
@@ -461,14 +443,14 @@ def generate_charts(ic_df, strong_factors, ic_results, output_dir):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
     # 强因子数量
-    lib_stats['数量'].plot(kind='bar', ax=ax1, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
+    lib_stats['数量'].plot(kind='bar', ax=ax1)
     ax1.set_title('强因子数量（按因子库）')
     ax1.set_ylabel('因子数量')
     ax1.set_xlabel('因子库')
     ax1.grid(True, alpha=0.3, axis='y')
 
     # IC均值
-    lib_stats['IC均值'].plot(kind='bar', ax=ax2, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
+    lib_stats['IC均值'].plot(kind='bar', ax=ax2)
     ax2.set_title('强因子IC均值（按因子库）')
     ax2.set_ylabel('IC均值')
     ax2.set_xlabel('因子库')

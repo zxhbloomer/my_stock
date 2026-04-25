@@ -1,0 +1,44 @@
+# scripts/bbi/config.yaml
+
+database:
+  url: "postgresql://root:123456@localhost:5432/my_stock"
+  schema: "tushare_v2"
+
+qlib_data:
+  output_dir: "D:/Data/my_stock"
+  region: "cn"
+
+data:
+  start_date: "2018-01-01"
+  end_date: "2026-04-16"
+
+segments:
+  train: ["2018-01-01", "2022-12-31"]
+  valid: ["2023-01-01", "2024-06-30"]
+  test:  ["2024-07-01", "2026-04-15"]
+
+market:
+  universe: "all"
+  benchmark: "SH000905"
+
+stock_filter:
+  min_circ_mv: 20
+  min_amount: 5000
+  exclude_bj: true
+  exclude_st: true
+  min_list_days: 365
+
+model:
+  topk: 50
+  n_drop: 5
+
+backtest:
+  limit_threshold: 0.095
+  open_cost: 0.0005
+  close_cost: 0.0015
+  min_cost: 5
+  deal_price: "close"
+
+mlflow:
+  experiment_name: "bbi_alpha"
+  tracking_uri: "mlruns"

@@ -17,6 +17,27 @@ N_WORKERS             = 8
 DB_URL = "postgresql://root:123456@localhost:5432/my_stock"
 SCHEMA = "tushare_v2"
 
+# v2: BBI uses MA(5,10,20,60) instead of DB's MA(3,6,12,24)
+BBI_PERIODS = (5, 10, 20, 60)
+
+# v2: MACD momentum confirmation
+MACD_FAST   = 12
+MACD_SLOW   = 26
+MACD_SIGNAL = 9
+
+# v2: scale-in position management
+PYRAMID_FIRST_RATIO  = 0.5   # initial buy: 50% of available cash
+PYRAMID_ADD_TRIGGER  = 0.03  # add remaining 50% when profit >= 3%
+
+# v2: ATR trailing stop
+ATR_PERIOD     = 14
+ATR_MULTIPLIER = 3.5   # v2.4: widened from 2.5 → 3.5 to give trends more room
+
+# v2: minimum hold days before exit signals are evaluated
+MIN_HOLD_DAYS  = 10    # v2.4: extended from 5 → 10 days
+# v2: hard stop loss — exit immediately regardless of hold period
+HARD_STOP_LOSS = 0.08  # 8%
+
 OUTPUT_DIR     = Path(__file__).parent / "output"
 STOCK_DATA_DIR = OUTPUT_DIR / "stock_data"
 KLINE_DATA_DIR = OUTPUT_DIR / "kline_data"
