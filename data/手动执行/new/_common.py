@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text, inspect
 
 # 加载项目根目录的 .env
-load_dotenv(Path(__file__).resolve().parents[3] / ".env")、
+load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 # ── 配置 ──────────────────────────────────────────────
 TOKEN    = os.environ["TUSHARE_TOKEN"]
