@@ -65,23 +65,37 @@ def main():
     df_stocks = df_basic[df_basic["ts_code"].isin(liquid_codes)].reset_index(drop=True)
     print(f"Step 2: {len(df_stocks)} stocks after liquidity filter")
 
-    # Step 3: fetch OHLCV + moneyflow + cyq_perf per stock
-    # LEFT JOIN 保证没有 moneyflow/cyq_perf 的日期也保留（填 NaN 后 shift）
+    # Step 3: 批量拉 moneyflow 和 cyq_perf 到内存，再在 Python 里 merge
+    # 避免逐股 SQL JOIN 导致连接超时
+    print("Loading moneyflow data into memory...")
+    sql_mf = text("""
+        SELECT ts_code, trade_date, buy_lg_vol, sell_lg_vol, net_mf_amount
+        FROM tushare_v2."080_moneyflow"
+        WHERE trade_date >= CAST(:start_date AS date)
+          AND trade_date <= CAST(:end_date AS date)
+    """)
+    print("Loading cyq_perf data into memory...")
+    sql_cyq = text("""
+        SELECT ts_code, trade_date, winner_rate, weight_avg
+        FROM tushare_v2."061_cyq_perf"
+        WHERE trade_date >= CAST(:start_date AS date)
+          AND trade_date <= CAST(:end_date AS date)
+    """)
+    with engine.connect() as conn:
+        df_mf  = _query(conn, sql_mf,  {"start_date": START_DATE, "end_date": end_date})
+        df_cyq = _query(conn, sql_cyq, {"start_date": START_DATE, "end_date": end_date})
+    df_mf['trade_date']  = pd.to_datetime(df_mf['trade_date'])
+    df_cyq['trade_date'] = pd.to_datetime(df_cyq['trade_date'])
+    print(f"  moneyflow: {len(df_mf)} rows, cyq_perf: {len(df_cyq)} rows")
+
+    # Step 4: fetch OHLCV per stock, merge in Python
     sql_data = text("""
-        SELECT
-            f.trade_date,
-            f.open_qfq, f.high_qfq, f.low_qfq, f.close_qfq, f.vol,
-            m.buy_lg_vol, m.sell_lg_vol, m.net_mf_amount,
-            c.winner_rate, c.weight_avg
-        FROM tushare_v2."063_stk_factor_pro" f
-        LEFT JOIN tushare_v2."080_moneyflow" m
-            ON f.ts_code = m.ts_code AND f.trade_date = m.trade_date
-        LEFT JOIN tushare_v2."061_cyq_perf" c
-            ON f.ts_code = c.ts_code AND f.trade_date = c.trade_date
-        WHERE f.ts_code = :ts_code
-          AND f.trade_date >= CAST(:start_date AS date)
-          AND f.trade_date <= CAST(:end_date AS date)
-        ORDER BY f.trade_date
+        SELECT trade_date, open_qfq, high_qfq, low_qfq, close_qfq, vol
+        FROM tushare_v2."063_stk_factor_pro"
+        WHERE ts_code = :ts_code
+          AND trade_date >= CAST(:start_date AS date)
+          AND trade_date <= CAST(:end_date AS date)
+        ORDER BY trade_date
     """)
 
     skipped = 0
@@ -96,6 +110,14 @@ def main():
             if len(df) < max(BBI_PERIODS) + 10:
                 skipped += 1
                 continue
+
+            df['trade_date'] = pd.to_datetime(df['trade_date'])
+
+            # Python-side merge（避免 SQL JOIN 超时）
+            mf_stock  = df_mf[df_mf['ts_code'] == ts_code][['trade_date','buy_lg_vol','sell_lg_vol','net_mf_amount']]
+            cyq_stock = df_cyq[df_cyq['ts_code'] == ts_code][['trade_date','winner_rate','weight_avg']]
+            df = df.merge(mf_stock,  on='trade_date', how='left')
+            df = df.merge(cyq_stock, on='trade_date', how='left')
 
             # BBI(5,10,20,60)
             for p in BBI_PERIODS:

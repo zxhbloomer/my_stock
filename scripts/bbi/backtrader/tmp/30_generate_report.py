@@ -23,15 +23,6 @@ def build_kline_json(ts_code, df_trades):
     dea   = dif.ewm(span=9, adjust=False).mean()
     hist  = (dif - dea) * 2
 
-    # ATR(14) trailing stop line — only shown during holding periods
-    atr_period = 14
-    atr_multiplier = 2.5
-    high = df['high_qfq']
-    low  = df['low_qfq']
-    prev_close = close.shift(1)
-    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
-    atr14 = tr.ewm(com=atr_period - 1, adjust=False).mean()
-
     dates   = [str(d) for d in df['trade_date'].tolist()]
     candles = df[['open_qfq', 'close_qfq', 'low_qfq', 'high_qfq']].round(4).values.tolist()
     bbi     = df['bbi_qfq'].round(4).tolist()
@@ -39,7 +30,6 @@ def build_kline_json(ts_code, df_trades):
     macd_dif  = dif.round(4).tolist()
     macd_dea  = dea.round(4).tolist()
     macd_hist = hist.round(4).tolist()
-    atr_vals  = atr14.round(4).tolist()
 
     sub = df_trades[df_trades['ts_code'] == ts_code]
 
@@ -68,7 +58,6 @@ def build_kline_json(ts_code, df_trades):
         'dates': dates, 'candles': candles,
         'bbi': bbi, 'ma60': ma60,
         'macd_dif': macd_dif, 'macd_dea': macd_dea, 'macd_hist': macd_hist,
-        'atr_vals': atr_vals,
         'buy_orders': buy_orders,
         'sells': sells, 'sell_sizes': sell_sizes,
         'pyramided': pyramided_flags,
@@ -139,10 +128,10 @@ def make_ranking_html(df_sorted, total_stocks, avg_win_rate, avg_annual_ret,
     )
     html = (
         '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">'
-        '<title>BBI回测排名</title>'
+        '<title>BBI tmp(ATR止盈)回测排名</title>'
         '<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>'
         '<style>' + css + '</style></head><body>'
-        '<div class="header"><h2 style="margin:0">BBI回测排名</h2>'
+        '<div class="header"><h2 style="margin:0">BBI tmp(ATR止盈)回测排名</h2>'
         '<div class="stats-bar">'
         '<div class="stat">总股票数: <span>' + str(total_stocks) + '</span></div>'
         '<div class="stat">平均胜率: <span>' + str(avg_win_rate) + '%</span></div>'
@@ -240,10 +229,10 @@ def make_detail_html(df_sorted, df_trades, total_stocks, avg_win_rate, avg_annua
         '.left-table-wrap tr.active td{background:#d5e8f7 !important}'
         '.right-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:12px;gap:12px}'
         '.stats-cards{display:flex;gap:10px;flex-shrink:0}'
-        '.card{background:white;border-radius:8px;padding:6px 12px;flex:1;text-align:center}'
-        '.card .label{font-size:.7em;color:#888}'
-        '.card .value{font-size:1.1em;font-weight:bold;color:#2c3e50}'
-        '#kline-chart{background:white;border-radius:8px;flex:0 0 48%;min-height:0}'
+        '.card{background:white;border-radius:8px;padding:10px 16px;flex:1;text-align:center}'
+        '.card .label{font-size:.75em;color:#888}'
+        '.card .value{font-size:1.3em;font-weight:bold;color:#2c3e50}'
+        '#kline-chart{background:white;border-radius:8px;flex:0 0 60%;min-height:0}'
         '.trade-table-wrap{background:white;border-radius:8px;flex:1;overflow-y:auto;min-height:0}'
         '.table-toolbar{display:flex;justify-content:flex-end;padding:6px 8px;border-bottom:1px solid #eee}'
         '.btn-reset{padding:4px 12px;background:#34495e;color:white;border:none;border-radius:4px;cursor:pointer;font-size:.82em}'
@@ -280,7 +269,6 @@ function loadStock(code) {
   document.getElementById('c-calmar').textContent  = s.calmar_ratio      != null ? s.calmar_ratio.toFixed(2)           : '--';
   fetch('kline_data/' + code + '.json').then(r => r.json()).then(data => {
     currentData = data;
-    currentCode = code;
     renderChart(data, null, null);
     renderTrades(code, data);
   });
@@ -351,33 +339,10 @@ function renderChart(data, buyDate, sellDate) {
     itemStyle: { color: v >= 0 ? '#e74c3c' : '#2ecc71' }
   }));
 
-  // ATR trailing stop line: computed per holding period, only shown while in position
-  const atrStopLine = new Array(data.dates.length).fill(null);
-  const atrTrades = tradesData[currentCode] || [];
-  atrTrades.forEach(trade => {
-    const buyDate2 = trade.buy_date;
-    const sellDate2 = trade.sell_date === '持仓中' ? data.dates[data.dates.length - 1] : trade.sell_date;
-    const buyIdx = data.dates.indexOf(buyDate2);
-    const sellIdx = data.dates.indexOf(sellDate2);
-    if (buyIdx < 0) return;
-    let peakClose = null, trailStop = null;
-    const endIdx = sellIdx >= 0 ? sellIdx : data.dates.length - 1;
-    for (let i = buyIdx; i <= endIdx; i++) {
-      const c = data.candles[i][1];
-      if (peakClose === null || c > peakClose) peakClose = c;
-      const atr = data.atr_vals ? data.atr_vals[i] : null;
-      if (atr && atr > 0) {
-        const ns = peakClose - 2.5 * atr;
-        if (trailStop === null || ns > trailStop) trailStop = ns;
-      }
-      if (trailStop !== null) atrStopLine[i] = parseFloat(trailStop.toFixed(4));
-    }
-  });
-
   chartMain.setOption({
     animation: false,
     tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-    legend: { data: ['K线', '收盘价', 'BBI', 'MA60', 'ATR止盈', '买入', '卖出', 'DIF', 'DEA'], top: 4 },
+    legend: { data: ['K线', '收盘价', 'BBI', 'MA60', '买入', '卖出', 'DIF', 'DEA'], top: 4 },
     axisPointer: { link: [{ xAxisIndex: 'all' }] },
     dataZoom: [
       { type: 'inside', xAxisIndex: [0, 1], startValue: startIdx, endValue: data.dates.length - 1 },
@@ -404,8 +369,6 @@ function renderChart(data, buyDate, sellDate) {
         lineStyle: { color: '#f39c12', width: 1.5 }, showSymbol: false, smooth: true },
       { name: 'MA60', type: 'line', data: data.ma60, xAxisIndex: 0, yAxisIndex: 0,
         lineStyle: { color: '#3498db', width: 1.2, type: 'dashed' }, showSymbol: false },
-      { name: 'ATR止盈', type: 'line', data: atrStopLine, xAxisIndex: 0, yAxisIndex: 0,
-        lineStyle: { color: '#e67e22', width: 1.5, type: 'dotted' }, showSymbol: false, connectNulls: false },
       { name: '买入', type: 'scatter', data: buyPoints, xAxisIndex: 0, yAxisIndex: 0,
         symbol: 'triangle', symbolSize: 10, itemStyle: { color: '#e74c3c' }, label: { show: true } },
       { name: '卖出', type: 'scatter', data: sellPoints, xAxisIndex: 0, yAxisIndex: 0,
@@ -571,11 +534,11 @@ else { const first = document.querySelector('#rankBody tr'); if (first) first.cl
 
     html = (
         '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">'
-        '<title>BBI回测详情</title>'
+        '<title>BBI tmp(ATR止盈)回测详情</title>'
         '<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>'
         '<style>' + css + '</style></head><body>'
         '<div class="header">'
-        '<h3 style="margin:0">BBI回测详情</h3>'
+        '<h3 style="margin:0">BBI tmp(ATR止盈)回测详情</h3>'
         '<div class="header-bar">'
         '<div class="header-stat">总股票数: <span>' + str(total_stocks) + '</span></div>'
         '<div class="header-stat">平均胜率: <span>' + str(avg_win_rate) + '%</span></div>'
@@ -659,7 +622,7 @@ def main():
 if __name__ == '__main__':
     main()
     import subprocess, time, webbrowser
-    port = 8082
+    port = 8083
     output_dir = str(OUTPUT_DIR)
     subprocess.Popen(
         ['python', '-m', 'http.server', str(port)],

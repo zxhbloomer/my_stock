@@ -73,3 +73,6 @@ list_*.py
 nul
 backtest_report.html
 validation_results/
+
+# 回测输出目录（生成文件，不纳入版本控制）
+**/output/

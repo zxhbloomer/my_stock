@@ -1,8 +1,7 @@
-# BBI v5b — exit optimization + moneyflow large-order net inflow entry filter
-# Hypothesis: combining exit optimization (v5a) with institutional money flow confirmation
-#             reduces false breakout entries while keeping real trend entries
-# Entry filter: lg_net_vol (T-1 large order net vol) > 0 — institutional net buying yesterday
-# 数据时序规则：lg_net_vol 已在 10_prepare_data_v5.py 中 shift(1)，策略直接使用即可
+# BBI v5e — same as v5d but chip exit threshold raised to 85
+# v5d: winner_rate>80 → calmar=0.094 (+20% vs v5a), but cuts 60d+ trades too aggressively
+# v5e hypothesis: threshold 85 retains more long-hold winners while still reducing drawdown
+# 数据时序规则：winner_rate 已在 10_prepare_data_v5.py 中 shift(1)
 import csv
 import multiprocessing
 import pandas as pd
@@ -18,16 +17,17 @@ from config import (
     ATR_PERIOD, HARD_STOP_LOSS,
 )
 
-ATR_MULTIPLIER_V5B = 4.5
-MIN_HOLD_DAYS_V5B  = 20
-BBI_DECLINE_BARS   = 5
-TMP_OUTPUT_DIR     = Path(__file__).parent / "output"
-V5_STOCK_DATA_DIR  = TMP_OUTPUT_DIR / "stock_data_v5"
-OUTPUT_SUBDIR      = TMP_OUTPUT_DIR / "v5b"
+ATR_MULTIPLIER_V5E  = 4.5
+MIN_HOLD_DAYS_V5E   = 20
+BBI_DECLINE_BARS    = 5
+CHIP_EXIT_THRESHOLD = 85.0   # raised from 80 → 85 to retain more long-hold winners
+TMP_OUTPUT_DIR      = Path(__file__).parent / "output"
+V5_STOCK_DATA_DIR   = TMP_OUTPUT_DIR / "stock_data_v5"
+OUTPUT_SUBDIR       = TMP_OUTPUT_DIR / "v5e"
 
 
 class BBIDataV5(bt.feeds.PandasData):
-    lines = ('bbi', 'ma60', 'lg_net_vol',)
+    lines = ('bbi', 'ma60', 'winner_rate',)
     params = (
         ('datetime', None),
         ('open',         'open_qfq'),
@@ -38,7 +38,7 @@ class BBIDataV5(bt.feeds.PandasData):
         ('openinterest', -1),
         ('bbi',          'bbi_qfq'),
         ('ma60',         'ma60'),
-        ('lg_net_vol',   'lg_net_vol'),   # T-1 大单净流入量（已 shift）
+        ('winner_rate',  'winner_rate'),
     )
 
 
@@ -58,11 +58,11 @@ class AShareAllInSizer(bt.Sizer):
         return self.broker.getposition(data).size
 
 
-class BBIV5bStrategy(bt.Strategy):
+class BBIV5eStrategy(bt.Strategy):
     def __init__(self):
         self.bbi_line    = self.data.bbi
         self.close_line  = self.data.close
-        self.lg_net_line = self.data.lg_net_vol  # T-1 大单净流入，已 shift
+        self.winner_line = self.data.winner_rate
         macd_ind = bt.indicators.MACD(
             self.data.close,
             period_me1=MACD_FAST, period_me2=MACD_SLOW, period_signal=MACD_SIGNAL,
@@ -83,9 +83,13 @@ class BBIV5bStrategy(bt.Strategy):
         cross_up  = self.close_line[-1] < self.bbi_line[-1] and self.close_line[0] > self.bbi_line[0]
         bbi_slope = self.bbi_line[0] > self.bbi_line[-3]
         macd_ok   = self.macd_line[0] > self.signal_line[0] or self.macd_line[0] > 0
-        # 机构资金确认：T-1 日大单净流入 > 0（已 shift，无未来数据泄露）
-        mf_ok = self.lg_net_line[0] > 0 if self.lg_net_line[0] == self.lg_net_line[0] else True
-        return cross_up and bbi_slope and macd_ok and mf_ok
+        return cross_up and bbi_slope and macd_ok
+
+    def _chip_exit(self):
+        wr = self.winner_line[0]
+        if wr != wr:
+            return False
+        return wr > CHIP_EXIT_THRESHOLD
 
     def _exit_signal(self):
         cross_down = self.close_line[-1] > self.bbi_line[-1] and self.close_line[0] < self.bbi_line[0]
@@ -94,7 +98,7 @@ class BBIV5bStrategy(bt.Strategy):
         macd_dead = (self.macd_line[0] < self.signal_line[0]
                      and self.macd_line[0] < 0
                      and bbi_sustained_decline)
-        return cross_down or macd_dead
+        return cross_down or macd_dead or self._chip_exit()
 
     def _update_trail(self):
         c = self.close_line[0]
@@ -102,7 +106,7 @@ class BBIV5bStrategy(bt.Strategy):
             self.peak_close = c
         atr_val = self.atr_ind[0]
         if atr_val and atr_val > 0:
-            new_stop = self.peak_close - ATR_MULTIPLIER_V5B * atr_val
+            new_stop = self.peak_close - ATR_MULTIPLIER_V5E * atr_val
             if self.trail_stop is None or new_stop > self.trail_stop:
                 self.trail_stop = new_stop
 
@@ -126,7 +130,7 @@ class BBIV5bStrategy(bt.Strategy):
         if pos.size > 0:
             if (self.close_line[0] - pos.price) / pos.price <= -HARD_STOP_LOSS:
                 return True
-        if len(self) - self.buy_bar < MIN_HOLD_DAYS_V5B:
+        if len(self) - self.buy_bar < MIN_HOLD_DAYS_V5E:
             return False
         return self._exit_signal() or self._trail_triggered()
 
@@ -176,12 +180,11 @@ def run_single_stock(args):
         df.index = pd.to_datetime(df['trade_date'])
         df = df.sort_index()
 
-        # 确保 lg_net_vol 列存在（v5 数据才有）
-        if 'lg_net_vol' not in df.columns:
+        if 'winner_rate' not in df.columns:
             return None, []
 
         cerebro = bt.Cerebro()
-        cerebro.addstrategy(BBIV5bStrategy)
+        cerebro.addstrategy(BBIV5eStrategy)
         data = BBIDataV5(dataname=df)
         cerebro.adddata(data)
         cerebro.broker.setcash(INIT_CASH)
@@ -221,13 +224,13 @@ def run_single_stock(args):
                         open_trade = {'buy_date': date_str, 'buy_price': round(price, 4),
                                       'size': abs(size), 'pyramided': False,
                                       'orders': [{'date': date_str, 'price': round(price, 4),
-                                                  'size': abs(size), 'type': '建仓'}]}
+                                                  'size': abs(size), 'type': 'open'}]}
                     else:
                         total_size = open_trade['size'] + abs(size)
                         avg_price  = (open_trade['buy_price'] * open_trade['size'] + price * abs(size)) / total_size
                         open_trade.update({'buy_price': round(avg_price, 4), 'size': total_size, 'pyramided': True})
                         open_trade['orders'].append({'date': date_str, 'price': round(price, 4),
-                                                     'size': abs(size), 'type': '加仓'})
+                                                     'size': abs(size), 'type': 'add'})
                 elif size < 0 and open_trade:
                     hold    = (dt_obj - pd.Timestamp(open_trade['buy_date'])).days
                     ret_pct = round((price - open_trade['buy_price']) / open_trade['buy_price'] * 100, 4)
@@ -251,13 +254,13 @@ def run_single_stock(args):
             ret_pct = round((last_price - open_trade['buy_price']) / open_trade['buy_price'] * 100, 4)
             trades_out.append({'ts_code': ts_code, 'name': name,
                                'buy_date': open_trade['buy_date'], 'buy_price': open_trade['buy_price'],
-                               'sell_date': '持仓中', 'sell_price': last_price, 'return_pct': ret_pct,
+                               'sell_date': 'open', 'sell_price': last_price, 'return_pct': ret_pct,
                                'hold_days': (last_date - pd.Timestamp(open_trade['buy_date'])).days,
                                'pnl': round((last_price - open_trade['buy_price']) * open_trade['size'], 2),
                                'pyramided': open_trade.get('pyramided', False),
                                'orders': open_trade.get('orders', []), 'sell_size': 0})
 
-        closed      = [t for t in trades_out if t['sell_date'] != '持仓中']
+        closed      = [t for t in trades_out if t['sell_date'] != 'open']
         avg_ret_pct = round(sum(t['return_pct'] for t in closed) / len(closed), 4) if closed else 0.0
 
         return {'ts_code': ts_code, 'name': name, 'trade_count': total_trades,
@@ -267,7 +270,7 @@ def run_single_stock(args):
                 'avg_hold_days': round(avg_hold, 1)}, trades_out
 
     except Exception as e:
-        print(f'ERROR {ts_code}: {e}')
+        print('ERROR {}: {}'.format(ts_code, e))
         return None, []
 
 
@@ -275,8 +278,7 @@ def main():
     OUTPUT_SUBDIR.mkdir(parents=True, exist_ok=True)
     parquet_files = sorted(V5_STOCK_DATA_DIR.glob('*.parquet'))
     if not parquet_files:
-        print(f'ERROR: No parquet files in {V5_STOCK_DATA_DIR}')
-        print('Run 10_prepare_data_v5.py first.')
+        print('ERROR: No parquet files in {}'.format(V5_STOCK_DATA_DIR))
         return
 
     args_list = []
@@ -288,7 +290,8 @@ def main():
             name = ''
         args_list.append((ts_code, name, p))
 
-    print(f'[v5b] {len(args_list)} stocks | ATR={ATR_MULTIPLIER_V5B}x | MIN_HOLD={MIN_HOLD_DAYS_V5B}d | +moneyflow filter')
+    print('[v5e] {} stocks | ATR={}x | MIN_HOLD={}d | chip_exit>{}'.format(
+        len(args_list), ATR_MULTIPLIER_V5E, MIN_HOLD_DAYS_V5E, CHIP_EXIT_THRESHOLD))
     with multiprocessing.Pool(N_WORKERS) as pool:
         all_results = pool.map(run_single_stock, args_list)
 
@@ -305,8 +308,8 @@ def main():
     with open(OUTPUT_SUBDIR / 'trades_detail.csv', 'w', newline='', encoding='utf-8') as f:
         w = csv.DictWriter(f, fieldnames=fields_t); w.writeheader(); w.writerows(trades_rows)
 
-    print(f'Done. {len(stats_rows)} stocks, {len(trades_rows)} trades.')
-    print(f'  stats -> {OUTPUT_SUBDIR / "stats_summary.csv"}')
+    print('Done. {} stocks, {} trades.'.format(len(stats_rows), len(trades_rows)))
+    print('  stats -> {}'.format(OUTPUT_SUBDIR / 'stats_summary.csv'))
 
 
 if __name__ == '__main__':

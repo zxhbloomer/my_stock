@@ -1,8 +1,9 @@
-# BBI v5b — exit optimization + moneyflow large-order net inflow entry filter
-# Hypothesis: combining exit optimization (v5a) with institutional money flow confirmation
-#             reduces false breakout entries while keeping real trend entries
-# Entry filter: lg_net_vol (T-1 large order net vol) > 0 — institutional net buying yesterday
-# 数据时序规则：lg_net_vol 已在 10_prepare_data_v5.py 中 shift(1)，策略直接使用即可
+# BBI v5d — exit optimization + cyq_perf chip win-rate exit signal
+# Hypothesis: when winner_rate > 80%, too many holders are profitable → selling pressure
+#             → exit early before trend reversal, improving calmar ratio
+# v5a baseline: ATR=4.5x, MIN_HOLD=20d, calmar=0.079
+# v5d adds: chip win-rate exit trigger (winner_rate > CHIP_EXIT_THRESHOLD)
+# 数据时序规则：winner_rate 已在 10_prepare_data_v5.py 中 shift(1)，策略直接使用
 import csv
 import multiprocessing
 import pandas as pd
@@ -18,16 +19,17 @@ from config import (
     ATR_PERIOD, HARD_STOP_LOSS,
 )
 
-ATR_MULTIPLIER_V5B = 4.5
-MIN_HOLD_DAYS_V5B  = 20
-BBI_DECLINE_BARS   = 5
-TMP_OUTPUT_DIR     = Path(__file__).parent / "output"
-V5_STOCK_DATA_DIR  = TMP_OUTPUT_DIR / "stock_data_v5"
-OUTPUT_SUBDIR      = TMP_OUTPUT_DIR / "v5b"
+ATR_MULTIPLIER_V5D  = 4.5
+MIN_HOLD_DAYS_V5D   = 20
+BBI_DECLINE_BARS    = 5
+CHIP_EXIT_THRESHOLD = 80.0   # winner_rate > 80 (百分比形式，Tushare 0-100) → exit signal
+TMP_OUTPUT_DIR      = Path(__file__).parent / "output"
+V5_STOCK_DATA_DIR   = TMP_OUTPUT_DIR / "stock_data_v5"
+OUTPUT_SUBDIR       = TMP_OUTPUT_DIR / "v5d"
 
 
 class BBIDataV5(bt.feeds.PandasData):
-    lines = ('bbi', 'ma60', 'lg_net_vol',)
+    lines = ('bbi', 'ma60', 'winner_rate',)
     params = (
         ('datetime', None),
         ('open',         'open_qfq'),
@@ -38,7 +40,7 @@ class BBIDataV5(bt.feeds.PandasData):
         ('openinterest', -1),
         ('bbi',          'bbi_qfq'),
         ('ma60',         'ma60'),
-        ('lg_net_vol',   'lg_net_vol'),   # T-1 大单净流入量（已 shift）
+        ('winner_rate',  'winner_rate'),   # T-1 筹码胜率（已 shift）
     )
 
 
@@ -58,11 +60,11 @@ class AShareAllInSizer(bt.Sizer):
         return self.broker.getposition(data).size
 
 
-class BBIV5bStrategy(bt.Strategy):
+class BBIV5dStrategy(bt.Strategy):
     def __init__(self):
-        self.bbi_line    = self.data.bbi
-        self.close_line  = self.data.close
-        self.lg_net_line = self.data.lg_net_vol  # T-1 大单净流入，已 shift
+        self.bbi_line      = self.data.bbi
+        self.close_line    = self.data.close
+        self.winner_line   = self.data.winner_rate  # T-1 筹码胜率，已 shift
         macd_ind = bt.indicators.MACD(
             self.data.close,
             period_me1=MACD_FAST, period_me2=MACD_SLOW, period_signal=MACD_SIGNAL,
@@ -83,9 +85,13 @@ class BBIV5bStrategy(bt.Strategy):
         cross_up  = self.close_line[-1] < self.bbi_line[-1] and self.close_line[0] > self.bbi_line[0]
         bbi_slope = self.bbi_line[0] > self.bbi_line[-3]
         macd_ok   = self.macd_line[0] > self.signal_line[0] or self.macd_line[0] > 0
-        # 机构资金确认：T-1 日大单净流入 > 0（已 shift，无未来数据泄露）
-        mf_ok = self.lg_net_line[0] > 0 if self.lg_net_line[0] == self.lg_net_line[0] else True
-        return cross_up and bbi_slope and macd_ok and mf_ok
+        return cross_up and bbi_slope and macd_ok
+
+    def _chip_exit(self):
+        wr = self.winner_line[0]
+        if wr != wr:  # NaN check
+            return False
+        return wr > CHIP_EXIT_THRESHOLD
 
     def _exit_signal(self):
         cross_down = self.close_line[-1] > self.bbi_line[-1] and self.close_line[0] < self.bbi_line[0]
@@ -94,7 +100,7 @@ class BBIV5bStrategy(bt.Strategy):
         macd_dead = (self.macd_line[0] < self.signal_line[0]
                      and self.macd_line[0] < 0
                      and bbi_sustained_decline)
-        return cross_down or macd_dead
+        return cross_down or macd_dead or self._chip_exit()
 
     def _update_trail(self):
         c = self.close_line[0]
@@ -102,7 +108,7 @@ class BBIV5bStrategy(bt.Strategy):
             self.peak_close = c
         atr_val = self.atr_ind[0]
         if atr_val and atr_val > 0:
-            new_stop = self.peak_close - ATR_MULTIPLIER_V5B * atr_val
+            new_stop = self.peak_close - ATR_MULTIPLIER_V5D * atr_val
             if self.trail_stop is None or new_stop > self.trail_stop:
                 self.trail_stop = new_stop
 
@@ -126,7 +132,7 @@ class BBIV5bStrategy(bt.Strategy):
         if pos.size > 0:
             if (self.close_line[0] - pos.price) / pos.price <= -HARD_STOP_LOSS:
                 return True
-        if len(self) - self.buy_bar < MIN_HOLD_DAYS_V5B:
+        if len(self) - self.buy_bar < MIN_HOLD_DAYS_V5D:
             return False
         return self._exit_signal() or self._trail_triggered()
 
@@ -176,12 +182,11 @@ def run_single_stock(args):
         df.index = pd.to_datetime(df['trade_date'])
         df = df.sort_index()
 
-        # 确保 lg_net_vol 列存在（v5 数据才有）
-        if 'lg_net_vol' not in df.columns:
+        if 'winner_rate' not in df.columns:
             return None, []
 
         cerebro = bt.Cerebro()
-        cerebro.addstrategy(BBIV5bStrategy)
+        cerebro.addstrategy(BBIV5dStrategy)
         data = BBIDataV5(dataname=df)
         cerebro.adddata(data)
         cerebro.broker.setcash(INIT_CASH)
@@ -276,7 +281,6 @@ def main():
     parquet_files = sorted(V5_STOCK_DATA_DIR.glob('*.parquet'))
     if not parquet_files:
         print(f'ERROR: No parquet files in {V5_STOCK_DATA_DIR}')
-        print('Run 10_prepare_data_v5.py first.')
         return
 
     args_list = []
@@ -288,7 +292,7 @@ def main():
             name = ''
         args_list.append((ts_code, name, p))
 
-    print(f'[v5b] {len(args_list)} stocks | ATR={ATR_MULTIPLIER_V5B}x | MIN_HOLD={MIN_HOLD_DAYS_V5B}d | +moneyflow filter')
+    print(f'[v5d] {len(args_list)} stocks | ATR={ATR_MULTIPLIER_V5D}x | MIN_HOLD={MIN_HOLD_DAYS_V5D}d | chip_exit>{CHIP_EXIT_THRESHOLD}')
     with multiprocessing.Pool(N_WORKERS) as pool:
         all_results = pool.map(run_single_stock, args_list)
 

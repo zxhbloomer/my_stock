@@ -1,335 +1,217 @@
-# My Stock - 基于 Qlib 的A股量化投资项目
+# My Stock — A股量化投资研究平台
 
-基于 Microsoft Qlib 框架的中国A股量化投资研究项目，集成了完整的数据采集、处理和回测功能。
+基于 Microsoft Qlib 框架的中国A股量化投资研究项目，集成完整的数据采集、因子分析、模型训练和策略回测功能。当前主要开发方向为 **BBI 指标驱动的轮动策略**。
 
-## 项目特点
+---
 
-- ✅ **完整的数据流水线**: 从数据采集到处理的完整工具链
-- ✅ **Tushare数据源集成**: 支持A股市场数据采集
-- ✅ **图形化数据管理**: Tkinter GUI数据同步和任务管理界面
-- ✅ **灵活的任务系统**: 基于装饰器的任务注册和工厂模式
-- ✅ **异步数据库操作**: PostgreSQL异步/同步双模式支持
-- ✅ **批处理规划**: 智能批次切分和并发处理
-- ✅ **因子处理框架**: 内置多种技术指标和数据处理操作
+## 项目概览
 
-## 项目结构
+### 核心模块
 
-```
-my_stock/
-├── data/                        # 数据采集和处理模块（从alphaHome迁移）
-│   ├── gui/                     # GUI数据同步和管理界面
-│   │   ├── main_window.py       # 主窗口
-│   │   ├── controller.py        # 前后端控制器
-│   │   ├── handlers/            # 业务逻辑处理器
-│   │   ├── ui/                  # UI标签页组件
-│   │   ├── services/            # GUI业务服务
-│   │   ├── mixins/              # 功能混入类
-│   │   └── utils/               # GUI工具函数
-│   ├── collectors/              # 数据采集器
-│   │   ├── base/               # 采集器基础类
-│   │   │   └── fetcher_task.py # 通用数据获取任务基类
-│   │   ├── sources/            # 数据源实现
-│   │   │   └── tushare/        # Tushare数据源
-│   │   │       ├── tushare_api.py          # Tushare API封装
-│   │   │       ├── tushare_task.py         # Tushare任务基类
-│   │   │       ├── batch_utils.py          # 批处理工具
-│   │   │       └── tushare_data_transformer.py  # 数据转换器
-│   │   └── tasks/              # 具体采集任务
-│   │       └── stock/          # 股票数据任务
-│   │           ├── tushare_stock_basic.py      # 股票基本信息
-│   │           ├── tushare_stock_daily.py      # 日线行情
-│   │           ├── tushare_stock_adjfactor.py  # 复权因子
-│   │           └── ...                         # 其他股票数据任务
-│   ├── processors/              # 数据处理器
-│   │   ├── base/               # 处理器基础类
-│   │   │   ├── processor_task.py    # 处理器任务基类
-│   │   │   └── block_processor.py   # 块处理器Mixin
-│   │   ├── operations/         # 数据操作
-│   │   │   ├── base_operation.py         # 操作基类
-│   │   │   ├── missing_data.py           # 缺失值处理
-│   │   │   └── technical_indicators.py   # 技术指标计算
-│   │   ├── tasks/              # 具体处理任务
-│   │   │   └── stock/          # 股票数据处理
-│   │   │       ├── stock_adjusted_price.py  # 复权价格计算
-│   │   │       └── stock_adjdaily.py        # 复权日线处理
-│   │   └── utils/              # 处理工具
-│   │       ├── query_builder.py    # SQL查询构建器
-│   │       └── data_validator.py   # 数据验证器
-│   ├── common/                  # 共通模块
-│   │   ├── db_components/      # 数据库组件
-│   │   │   ├── db_manager_core.py           # 核心连接管理
-│   │   │   ├── database_operations_mixin.py # 数据库操作Mixin
-│   │   │   ├── schema_management_mixin.py   # 表结构管理Mixin
-│   │   │   ├── table_name_resolver.py       # 表名解析器
-│   │   │   └── utility_mixin.py             # 工具函数Mixin
-│   │   ├── task_system/        # 任务系统
-│   │   │   ├── base_task.py         # 任务基类
-│   │   │   ├── task_decorator.py    # 任务装饰器
-│   │   │   └── task_factory.py      # 任务工厂
-│   │   ├── planning/           # 批处理规划
-│   │   │   └── batch_planner.py     # 批次规划器
-│   │   ├── config_manager.py   # 配置管理器
-│   │   ├── constants.py        # 常量定义
-│   │   ├── db_manager.py       # 数据库管理器（统一接口）
-│   │   └── logging_utils.py    # 日志工具
-│   └── loaders/                # 数据加载器（Qlib DataHandler）
-├── configs/                     # YAML 配置文件
-│   ├── workflow_config_lightgbm_Alpha158.yaml     # CSI300策略
-│   └── workflow_config_lightgbm_Alpha158_csi500.yaml  # CSI500策略
-├── handlers/                    # 自定义Qlib DataHandler
-├── factors/                     # 自定义因子库
-├── utils/                       # 工具模块
-│   └── chinese_charts.py       # 中文图表工具
-├── scripts/                     # 辅助脚本
-│   ├── setup_env.bat           # 环境设置
-│   └── download_data.bat       # 数据下载
-├── examples/                    # 示例代码
-│   ├── data_collection_example.py   # 数据采集示例
-│   └── custom_handler_example.py    # 自定义Handler示例
-├── notebooks/                   # Jupyter Notebook 分析
-│   └── 01_workflow_by_code.ipynb
-├── docs/                        # 文档
-│   ├── Qlib中国A股完整工作流程指南.md
-│   ├── TUSHARE_API_LIST.md     # Tushare API列表
-│   └── TUSHARE_TABLES_LIST.md  # Tushare数据表列表
-├── tests/                       # 测试文件
-├── mlruns/                      # MLflow 实验记录（自动生成）
-├── scripts/                     # 主要分析脚本
-│   ├── 10_数据准备/              # 数据准备脚本
-│   ├── 20_因子分析/              # 因子分析脚本
-│   ├── 30_模型训练/              # 模型训练脚本
-│   ├── 40_模型验证/              # 模型验证脚本
-│   └── result/                  # 结果查看工具
-├── run_gui.py                   # GUI数据同步界面启动脚本
-├── view_results.py              # 结果分析脚本
-├── view_charts.py               # 中文图表展示
-├── test_imports.py              # 导入测试脚本
-├── test_gui_import.py           # GUI模块导入测试
-├── environment.yml              # Conda环境配置
-├── requirements.txt             # Python依赖
-└── CLAUDE.md                    # Claude Code项目说明
+| 模块 | 路径 | 说明 |
+|------|------|------|
+| 数据采集 | `data/` | Tushare Pro → PostgreSQL，支持 230+ 接口 |
+| 数据同步 | `data/手动执行/MINISHARE/` | Minishare API 增量/全量同步脚本 |
+| BBI 回测 | `scripts/bbi/backtrader/` | BBI 策略多版本回测框架 |
+| Qlib 工作流 | `scripts/` + `configs/` | LightGBM 因子模型训练与验证 |
+| 报表生成 | `scripts/bbi/backtrader/v4_plan/30_generate_report.py` | HTML 交互式回测报表 |
+
+---
+
+## BBI 策略
+
+### 什么是 BBI
+
+BBI（Bull and Bear Index，多空指标）= 四条均线的算术平均：
 
 ```
+BBI = (MA5 + MA10 + MA20 + MA60) / 4
+```
 
-## 快速开始
+当收盘价 > BBI 时，认为股票处于多头趋势，可以持有。
 
-### 环境要求
+### 策略逻辑
 
-- Python 3.8
-- PostgreSQL (可选，用于数据采集)
-- Conda/Miniconda
+**选股条件**：收盘价（前复权）> BBI（前复权）  
+**排序依据**：近 5 日涨幅（动量因子）  
+**持仓数量**：Top N 只（默认 5 只）  
+**换仓频率**：每周一换仓  
+**排除范围**：688 科创板、ST 股、退市股、北交所  
+**流动性过滤**：近 20 日均流通市值 ≥ 50 亿，均成交额 ≥ 5000 万  
 
-### 第一步：创建 Conda 环境
+### 防未来数据泄露
+
+盘后数据（资金流向 `moneyflow`、筹码分布 `cyq_perf`）在 T 日收盘后才可获取，回测中统一做 `shift(1)` 处理，确保 T 日决策只使用 T-1 日盘后数据。
+
+---
+
+## 版本历史
+
+### v1 — 基础验证
+- 单股 BBI 信号验证
+- 确认 BBI 指标计算逻辑
+
+### v2 — 逐股回测
+- 对每只股票独立回测 BBI 策略
+- 统计胜率、盈亏比、持仓周期分布
+- 输出：每股回测报告 + 汇总统计
+
+### v3 — 组合回测（纯 Python）
+- 全市场轮动，每周一换仓
+- 资金分配：等权分配到 Top N
+- 手续费模型：买入 0.03%，卖出 0.13%（含印花税），最低 5 元
+- 输出：净值曲线、年化收益、最大回撤、夏普比率
+
+### v4_plan — 当前主力版本
+- 在 v3 基础上增加更完整的数据准备流程
+- 新增 `cyq_perf`（筹码分布）和 `moneyflow`（资金流向）特征
+- 完整的 HTML 交互式报表，包含：
+  - 净值曲线 + 回撤图
+  - **资金曲线（绝对金额）+ 月度收益明细表**（2026-05-01 新增）
+  - 年度收益柱状图
+  - 下周操作计划（基于最新数据自动生成）
+  - 最近 10 周持仓周报
+  - 历史交易明细
+
+---
+
+## 快速运行 BBI v4 策略
+
+### 前置条件
+
+1. PostgreSQL 数据库已启动（Docker）
+2. `tushare_v2` schema 中有 `063_stk_factor_pro`、`061_cyq_perf`、`080_moneyflow` 等表
+3. 已配置 `.env` 文件
 
 ```bash
-# 创建环境
+# .env 示例（不提交到 git）
+DATABASE_URL=postgresql://root:123456@localhost:5432/my_stock
+TUSHARE_TOKEN=your_token_here
+```
+
+### 运行步骤
+
+```bash
+cd scripts/bbi/backtrader/v4_plan
+
+# Step 1: 准备数据（从 PostgreSQL 生成 parquet）
+python -X utf8 10_prepare_data.py
+
+# Step 2: 运行回测
+python -X utf8 20_run_backtest.py
+
+# Step 3: 生成 HTML 报表（自动打开浏览器）
+python -X utf8 30_generate_report.py
+```
+
+### 关键参数（`config.py`）
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `START_DATE` | `2020-01-01` | 回测开始日期 |
+| `END_DATE` | `None`（今日） | 回测结束日期 |
+| `INIT_CASH` | `500,000` | 初始资金（元） |
+| `TOP_N` | `5` | 持仓股票数量 |
+| `COMM_BUY` | `0.0003` | 买入手续费率 |
+| `COMM_SELL` | `0.0013` | 卖出手续费率（含印花税） |
+| `FILTER_MIN_CIRC_MV` | `50亿` | 最小流通市值过滤 |
+| `FILTER_MIN_AMOUNT` | `5000万` | 最小日均成交额过滤 |
+
+---
+
+## 数据流水线
+
+```
+Tushare Pro API
+      ↓
+PostgreSQL (my_stock DB, tushare_v2 schema)
+      ↓  data/手动执行/MINISHARE/ 同步脚本
+      ↓
+scripts/bbi/backtrader/v4_plan/10_prepare_data.py
+      ↓  过滤 + BBI 计算 + shift(1) 防泄露
+      ↓
+output/stock_data/*.parquet（每股一个文件）
+      ↓
+20_run_backtest.py → output/{nav_series.csv, trade_records.csv, weekly_records.json, last_holdings.json}
+      ↓
+30_generate_report.py → output/report.html
+```
+
+---
+
+## Qlib 机器学习工作流
+
+除 BBI 策略外，项目也支持基于 Qlib 的 LightGBM 因子模型：
+
+```bash
+# 数据准备
+python scripts/10_数据准备/10_Tushare转Qlib.py
+
+# 因子分析
+python scripts/20_因子分析/20_IC分析.py
+
+# 模型训练
+python scripts/30_模型训练/30_单模型训练.py configs/workflow_config_lightgbm_Alpha158.yaml
+
+# 滚动验证
+python scripts/40_模型验证/40_滚动窗口验证.py
+
+# 查看结果
+mlflow ui  # http://localhost:5000
+```
+
+---
+
+## 环境配置
+
+```bash
+# 创建 Conda 环境
 conda env create -f environment.yml
-
-# 激活环境
 conda activate mystock
-```
 
-### 第二步：安装依赖
-
-```bash
-# 安装所有依赖
+# 安装依赖
 pip install -r requirements.txt
-```
 
-### 第三步：配置环境变量
-
-**方式1: 使用配置向导（推荐）**
-```bash
-python setup_env.py
-```
-
-**方式2: 手动创建.env文件**
-```bash
-# 复制示例文件
-cp .env.example .env
-
-# 编辑.env文件，填入实际配置
-# TUSHARE_TOKEN=你的token
-# DATABASE_URL=postgresql://user:pass@localhost:5432/db
-```
-
-📖 **详细配置说明**: [配置管理文档](docs/CONFIGURATION.md) | [环境设置指南](docs/ENV_SETUP_GUIDE.md)
-
-### 第四步：下载 Qlib 数据
-
-```bash
-# 下载中国A股数据
+# 下载 Qlib 基础数据（一次性）
 python -m qlib.run.get_data qlib_data --target_dir ~/.qlib/qlib_data/cn_data --region cn
 ```
 
-### 第五步：运行工作流
+### Docker PostgreSQL
 
 ```bash
-# 使用Python脚本运行
-python scripts/30_模型训练/30_单模型训练.py
-
-# 或使用配置文件运行
-python scripts/30_模型训练/30_单模型训练.py configs/workflow_config_lightgbm_Alpha158_csi500.yaml
+cd D:\2025_project\00_docker\postgresql
+docker-compose up -d
 ```
 
-### 第六步：使用GUI管理数据（可选）
-
-```bash
-# 启动GUI数据同步界面
-python run_gui.py
-```
-
-GUI提供以下功能：
-- 数据采集任务管理和执行
-- 数据处理任务管理
-- 任务执行监控和日志查看
-- 存储设置配置
-
-### 第七步：查看结果
-
-```bash
-# 查看回测结果
-python view_results.py
-
-# 查看中文标注图表
-python view_charts.py
-
-# 或启动MLflow UI
-mlflow ui
-# 访问 http://localhost:5000
-```
-
-## 核心功能
-
-### 1. 数据采集系统
-
-基于Tushare Pro的异步数据采集框架：
-
-```python
-from data.collectors.tasks.stock import TushareStockDailyTask
-from data.common.db_manager import create_async_manager
-
-# 创建数据库管理器
-db = create_async_manager("postgresql://user:pass@localhost/dbname")
-
-# 创建任务并执行
-task = TushareStockDailyTask(
-    db_connection=db,
-    start_date="20200101",
-    end_date="20231231"
-)
-await task.run()
-```
-
-### 2. 数据处理系统
-
-灵活的数据处理管道：
-
-```python
-from data.processors.operations import OperationPipeline, FillNAOperation, MovingAverageOperation
-
-# 构建处理管道
-pipeline = OperationPipeline([
-    FillNAOperation(method="ffill"),
-    MovingAverageOperation(window=5, columns=["close"])
-])
-
-# 应用到数据
-processed_df = pipeline.apply(df)
-```
-
-### 3. Qlib工作流
-
-完整的量化投资工作流：
-
-```python
-import qlib
-from qlib.constant import REG_CN
-
-# 初始化Qlib
-qlib.init(provider_uri='~/.qlib/qlib_data/cn_data', region=REG_CN)
-
-# 使用配置文件运行完整工作流
-# 详见 scripts/30_运行工作流.py
-```
-
-## 配置说明
-
-### 策略配置文件
-
-位于 `configs/` 目录：
-
-- **workflow_config_lightgbm_Alpha158.yaml**: CSI300股票池，LightGBM模型
-- **workflow_config_lightgbm_Alpha158_csi500.yaml**: CSI500股票池，LightGBM模型
-
-配置包含：
-- 数据处理器配置（时间周期、股票池）
-- 模型配置（LightGBM参数）
-- 回测配置（初始资金、交易费用）
-- 记录器配置（SignalRecord、PortAnaRecord）
-
-### 数据库配置
-
-数据采集系统支持PostgreSQL：
-
-```python
-# 异步模式（用于数据采集）
-from data.common.db_manager import create_async_manager
-db = create_async_manager("postgresql://user:pass@localhost:5432/dbname")
-
-# 同步模式（用于Backtrader等）
-from data.common.db_manager import create_sync_manager
-db = create_sync_manager("postgresql://user:pass@localhost:5432/dbname")
-```
-
-## 测试
-
-```bash
-# 运行导入测试
-python test_imports.py
-
-# 测试结果应显示所有8个模块通过
-✅ 所有导入测试通过！
-```
+---
 
 ## 技术栈
 
 - **量化框架**: Microsoft Qlib
-- **机器学习**: LightGBM, scikit-learn
-- **数据源**: Tushare Pro API
-- **数据库**: PostgreSQL (asyncpg + psycopg2-binary)
-- **异步框架**: asyncio, aiohttp
+- **回测引擎**: 纯 Python（v4_plan 自研，无 Backtrader 依赖）
+- **数据源**: Tushare Pro API / Minishare API
+- **数据库**: PostgreSQL（Docker）
+- **报表**: Plotly 交互式 HTML
+- **机器学习**: LightGBM
 - **实验追踪**: MLflow
-- **数据处理**: pandas, numpy
 
-## 依赖说明
+---
 
-核心依赖：
-- `pyqlib` - Qlib量化框架
-- `asyncpg` - PostgreSQL异步驱动
-- `psycopg2-binary` - PostgreSQL同步驱动
-- `aiohttp` - 异步HTTP客户端
-- `tushare` - Tushare数据源
-- `appdirs` - 配置管理
-- `aiolimiter` - 异步速率限制
+## 项目文档
 
-详见 `requirements.txt`
+| 文档 | 路径 |
+|------|------|
+| 数据库表结构 | `docs/数据库表结构清单_带注释.md` |
+| Tushare 接口清单 | `docs/tushare/接口清单.md` |
+| 参数优化指南 | `docs/参数优化使用指南.md` |
+| 滚动验证说明 | `docs/滚动窗口验证使用说明.md` |
+| BBI 设计文档 | `docs/superpowers/specs/` |
+| 实现计划 | `docs/superpowers/plans/` |
+
+---
 
 ## 参考资料
 
 - [Qlib 官方文档](https://qlib.readthedocs.io/)
-- [Qlib GitHub](https://github.com/microsoft/qlib)
 - [Tushare Pro](https://tushare.pro/)
-- [完整工作流程指南](./docs/Qlib中国A股完整工作流程指南.md)
-
-## 项目文档
-
-- **CLAUDE.md** - Claude Code工作说明
-- **MODULE_GUIDE.md** - 模块使用指南
-- **MIGRATION_CHECKLIST.md** - 迁移检查清单
-- **FIX_COMPLETION_REPORT.md** - 修复完成报告
-- **QA_REVIEW_REPORT.md** - QA审查报告
-
-## License
-
-本项目基于 Qlib 框架开发，遵循相应开源协议。
+- [CLAUDE.md](./CLAUDE.md) — Claude Code 工作说明
