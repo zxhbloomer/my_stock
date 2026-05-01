@@ -60,7 +60,6 @@ def main():
                 print(f"  {exchange}: {len(df)} 条")
         except Exception as e:
             print(f"  [SKIP] {exchange}: {e}")
-        time.sleep(0.5)
 
     if not all_dfs:
         print("[WARN] 返回空数据")

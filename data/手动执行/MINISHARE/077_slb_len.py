@@ -22,8 +22,6 @@ from _common import *
 
 TABLE         = "077_slb_len"
 DEFAULT_START = "20130201"
-LOOKBACK_DAYS = 3
-
 FIELDS = "trade_date,ob,auc_amount,repo_amount,repay_amount,cb"
 COLS   = FIELDS.split(",")
 PK     = ["trade_date"]
@@ -45,12 +43,9 @@ FLOAT_COLS = ["ob","auc_amount","repo_amount","repay_amount","cb"]
 
 
 def get_start(engine):
-    max_d = get_max_date(engine, TABLE)
-    if max_d:
-        start = (pd.Timestamp(max_d) - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y%m%d")
-        print(f"[增量] {TABLE} 最新={max_d}，从 {start} 开始")
-        return start
-    return DEFAULT_START
+    start = get_sync_start(engine, f"{TABLE}.py", DEFAULT_START)
+    print(f"[增量] {TABLE} 从 {start} 开始")
+    return start
 
 
 def main():
@@ -62,10 +57,12 @@ def main():
     pro    = init_tushare()
     engine = get_engine()
     ensure_schema(engine)
+    ensure_sync_status_table(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
 
+    mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ing")
     try:
         df = pro.slb_len(start_date=start, end_date=args.end, fields=FIELDS)
         if df is not None and not df.empty:
@@ -77,7 +74,9 @@ def main():
             rows = upsert_df(engine, df, TABLE, COLS, PK)
             print(f"\n[完成] upsert {rows:,} 条")
         else:
+            rows = 0
             print("[完成] 无数据")
+        mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")  # 统一在 try 末尾
     except Exception as e:
         print(f"[ERROR] {e}")
         raise

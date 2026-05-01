@@ -22,7 +22,6 @@ from _common import *
 
 TABLE         = "019_monthly"
 DEFAULT_START = "20100729"
-LOOKBACK_DAYS = 35
 FIELDS = "ts_code,trade_date,close,open,high,low,pre_close,change,pct_chg,vol,amount"
 COLS   = FIELDS.split(",")
 PK     = ["ts_code", "trade_date"]
@@ -50,12 +49,9 @@ FLOAT_COLS = ["close","open","high","low","pre_close","change","pct_chg","vol","
 
 
 def get_start(engine):
-    max_d = get_max_date(engine, TABLE)
-    if max_d:
-        start = (pd.Timestamp(max_d) - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y%m%d")
-        print(f"[增量] {TABLE} 最新={max_d}，从 {start} 开始")
-        return start
-    return DEFAULT_START
+    start = get_sync_start(engine, f"{TABLE}.py", DEFAULT_START)
+    print(f"[增量] {TABLE} 从 {start} 开始")
+    return start
 
 
 def main():
@@ -67,18 +63,22 @@ def main():
     pro    = init_tushare()
     engine = get_engine()
     ensure_schema(engine)
+    ensure_sync_status_table(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
-    cal = pro.trade_cal(exchange="SSE", start_date=start, end_date=args.end,
-                        is_open="1", fields="cal_date")
+    _cal_dates = get_trade_dates(pro, start, args.end)
+    if not _cal_dates:
+        print("[已是最新] 无需同步")
+        return
     # 月线只在每月最后一个交易日有数据，按月分组取最大日期
-    cal["cal_date"] = pd.to_datetime(cal["cal_date"])
+    cal = pd.DataFrame({"cal_date": pd.to_datetime(_cal_dates)})
     cal["month"] = cal["cal_date"].dt.to_period("M")
     dates = sorted(cal.groupby("month")["cal_date"].max().dt.strftime("%Y%m%d").tolist())
 
     total_rows, t0 = 0, datetime.now()
     for i, d in enumerate(dates, 1):
+        mark_sync(engine, f"{TABLE}.py", TABLE, d, "ing")
         try:
             df = pro.monthly(trade_date=d, fields=FIELDS)
             if df is not None and not df.empty:
@@ -91,13 +91,13 @@ def main():
                 total_rows += rows
             else:
                 rows = 0
+            mark_sync(engine, f"{TABLE}.py", TABLE, d, "ok")
         except Exception as e:
             print(f"  [SKIP] {d}: {e}")
             rows = 0
         elapsed = (datetime.now() - t0).seconds
         if rows > 0 or i % 50 == 0:
             print(f"  [{i:4d}/{len(dates)}] {d}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
-        time.sleep(0.3)
 
     print(f"\n[完成] upsert {total_rows:,} 条")
 

@@ -25,7 +25,6 @@ from _common import *
 
 TABLE         = "062_cyq_chips"
 DEFAULT_START = "20180101"  # 数据从2018年开始
-LOOKBACK_DAYS = 7
 
 FIELDS = "ts_code,trade_date,price,percent"
 COLS   = FIELDS.split(",")
@@ -45,12 +44,9 @@ CREATE INDEX IF NOT EXISTS idx_{TABLE}_date ON {SCHEMA}."{TABLE}" (trade_date);
 
 
 def get_start(engine):
-    max_d = get_max_date(engine, TABLE)
-    if max_d:
-        start = (pd.Timestamp(max_d) - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y%m%d")
-        print(f"[增量] {TABLE} 最新={max_d}，从 {start} 开始")
-        return start
-    return DEFAULT_START
+    start = get_sync_start(engine, f"{TABLE}.py", DEFAULT_START)
+    print(f"[增量] {TABLE} 从 {start} 开始")
+    return start
 
 
 def year_segments(start: str, end: str):
@@ -75,21 +71,17 @@ def main():
     pro    = init_tushare()
     engine = get_engine()
     ensure_schema(engine)
+    ensure_sync_status_table(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
     segments = year_segments(start, args.end)
 
     # 获取股票列表
-    codes = []
-    for status in ["L", "D", "P"]:
-        s = pro.stock_basic(list_status=status, fields="ts_code")
-        if s is not None and not s.empty and "ts_code" in s.columns:
-            codes.extend(s["ts_code"].tolist())
-    if not codes:
-        raise RuntimeError("stock_basic 返回异常，未获取到任何股票代码")
+    codes = get_stock_codes(pro)
 
     print(f"共 {len(codes)} 只股票，{len(segments)} 个年段")
+    mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ing")
     total_rows, t0 = 0, datetime.now()
     for i, code in enumerate(codes, 1):
         code_rows = 0
@@ -107,12 +99,12 @@ def main():
                     total_rows += rows
             except Exception as e:
                 print(f"  [SKIP] {code} {seg_start}-{seg_end}: {e}")
-            time.sleep(0.2)
 
         elapsed = (datetime.now() - t0).seconds
         if code_rows > 0 or i % 200 == 0:
             print(f"  [{i:4d}/{len(codes)}] {code}  {code_rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
 
+    mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")
     print(f"\n[完成] upsert {total_rows:,} 条")
 
 

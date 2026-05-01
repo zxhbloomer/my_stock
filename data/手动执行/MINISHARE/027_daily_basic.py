@@ -25,7 +25,6 @@ from _common import *
 
 TABLE         = "027_daily_basic"
 DEFAULT_START = "20100729"
-LOOKBACK_DAYS = 3
 FIELDS = "ts_code,trade_date,close,turnover_rate,turnover_rate_f,volume_ratio,pe,pe_ttm,pb,ps,ps_ttm,dv_ratio,dv_ttm,total_share,float_share,free_share,total_mv,circ_mv"
 COLS   = FIELDS.split(",")
 PK     = ["ts_code", "trade_date"]
@@ -62,12 +61,9 @@ FLOAT_COLS = ["close","turnover_rate","turnover_rate_f","volume_ratio","pe","pe_
 
 
 def get_start(engine):
-    max_d = get_max_date(engine, TABLE)
-    if max_d:
-        start = (pd.Timestamp(max_d) - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y%m%d")
-        print(f"[增量] {TABLE} 最新={max_d}，从 {start} 开始")
-        return start
-    return DEFAULT_START
+    start = get_sync_start(engine, f"{TABLE}.py", DEFAULT_START)
+    print(f"[增量] {TABLE} 从 {start} 开始")
+    return start
 
 
 def main():
@@ -79,15 +75,15 @@ def main():
     pro    = init_tushare()
     engine = get_engine()
     ensure_schema(engine)
+    ensure_sync_status_table(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
-    cal = pro.trade_cal(exchange="SSE", start_date=start, end_date=args.end,
-                        is_open="1", fields="cal_date")
-    dates = sorted(cal["cal_date"].tolist())
+    dates = get_trade_dates(pro, start, args.end)
 
     total_rows, t0 = 0, datetime.now()
     for i, d in enumerate(dates, 1):
+        mark_sync(engine, f"{TABLE}.py", TABLE, d, "ing")
         try:
             df = pro.daily_basic(trade_date=d, fields=FIELDS)
             if df is not None and not df.empty:
@@ -100,13 +96,13 @@ def main():
                 total_rows += rows
             else:
                 rows = 0
+            mark_sync(engine, f"{TABLE}.py", TABLE, d, "ok")
         except Exception as e:
             print(f"  [SKIP] {d}: {e}")
             rows = 0
         elapsed = (datetime.now() - t0).seconds
         if rows > 0 or i % 50 == 0:
             print(f"  [{i:4d}/{len(dates)}] {d}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
-        time.sleep(0.3)
 
     print(f"\n[完成] upsert {total_rows:,} 条")
 

@@ -8,8 +8,8 @@
 输入参数：ts_code(str,N,指数代码), name(str,N,指数简称),
           market(str,N,交易所或服务商默认SSE), publisher(str,N,发布商),
           category(str,N,指数类别)
-输出字段：ts_code,name,fullname,market,publisher,index_type,category,
-          base_date,base_point,list_date,weight_rule,desc,exp_date
+输出字段：ts_code,name,market,publisher,category,base_date,base_point,list_date
+          （fullname,index_type,weight_rule,desc,exp_date 文档有但API实际不返回，数据库列保留）
 
 同步策略：全量删除重新插入（无日期维度，参考数据）
           market 包括：MSCI/CSI/SSE/SZSE/CICC/SW/OTH
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _common import *
 
 TABLE  = "121_index_basic"
-FIELDS = "ts_code,name,fullname,market,publisher,index_type,category,base_date,base_point,list_date,weight_rule,desc,exp_date"
+FIELDS = "ts_code,name,market,publisher,category,base_date,base_point,list_date"
 COLS   = FIELDS.split(",")
 PK     = ["ts_code"]
 

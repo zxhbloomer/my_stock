@@ -24,7 +24,6 @@ from _common import *
 
 TABLE         = "032_ggt_top10"
 DEFAULT_START = "20141117"  # 港股通（沪）开通日期；港股通（深）2016-12-05开通
-LOOKBACK_DAYS = 3
 FIELDS = "trade_date,ts_code,name,close,p_change,rank,market_type,amount,net_amount,sh_amount,sh_net_amount,sh_buy,sh_sell,sz_amount,sz_net_amount,sz_buy,sz_sell"
 COLS   = FIELDS.split(",")
 PK     = ["trade_date", "ts_code", "market_type"]
@@ -59,12 +58,9 @@ FLOAT_COLS = ["close","p_change","amount","net_amount","sh_amount","sh_net_amoun
 
 
 def get_start(engine):
-    max_d = get_max_date(engine, TABLE, date_col="trade_date")
-    if max_d:
-        start = (pd.Timestamp(max_d) - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y%m%d")
-        print(f"[增量] {TABLE} 最新={max_d}，从 {start} 开始")
-        return start
-    return DEFAULT_START
+    start = get_sync_start(engine, f"{TABLE}.py", DEFAULT_START)
+    print(f"[增量] {TABLE} 从 {start} 开始")
+    return start
 
 
 def main():
@@ -76,15 +72,15 @@ def main():
     pro    = init_tushare()
     engine = get_engine()
     ensure_schema(engine)
+    ensure_sync_status_table(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
-    cal = pro.trade_cal(exchange="SSE", start_date=start, end_date=args.end,
-                        is_open="1", fields="cal_date")
-    dates = sorted(cal["cal_date"].tolist())
+    dates = get_trade_dates(pro, start, args.end)
 
     total_rows, t0 = 0, datetime.now()
     for i, d in enumerate(dates, 1):
+        mark_sync(engine, f"{TABLE}.py", TABLE, d, "ing")
         try:
             df = pro.ggt_top10(trade_date=d, fields=FIELDS)
             if df is not None and not df.empty:
@@ -99,13 +95,13 @@ def main():
                 total_rows += rows
             else:
                 rows = 0
+            mark_sync(engine, f"{TABLE}.py", TABLE, d, "ok")
         except Exception as e:
             print(f"  [SKIP] {d}: {e}")
             rows = 0
         elapsed = (datetime.now() - t0).seconds
         if rows > 0 or i % 50 == 0:
             print(f"  [{i:4d}/{len(dates)}] {d}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
-        time.sleep(0.3)
 
     print(f"\n[完成] upsert {total_rows:,} 条")
 

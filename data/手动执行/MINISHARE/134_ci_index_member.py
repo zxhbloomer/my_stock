@@ -68,7 +68,6 @@ def main():
                 print(f"  is_new={is_new}: {len(df)} 条")
         except Exception as e:
             print(f"  [SKIP] is_new={is_new}: {e}")
-        time.sleep(0.5)
 
     if not all_dfs:
         print("[完成] 无数据")

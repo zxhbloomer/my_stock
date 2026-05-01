@@ -11,14 +11,10 @@
 迁移说明：tushare.stock_basic 已有数据，首次运行前执行迁移（见脚本末尾注释）
 用法: python 001_stock_basic.py
 """
-import sys, os
+import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _common import *
-import requests
-
-MINISHARE_BASE = os.environ["MINISHARE_BASE"]
-MINISHARE_KEY  = os.environ["MINISHARE_KEY"]
 
 TABLE  = "001_stock_basic"
 FIELDS = "ts_code,symbol,name,area,industry,fullname,enname,cnspell,market,exchange,curr_type,list_status,list_date,delist_date,is_hs,act_name,act_ent_type"
@@ -48,38 +44,17 @@ CREATE TABLE IF NOT EXISTS {SCHEMA}."{TABLE}" (
 """
 
 
-def fetch_stock_basic(list_status: str, fields: str) -> pd.DataFrame:
-    params = {"list_status": list_status, "fields": fields}
-    resp = requests.get(
-        f"{MINISHARE_BASE}/api/v1/stock-basic",
-        headers={"X-API-Key": MINISHARE_KEY},
-        params=params,
-        timeout=30,
-    )
-    resp.raise_for_status()
-    body = resp.json()
-    data = body["data"]
-    df = pd.DataFrame(data["rows"])   # rows 是 dict 列表
-    print(f"  [OK] list_status={list_status}  {data['row_count']} 条  cached={data.get('cached')}")
-    return df
-
-
 def main():
+    pro    = init_tushare()
     engine = get_engine()
     ensure_schema(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
-    all_dfs = []
-    for status in ['L', 'D', 'P']:
-        df = fetch_stock_basic(status, FIELDS)
-        if df is not None and not df.empty:
-            all_dfs.append(df)
-
-    if not all_dfs:
+    # Minishare 默认上限5000，传 limit=10000 确保取到全量（当前约5835只）
+    result = pro.stock_basic(fields=FIELDS, limit=10000)
+    if result is None or result.empty:
         print("[WARN] 返回空数据")
         return
-
-    result = pd.concat(all_dfs, ignore_index=True)
     for col in ['list_date', 'delist_date']:
         result[col] = pd.to_datetime(result[col], errors='coerce')
 

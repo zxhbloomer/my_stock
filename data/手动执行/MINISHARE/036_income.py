@@ -39,7 +39,7 @@
 迁移说明：tushare.fina_income 有数据，字段基本一致（缺少end_type字段），可迁移
 用法: python 036_income.py [--start YYYYMMDD] [--end YYYYMMDD]
 """
-import argparse, sys, time
+import argparse, sys, time, traceback
 import numpy as np
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -47,7 +47,6 @@ from _common import *
 
 TABLE         = "036_income"
 DEFAULT_START = "20100101"
-LOOKBACK_DAYS = 90
 
 FIELDS = ("ts_code,ann_date,f_ann_date,end_date,report_type,comp_type,end_type,"
           "basic_eps,diluted_eps,total_revenue,revenue,int_income,prem_earned,"
@@ -139,12 +138,10 @@ FLOAT_COLS = [c for c in COLS if c not in ["ts_code","ann_date","f_ann_date","en
 
 
 def get_start(engine):
-    max_d = get_max_date(engine, TABLE, date_col="ann_date")
-    if max_d:
-        start = (pd.Timestamp(max_d) - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y%m%d")
-        print(f"[增量] {TABLE} 最新ann_date={max_d}，从 {start} 开始")
-        return start
-    return DEFAULT_START
+    start = get_sync_start(engine, f"{TABLE}.py", DEFAULT_START)
+    print(f"[增量] {TABLE} 从 {start} 开始")
+    return start
+
 
 
 def main():
@@ -156,19 +153,15 @@ def main():
     pro    = init_tushare()
     engine = get_engine()
     ensure_schema(engine)
+    ensure_sync_status_table(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
 
     # 获取股票列表
-    codes = []
-    for status in ["L", "D", "P"]:
-        s = pro.stock_basic(list_status=status, fields="ts_code")
-        if s is not None and not s.empty and "ts_code" in s.columns:
-            codes.extend(s["ts_code"].tolist())
-    if not codes:
-        raise RuntimeError("stock_basic 返回异常，未获取到任何股票代码")
+    codes = get_stock_codes(pro)
 
+    mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ing")
     total_rows, t0 = 0, datetime.now()
     for i, code in enumerate(codes, 1):
         try:
@@ -189,12 +182,13 @@ def main():
                 rows = 0
         except Exception as e:
             print(f"  [SKIP] {code}: {e}")
+            traceback.print_exc()
             rows = 0
         elapsed = (datetime.now() - t0).seconds
         if rows > 0 or i % 200 == 0:
             print(f"  [{i:4d}/{len(codes)}] {code}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
-        time.sleep(0.2)
 
+    mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")
     print(f"\n[完成] upsert {total_rows:,} 条")
 
 

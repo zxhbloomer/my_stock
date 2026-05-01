@@ -22,8 +22,6 @@ from _common import *
 
 TABLE         = "087_moneyflow_hsgt"
 DEFAULT_START = "20141117"  # 沪股通2014-11-17开通
-LOOKBACK_DAYS = 3
-
 FIELDS = "trade_date,ggt_ss,ggt_sz,hgt,sgt,north_money,south_money"
 COLS   = FIELDS.split(",")
 PK     = ["trade_date"]
@@ -46,12 +44,9 @@ FLOAT_COLS = ["ggt_ss","ggt_sz","hgt","sgt","north_money","south_money"]
 
 
 def get_start(engine):
-    max_d = get_max_date(engine, TABLE)
-    if max_d:
-        start = (pd.Timestamp(max_d) - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y%m%d")
-        print(f"[增量] {TABLE} 最新={max_d}，从 {start} 开始")
-        return start
-    return DEFAULT_START
+    start = get_sync_start(engine, f"{TABLE}.py", DEFAULT_START)
+    print(f"[增量] {TABLE} 从 {start} 开始")
+    return start
 
 
 def main():
@@ -63,10 +58,12 @@ def main():
     pro    = init_tushare()
     engine = get_engine()
     ensure_schema(engine)
+    ensure_sync_status_table(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
 
+    mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ing")
     try:
         df = pro.moneyflow_hsgt(start_date=start, end_date=args.end, fields=FIELDS)
         if df is not None and not df.empty:
@@ -76,8 +73,10 @@ def main():
                     df[col] = pd.to_numeric(df[col], errors="coerce")
             df = df.dropna(subset=PK).drop_duplicates(subset=PK)
             rows = upsert_df(engine, df, TABLE, COLS, PK)
+            mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")
             print(f"\n[完成] upsert {rows:,} 条")
         else:
+            mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")
             print("[完成] 无数据")
     except Exception as e:
         print(f"[ERROR] {e}")

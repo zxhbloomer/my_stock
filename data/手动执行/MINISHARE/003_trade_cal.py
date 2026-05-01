@@ -54,7 +54,6 @@ def main():
                 all_dfs.append(df)
         except Exception as e:
             print(f"  [SKIP] {exchange}: {e}")
-        time.sleep(0.3)
 
     if not all_dfs:
         print("[WARN] 返回空数据")

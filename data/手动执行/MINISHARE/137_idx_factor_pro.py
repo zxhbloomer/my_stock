@@ -19,14 +19,15 @@
           emv_bfq,maemv_bfq,expma_12_bfq,expma_50_bfq,
           kdj_bfq,kdj_d_bfq,kdj_k_bfq,
           ktn_down_bfq,ktn_mid_bfq,ktn_upper_bfq,
-          lowdays,highdays,
+          lowdays,topdays,
           macd_bfq,macd_dea_bfq,macd_dif_bfq,
           ma_bfq_10,ma_bfq_20,ma_bfq_250,ma_bfq_30,ma_bfq_5,ma_bfq_60,ma_bfq_90,
           mass_bfq,ma_mass_bfq,mfi_bfq,mtm_bfq,mtmma_bfq,obv_bfq,
-          psy_bfq,psyma_bfq,roc_bfq,rocma_bfq,
+          psy_bfq,psyma_bfq,roc_bfq,maroc_bfq,
           rsi_bfq_12,rsi_bfq_24,rsi_bfq_6,
-          trix_bfq,trma_bfq,vr_bfq,mavr_bfq,
-          wr_bfq,wr_bfq_10,xsii_td_bfq,xsii_ti_bfq
+          taq_down_bfq,taq_mid_bfq,taq_up_bfq,
+          trix_bfq,trma_bfq,vr_bfq,
+          wr_bfq,wr1_bfq,xsii_td1_bfq,xsii_td2_bfq,xsii_td3_bfq,xsii_td4_bfq
 
 同步策略：按交易日增量（ts_code+trade_date 为主键，upsert）
           注意：只有_bfq（不复权）变体，无_hfq/_qfq
@@ -41,7 +42,6 @@ from _common import *
 
 TABLE         = "137_idx_factor_pro"
 DEFAULT_START = "19910102"
-LOOKBACK_DAYS = 7
 
 BASE_FIELDS = "ts_code,trade_date,open,high,low,close,pre_close,change,pct_change,vol,amount"
 TECH_FIELDS = ",".join([
@@ -56,14 +56,15 @@ TECH_FIELDS = ",".join([
     "emv_bfq,maemv_bfq,expma_12_bfq,expma_50_bfq",
     "kdj_bfq,kdj_d_bfq,kdj_k_bfq",
     "ktn_down_bfq,ktn_mid_bfq,ktn_upper_bfq",
-    "lowdays,highdays",
+    "lowdays,topdays",
     "macd_bfq,macd_dea_bfq,macd_dif_bfq",
     "ma_bfq_10,ma_bfq_20,ma_bfq_250,ma_bfq_30,ma_bfq_5,ma_bfq_60,ma_bfq_90",
     "mass_bfq,ma_mass_bfq,mfi_bfq,mtm_bfq,mtmma_bfq,obv_bfq",
-    "psy_bfq,psyma_bfq,roc_bfq,rocma_bfq",
+    "psy_bfq,psyma_bfq,roc_bfq,maroc_bfq",
     "rsi_bfq_12,rsi_bfq_24,rsi_bfq_6",
-    "trix_bfq,trma_bfq,vr_bfq,mavr_bfq",
-    "wr_bfq,wr_bfq_10,xsii_td_bfq,xsii_ti_bfq",
+    "taq_down_bfq,taq_mid_bfq,taq_up_bfq",
+    "trix_bfq,trma_bfq,vr_bfq",
+    "wr_bfq,wr1_bfq,xsii_td1_bfq,xsii_td2_bfq,xsii_td3_bfq,xsii_td4_bfq",
 ])
 
 FIELDS = BASE_FIELDS + "," + TECH_FIELDS
@@ -92,12 +93,9 @@ CREATE_SQL = _build_create_sql()
 
 
 def get_start(engine):
-    max_d = get_max_date(engine, TABLE)
-    if max_d:
-        start = (pd.Timestamp(max_d) - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y%m%d")
-        print(f"[增量] {TABLE} 最新={max_d}，从 {start} 开始")
-        return start
-    return DEFAULT_START
+    start = get_sync_start(engine, f"{TABLE}.py", DEFAULT_START)
+    print(f"[增量] {TABLE} 从 {start} 开始")
+    return start
 
 
 def main():
@@ -109,15 +107,15 @@ def main():
     pro    = init_tushare()
     engine = get_engine()
     ensure_schema(engine)
+    ensure_sync_status_table(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
-    cal = pro.trade_cal(exchange="SSE", start_date=start, end_date=args.end,
-                        is_open="1", fields="cal_date")
-    dates = sorted(cal["cal_date"].tolist())
+    dates = get_trade_dates(pro, start, args.end)
 
     total_rows, t0 = 0, datetime.now()
     for i, d in enumerate(dates, 1):
+        mark_sync(engine, f"{TABLE}.py", TABLE, d, "ing")
         try:
             df = pro.idx_factor_pro(trade_date=d, fields=FIELDS)
             if df is not None and not df.empty:
@@ -130,13 +128,13 @@ def main():
                 total_rows += rows
             else:
                 rows = 0
+            mark_sync(engine, f"{TABLE}.py", TABLE, d, "ok")
         except Exception as e:
             print(f"  [SKIP] {d}: {e}")
             rows = 0
         elapsed = (datetime.now() - t0).seconds
         if rows > 0 or i % 20 == 0:
             print(f"  [{i:4d}/{len(dates)}] {d}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
-        time.sleep(0.5)  # 5000积分限速30次/分钟
 
     print(f"\n[完成] upsert {total_rows:,} 条")
 
