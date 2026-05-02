@@ -34,15 +34,20 @@ def get_engine():
 
 
 class _TokenBucket:
-    """令牌桶限速器：rate 次/per 秒，初始0个令牌，严格控速。每分钟打印实际调用次数。"""
-    def __init__(self, rate: int = 29, per: int = 60):
-        self._rate     = rate
-        self._per      = per
-        self._tokens   = 0.0
-        self._last     = time.monotonic()
-        self._lock     = threading.Lock()
-        self._count    = 0
-        self._window   = time.monotonic()
+    """令牌桶限速器：按 IO cost points 控速。
+    budget: 每分钟最大 cost points（服务端上限 1500，默认留余量用 1400）
+    cost_per_call: 每次请求消耗的 cost points（默认 52，可通过 MINISHARE_COST 环境变量覆盖）
+    """
+    def __init__(self, budget: int = 1400, per: int = 60, cost_per_call: int = 52):
+        self._budget        = budget
+        self._per           = per
+        self._cost          = cost_per_call
+        self._points        = 0.0          # 当前可用 points
+        self._last          = time.monotonic()
+        self._lock          = threading.Lock()
+        self._count         = 0
+        self._points_used   = 0
+        self._window        = time.monotonic()
 
     def acquire(self):
         while True:
@@ -50,20 +55,24 @@ class _TokenBucket:
                 now     = time.monotonic()
                 elapsed = now - self._last
                 self._last   = now
-                self._tokens = min(self._rate, self._tokens + elapsed * (self._rate / self._per))
-                if self._tokens >= 1:
-                    self._tokens -= 1
-                    self._count += 1
+                self._points = min(self._budget, self._points + elapsed * (self._budget / self._per))
+                if self._points >= self._cost:
+                    self._points      -= self._cost
+                    self._count       += 1
+                    self._points_used += self._cost
                     if now - self._window >= 60:
-                        print(f"  [限速] 过去1分钟实际调用 {self._count} 次（上限{self._rate}次）", flush=True)
-                        self._count  = 0
-                        self._window = now
+                        print(f"  [限速] 过去1分钟调用 {self._count} 次，消耗 {self._points_used} points（上限{self._budget}）", flush=True)
+                        self._count       = 0
+                        self._points_used = 0
+                        self._window      = now
                     return
-                wait = (1 - self._tokens) / (self._rate / self._per)
+                wait = (self._cost - self._points) / (self._budget / self._per)
             time.sleep(wait)
 
 
-_bucket = _TokenBucket(rate=29, per=60)
+_BUDGET       = int(os.environ.get("MINISHARE_BUDGET", "1400"))
+_COST_PER_CALL = int(os.environ.get("MINISHARE_COST",   "52"))
+_bucket = _TokenBucket(budget=_BUDGET, per=60, cost_per_call=_COST_PER_CALL)
 
 
 class _MiniShareClient:

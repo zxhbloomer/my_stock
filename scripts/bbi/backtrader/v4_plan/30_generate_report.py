@@ -468,6 +468,12 @@ def main():
 
     import subprocess, time, webbrowser
     port = 8084
+    # kill 占用该端口的旧进程，确保新 http.server 服务正确的 cwd
+    subprocess.run(
+        f'for /f "tokens=5" %a in (\'netstat -ano ^| findstr :{port}\') do taskkill /F /PID %a',
+        shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    time.sleep(0.5)
     subprocess.Popen(
         ['python', '-m', 'http.server', str(port)],
         cwd=str(OUTPUT_DIR),
