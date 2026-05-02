@@ -14,7 +14,8 @@
 | 数据同步 | `data/手动执行/MINISHARE/` | Minishare API 增量/全量同步脚本 |
 | BBI 回测 | `scripts/bbi/backtrader/` | BBI 策略多版本回测框架 |
 | Qlib 工作流 | `scripts/` + `configs/` | LightGBM 因子模型训练与验证 |
-| 报表生成 | `scripts/bbi/backtrader/v4_plan/30_generate_report.py` | HTML 交互式回测报表 |
+| 报表生成 | `scripts/bbi/backtrader/v4_plan_1/30_generate_report.py` | HTML 交互式回测报表（端口 8085） |
+| 交易跟踪 | `scripts/bbi/backtrader/v4_plan_1/40_trading_server.py` | 操作计划保存与执行跟踪（端口 8086，待实现） |
 
 ---
 
@@ -62,20 +63,32 @@ BBI = (MA5 + MA10 + MA20 + MA60) / 4
 - 手续费模型：买入 0.03%，卖出 0.13%（含印花税），最低 5 元
 - 输出：净值曲线、年化收益、最大回撤、夏普比率
 
-### v4_plan — 当前主力版本
+### v4_plan — 基础版本
 - 在 v3 基础上增加更完整的数据准备流程
 - 新增 `cyq_perf`（筹码分布）和 `moneyflow`（资金流向）特征
 - 完整的 HTML 交互式报表，包含：
   - 净值曲线 + 回撤图
-  - **资金曲线（绝对金额）+ 月度收益明细表**（2026-05-01 新增）
+  - 资金曲线（绝对金额）+ 月度收益明细表
   - 年度收益柱状图
   - 下周操作计划（基于最新数据自动生成）
   - 最近 10 周持仓周报
   - 历史交易明细
 
+### v4_plan_1 — 当前主力版本
+- 在 v4_plan 基础上新增完整止损逻辑：
+  - ATR 追踪止损（`ATR_PERIOD=14`，`ATR_MULTIPLIER=4.5`）
+  - 硬止损（亏损 8% 强制清仓）
+  - 筹码止损（`winner_rate > 80%` 触发）
+  - 最小持仓天数保护（20 天内不触发信号类止损）
+- 流动性过滤更严格：流通市值 ≥ 100 亿，日均成交额 ≥ 5000 万
+- 报表端口改为 8085（避免与 v4_plan 的 8084 冲突）
+- 交易跟踪系统（设计完成，待实现）：
+  - Flask 后端（端口 8086）保存每周操作计划到 PostgreSQL
+  - 独立交易跟踪页面，支持录入实际成交、跟踪执行状态
+
 ---
 
-## 快速运行 BBI v4 策略
+## 快速运行 BBI v4_plan_1 策略
 
 ### 前置条件
 
@@ -92,7 +105,7 @@ TUSHARE_TOKEN=your_token_here
 ### 运行步骤
 
 ```bash
-cd scripts/bbi/backtrader/v4_plan
+cd scripts/bbi/backtrader/v4_plan_1
 
 # Step 1: 准备数据（从 PostgreSQL 生成 parquet）
 python -X utf8 10_prepare_data.py
@@ -100,7 +113,7 @@ python -X utf8 10_prepare_data.py
 # Step 2: 运行回测
 python -X utf8 20_run_backtest.py
 
-# Step 3: 生成 HTML 报表（自动打开浏览器）
+# Step 3: 生成 HTML 报表（自动打开浏览器，端口 8085）
 python -X utf8 30_generate_report.py
 ```
 
@@ -108,14 +121,19 @@ python -X utf8 30_generate_report.py
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `START_DATE` | `2020-01-01` | 回测开始日期 |
+| `START_DATE` | `2018-01-01` | 回测开始日期 |
 | `END_DATE` | `None`（今日） | 回测结束日期 |
 | `INIT_CASH` | `500,000` | 初始资金（元） |
+| `REAL_CASH` | `500,000` | 实盘可用资金（每次换仓后从券商 App 更新） |
 | `TOP_N` | `5` | 持仓股票数量 |
-| `COMM_BUY` | `0.0003` | 买入手续费率 |
-| `COMM_SELL` | `0.0013` | 卖出手续费率（含印花税） |
-| `FILTER_MIN_CIRC_MV` | `50亿` | 最小流通市值过滤 |
+| `COMM_BUY` | `0.0005` | 买入手续费率 |
+| `COMM_SELL` | `0.0015` | 卖出手续费率（含印花税） |
+| `FILTER_MIN_CIRC_MV` | `100亿` | 最小流通市值过滤 |
 | `FILTER_MIN_AMOUNT` | `5000万` | 最小日均成交额过滤 |
+| `ATR_PERIOD` | `14` | ATR 计算周期 |
+| `ATR_MULTIPLIER` | `4.5` | ATR 追踪止损倍数 |
+| `HARD_STOP_LOSS` | `8%` | 硬止损阈值 |
+| `CHIP_EXIT_THRESHOLD` | `80%` | 筹码止损 winner_rate 阈值 |
 
 ---
 
@@ -127,14 +145,16 @@ Tushare Pro API
 PostgreSQL (my_stock DB, tushare_v2 schema)
       ↓  data/手动执行/MINISHARE/ 同步脚本
       ↓
-scripts/bbi/backtrader/v4_plan/10_prepare_data.py
+scripts/bbi/backtrader/v4_plan_1/10_prepare_data.py
       ↓  过滤 + BBI 计算 + shift(1) 防泄露
       ↓
 output/stock_data/*.parquet（每股一个文件）
       ↓
 20_run_backtest.py → output/{nav_series.csv, trade_records.csv, weekly_records.json, last_holdings.json}
       ↓
-30_generate_report.py → output/report.html
+30_generate_report.py → output/report.html（端口 8085）
+      ↓（可选）
+40_trading_server.py → 交易跟踪页面（端口 8086）
 ```
 
 ---
