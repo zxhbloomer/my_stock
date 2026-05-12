@@ -59,6 +59,8 @@
 | 080 | moneyflow | 个股资金流向 | 按日增量 | ⏭️ 跳过迁移（tushare.moneyflow 缺 *_vol 字段） |
 | 081 | moneyflow_ths | 个股资金流向（THS） | 按日增量 | 无需迁移 |
 | 087 | moneyflow_hsgt | 沪深港通资金流向 | 单批全量 | ✅ 可迁移（tushare.moneyflow_hsgt 字段匹配） |
+| 088 | top_list | 龙虎榜每日统计单 | 按日整日替换 | 无需迁移 |
+| 089 | top_inst | 龙虎榜机构交易单 | 按日整日替换 | 无需迁移 |
 | 121 | index_basic | 指数基本信息 | 全删全插 | 无需迁移 |
 | 122 | index_daily | 指数日线行情 | 按指数循环 | 无需迁移 |
 | 125 | index_weekly | 指数周线行情 | 按指数循环 | 无需迁移 |

@@ -67,8 +67,8 @@ def main():
             if df is not None and not df.empty:
                 all_dfs.append(df)
                 print(f"  {market}: {len(df)} 条")
-        except Exception as e:
-            print(f"  [SKIP] {market}: {e}")
+        except Exception:
+            raise
 
     if not all_dfs:
         print("[完成] 无数据")

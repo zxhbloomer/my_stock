@@ -77,8 +77,7 @@ def main():
             rows = 0
             print("[完成] 无数据")
         mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")  # 统一在 try 末尾
-    except Exception as e:
-        print(f"[ERROR] {e}")
+    except Exception:
         raise
 
 

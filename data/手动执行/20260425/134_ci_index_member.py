@@ -66,9 +66,9 @@ def main():
             if df is not None and not df.empty:
                 all_dfs.append(df)
                 print(f"  is_new={is_new}: {len(df)} 条")
-        except Exception as e:
-            print(f"  [SKIP] is_new={is_new}: {e}")
-        time.sleep(0.5)
+        except Exception:
+            raise
+        # time.sleep(0.5)
 
     if not all_dfs:
         print("[完成] 无数据")

@@ -47,6 +47,8 @@ SCRIPT_TABLE_MAP = [
     ("080_moneyflow.py",       "080_moneyflow",       "trade_date"),
     ("081_moneyflow_ths.py",   "081_moneyflow_ths",   "trade_date"),
     ("087_moneyflow_hsgt.py",  "087_moneyflow_hsgt",  "trade_date"),
+    ("088_top_list.py",        "088_top_list",        "trade_date"),
+    ("089_top_inst.py",        "089_top_inst",        "trade_date"),
     ("121_index_basic.py",     "121_index_basic",     None),
     ("122_index_daily.py",     "122_index_daily",     "trade_date"),
     ("129_index_dailybasic.py","129_index_dailybasic","trade_date"),

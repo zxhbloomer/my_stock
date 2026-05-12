@@ -116,13 +116,12 @@ def main():
                 total_rows += rows
             else:
                 rows = 0
-        except Exception as e:
-            print(f"  [SKIP] {code}: {e}")
-            rows = 0
+        except Exception:
+            raise
         elapsed = (datetime.now() - t0).seconds
         if rows > 0 or i % 200 == 0:
             print(f"  [{i:4d}/{len(codes)}] {code}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
-        time.sleep(0.2)
+        # time.sleep(0.2)
 
     mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")
     print(f"\n[完成] upsert {total_rows:,} 条")

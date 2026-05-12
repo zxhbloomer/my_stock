@@ -47,8 +47,21 @@ df['winner_rate'] = df['winner_rate'].shift(1)  # T 日决策只用 T-1 日筹�
 
 | 数据 | 来源表 | 说明 |
 |------|--------|------|
-| OHLCV + BBI + MA60 | `tushare_v2.063_stk_factor_pro` | 前复权价格 |
+| OHLCV + BBI | `tushare_v2.063_stk_factor_pro` | 前复权价格；`bbi_qfq` 必须直接取数据库字段 |
+| MA60 | 本地由 `close_qfq` 滚动计算 | 仅作为策略/报表辅助线，不替代数据库 BBI |
 | 筹码分布 | `tushare_v2.061_cyq_perf` | `winner_rate`，**shift(1)** 防泄露（v3 新增） |
+
+### BBI 数据口径修正
+
+`bbi_qfq` 必须直接读取 `tushare_v2."063_stk_factor_pro"` 中的数据库字段，不在 `10_prepare_data.py` 中本地重算。`ma60` 仍可本地滚动计算，仅作为辅助字段。
+
+如果已有旧输出，需要重新运行完整流程：
+
+```bash
+python -X utf8 10_prepare_data.py
+python -X utf8 20_run_backtest.py
+python -X utf8 30_generate_report.py
+```
 
 ### 股票筛选（与 v2 相同）
 

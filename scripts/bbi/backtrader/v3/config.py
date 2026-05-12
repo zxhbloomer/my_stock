@@ -17,8 +17,8 @@ N_WORKERS             = 4
 DB_URL = "postgresql://root:123456@localhost:5432/my_stock"
 SCHEMA = "tushare_v2"
 
-# v2: BBI uses MA(5,10,20,60) instead of DB's MA(3,6,12,24)
-BBI_PERIODS = (5, 10, 20, 60)
+# BBI is loaded from tushare_v2."063_stk_factor_pro".bbi_qfq.
+# Do not recalculate it in prepare_data.
 
 # v2: MACD momentum confirmation
 MACD_FAST   = 12

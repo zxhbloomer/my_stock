@@ -103,9 +103,9 @@ def main():
                     rows = upsert_df(engine, df, TABLE, COLS, PK)
                     code_rows += rows
                     total_rows += rows
-            except Exception as e:
-                print(f"  [SKIP] {code} {seg_start}-{seg_end}: {e}")
-            time.sleep(0.2)
+            except Exception:
+                raise
+            # time.sleep(0.2)
 
         elapsed = (datetime.now() - t0).seconds
         if code_rows > 0 or i % 200 == 0:

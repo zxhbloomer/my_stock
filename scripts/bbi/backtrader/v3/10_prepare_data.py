@@ -9,8 +9,9 @@ from config import (
     DB_URL, START_DATE, END_DATE,
     FILTER_MIN_CIRC_MV, FILTER_MIN_AMOUNT,
     STOCK_DATA_DIR, OUTPUT_DIR,
-    BBI_PERIODS,
 )
+
+MA60_PERIOD = 60
 
 
 def _query(conn, sql, params):
@@ -96,9 +97,9 @@ def main():
     cyq_dict = {code: grp.drop(columns='ts_code') for code, grp in df_cyq.groupby('ts_code')}
     del df_cyq
 
-    # Step 4: fetch OHLCV + BBI per stock, merge moneyflow + cyq_perf
+    # Step 4: fetch OHLCV + DB BBI per stock, merge moneyflow + cyq_perf
     sql_data = text("""
-        SELECT trade_date, open_qfq, high_qfq, low_qfq, close_qfq, vol
+        SELECT trade_date, open_qfq, high_qfq, low_qfq, close_qfq, vol, bbi_qfq
         FROM tushare_v2."063_stk_factor_pro"
         WHERE ts_code = :ts_code
           AND trade_date >= CAST(:start_date AS date)
@@ -127,16 +128,12 @@ def main():
         if df.empty:
             skipped += 1
             continue
-        if len(df) < max(BBI_PERIODS) + 10:
+        if len(df) < MA60_PERIOD + 10:
             skipped += 1
             continue
-        # Calculate BBI(5,10,20,60) in Python; DB bbi_qfq uses different formula
-        for p in BBI_PERIODS:
-            df[f'ma{p}'] = df['close_qfq'].rolling(p).mean()
-        ma_cols = [f'ma{p}' for p in BBI_PERIODS]
-        df['bbi_qfq'] = df[ma_cols].mean(axis=1)
-        # keep ma60 as separate column for MA60 filter in strategy
-        df = df.drop(columns=[f'ma{p}' for p in BBI_PERIODS if p != 60])
+        # BBI is a database factor. Do not recalculate it here.
+        # ma60 remains a local helper column used by the strategy/report display.
+        df['ma60'] = df['close_qfq'].rolling(MA60_PERIOD).mean()
         df = df.dropna(subset=['bbi_qfq'])
         if len(df) < 10:
             skipped += 1

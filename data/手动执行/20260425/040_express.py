@@ -83,6 +83,25 @@ FLOAT_COLS = ["revenue","operate_profit","total_profit","n_income","total_assets
               "bps","yoy_sales","yoy_op","yoy_tp","yoy_dedu_np","yoy_eps","yoy_roe",
               "growth_assets","yoy_equity","growth_bps","or_last_year","op_last_year",
               "tp_last_year","np_last_year","eps_last_year","open_net_assets","open_bps"]
+INT_COLS   = ["is_audit"]
+
+
+def prepare_df(df: pd.DataFrame) -> pd.DataFrame:
+    missing_pk = [col for col in PK if col not in df.columns]
+    if missing_pk:
+        raise RuntimeError(f"{TABLE} 接口返回缺少主键字段: {missing_pk}")
+
+    df = df.copy()
+    for col in COLS:
+        if col not in df.columns:
+            df[col] = pd.NA
+    for col in DATE_COLS:
+        df[col] = pd.to_datetime(df[col], errors="coerce")
+    for col in FLOAT_COLS:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    for col in INT_COLS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+    return df[COLS].dropna(subset=PK).drop_duplicates(subset=PK)
 
 
 def get_start(engine):
@@ -120,24 +139,17 @@ def main():
         try:
             df = pro.express(ts_code=code, start_date=start, end_date=args.end, fields=FIELDS)
             if df is not None and not df.empty:
-                for col in DATE_COLS:
-                    if col in df.columns:
-                        df[col] = pd.to_datetime(df[col], errors="coerce")
-                for col in FLOAT_COLS:
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col], errors="coerce")
-                df = df.dropna(subset=PK).drop_duplicates(subset=PK)
+                df = prepare_df(df)
                 rows = upsert_df(engine, df, TABLE, COLS, PK)
                 total_rows += rows
             else:
                 rows = 0
-        except Exception as e:
-            print(f"  [SKIP] {code}: {e}")
-            rows = 0
+        except Exception:
+            raise
         elapsed = (datetime.now() - t0).seconds
         if rows > 0 or i % 200 == 0:
             print(f"  [{i:4d}/{len(codes)}] {code}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
-        time.sleep(0.2)
+        # time.sleep(0.2)
 
     mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")
     print(f"\n[完成] upsert {total_rows:,} 条")

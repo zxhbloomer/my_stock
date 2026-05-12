@@ -71,6 +71,10 @@ SCRIPTS = [
     "081_moneyflow_ths.py",
     "087_moneyflow_hsgt.py",
 
+    # ── 打板专题数据 ──────────────────────────────────────────
+    "088_top_list.py",
+    "089_top_inst.py",
+
     # ── 指数专题 ──────────────────────────────────────────────
     "121_index_basic.py",
     "122_index_daily.py",

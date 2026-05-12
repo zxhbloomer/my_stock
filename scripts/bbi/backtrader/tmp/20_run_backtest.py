@@ -1,4 +1,4 @@
-# scripts/bbi/backtrader/20_run_backtest.py
+# scripts/bbi/backtrader/tmp/20_run_backtest.py  (v3_enhanced)
 import csv
 import multiprocessing
 import pandas as pd
@@ -7,14 +7,16 @@ from config import (
     STOCK_DATA_DIR, OUTPUT_DIR, N_WORKERS, INIT_CASH,
     COMMISSION_BUY, COMMISSION_SELL, MIN_COMMISSION,
     MACD_FAST, MACD_SLOW, MACD_SIGNAL,
-    PYRAMID_FIRST_RATIO, PYRAMID_ADD_TRIGGER,
+    PYRAMID_FIRST_RATIO,
     ATR_PERIOD, ATR_MULTIPLIER,
-    MIN_HOLD_DAYS, HARD_STOP_LOSS,
+    MIN_HOLD_DAYS, HARD_STOP_LOSS, CHIP_EXIT_THRESHOLD,
+    MA60_SLOPE_LOOKBACK, FLOW_WINDOW, FLOW_THRESHOLD,  # 新增
 )
 
 
+# 改动 1：BBIData 新增 lg_net_vol line
 class BBIData(bt.feeds.PandasData):
-    lines = ('bbi', 'ma60',)
+    lines = ('bbi', 'ma60', 'winner_rate', 'lg_net_vol',)
     params = (
         ('datetime', None),
         ('open',         'open_qfq'),
@@ -25,6 +27,8 @@ class BBIData(bt.feeds.PandasData):
         ('openinterest', -1),
         ('bbi',          'bbi_qfq'),
         ('ma60',         'ma60'),
+        ('winner_rate',  'winner_rate'),
+        ('lg_net_vol',   'lg_net_vol'),   # 新增：T-1 大单净量
     )
 
 
@@ -49,9 +53,11 @@ class AShareAllInSizer(bt.Sizer):
 
 class BBIEnhancedStrategy(bt.Strategy):
     def __init__(self):
-        self.bbi_line   = self.data.bbi
-        self.close_line = self.data.close
-        self.ma60_line  = self.data.ma60
+        self.bbi_line    = self.data.bbi
+        self.close_line  = self.data.close
+        self.ma60_line   = self.data.ma60
+        self.winner_line = self.data.winner_rate
+        self.flow_line   = self.data.lg_net_vol   # 改动 2：新增 lg_net_vol line 引用
         macd_ind    = bt.indicators.MACD(
             self.data.close,
             period_me1=MACD_FAST,
@@ -68,18 +74,29 @@ class BBIEnhancedStrategy(bt.Strategy):
         self.trail_stop = None
         self.peak_close = None
 
+    # 改动 3：_entry_signal 完整替换
     def _entry_signal(self):
-        if len(self) < 4:
+        if len(self) < max(4, MA60_SLOPE_LOOKBACK + 1, FLOW_WINDOW + 1):
             return False
         cross_up  = self.close_line[-1] < self.bbi_line[-1] and self.close_line[0] > self.bbi_line[0]
         bbi_slope = self.bbi_line[0] > self.bbi_line[-3]
-        macd_ok   = self.macd_line[0] > self.signal_line[0] or self.macd_line[0] > 0
-        return cross_up and bbi_slope and macd_ok
+        # 收紧 MACD：去掉 "or macd > 0"，要求 MACD 在信号线之上
+        macd_ok   = self.macd_line[0] > self.signal_line[0]
+        # 新增：MA60 中期趋势向上
+        ma60_uptrend = self.ma60_line[0] > self.ma60_line[-MA60_SLOPE_LOOKBACK]
+        # 新增：近 FLOW_WINDOW 日大单净量之和 > FLOW_THRESHOLD（数据已 fillna(0)）
+        flow_ok = sum(self.flow_line[-i] for i in range(FLOW_WINDOW)) > FLOW_THRESHOLD
+        return cross_up and bbi_slope and macd_ok and ma60_uptrend and flow_ok
 
     def _exit_signal(self):
         cross_down = self.close_line[-1] > self.bbi_line[-1] and self.close_line[0] < self.bbi_line[0]
-        macd_dead  = self.macd_line[0] < self.signal_line[0] and self.macd_line[0] < 0
-        return cross_down or macd_dead
+        bbi_declining = len(self) >= 4 and self.bbi_line[0] < self.bbi_line[-3]
+        macd_dead  = (self.macd_line[0] < self.signal_line[0]
+                      and self.macd_line[0] < 0
+                      and bbi_declining)
+        wr = self.winner_line[0]
+        chip_exit = (wr == wr) and (wr > CHIP_EXIT_THRESHOLD)
+        return cross_down or macd_dead or chip_exit
 
     def _update_trail(self):
         c = self.close_line[0]
@@ -109,15 +126,14 @@ class BBIEnhancedStrategy(bt.Strategy):
                 self.state = 2
 
     def _should_exit(self):
-        """Exit logic with min-hold protection and hard stop."""
         pos = self.broker.getposition(self.data)
         if pos.size > 0:
             loss_pct = (self.close_line[0] - pos.price) / pos.price
             if loss_pct <= -HARD_STOP_LOSS:
-                return True  # hard stop always fires
+                return True
         held = len(self) - self.buy_bar
         if held < MIN_HOLD_DAYS:
-            return False  # protect early exit
+            return False
         return self._exit_signal() or self._trail_triggered()
 
     def next(self):
@@ -133,6 +149,7 @@ class BBIEnhancedStrategy(bt.Strategy):
                     self.trail_stop = None
 
         elif self.state == 1:
+            # 改动 4：删除加仓逻辑，state==1 只做止损/止盈退出
             self._update_trail()
             if len(self) > self.buy_bar:
                 if self._should_exit():
@@ -141,17 +158,9 @@ class BBIEnhancedStrategy(bt.Strategy):
                     self.add_order = None
                     self._reset_trail()
                     return
-            pos = self.broker.getposition(self.data)
-            if pos.size > 0:
-                profit_pct = (self.close_line[0] - pos.price) / pos.price
-                if profit_pct >= PYRAMID_ADD_TRIGGER and self.macd_line[0] > 0:
-                    if self.add_order is None:
-                        cash = self.broker.getcash()
-                        size = int(cash / self.close_line[0] / 100) * 100
-                        if size >= 100:
-                            self.add_order = self.buy(size=size, exectype=bt.Order.Market)
 
         elif self.state == 2:
+            # 改动 5：state==2 保留作为安全网（取消加仓后理论上不会进入此分支）
             self._update_trail()
             if len(self) > self.buy_bar and self._should_exit():
                 self.order_target_size(target=0)
@@ -164,6 +173,13 @@ def run_single_stock(args):
     ts_code, name, parquet_path = args
     try:
         df = pd.read_parquet(parquet_path)
+
+        # 改动 7：处理 lg_net_vol 缺失（旧版 parquet 可能没有此列）
+        if 'lg_net_vol' not in df.columns:
+            df['lg_net_vol'] = 0.0
+        else:
+            df['lg_net_vol'] = df['lg_net_vol'].fillna(0.0)
+
         df.index = pd.to_datetime(df['trade_date'])
         df = df.sort_index()
 
@@ -201,12 +217,10 @@ def run_single_stock(args):
 
         avg_hold = trade_an.get('len', {}).get('average', 0.0)
 
-        # build trades list using Transactions analyzer
         trades_out = []
         open_trade = None
         for dt_obj in sorted(txn_an.keys()):
             for txn in txn_an[dt_obj]:
-                # txn format: [size, price, value, data_name, pnlcomm]
                 size, price, pnlcomm = txn[0], txn[1], txn[4]
                 date_str = dt_obj.strftime('%Y-%m-%d')
                 if size > 0:
@@ -218,7 +232,6 @@ def run_single_stock(args):
                                         'size': abs(size), 'type': '建仓'}],
                         }
                     else:
-                        # weighted average cost for scale-in add
                         total_size = open_trade['size'] + abs(size)
                         avg_price = (open_trade['buy_price'] * open_trade['size'] + price * abs(size)) / total_size
                         open_trade['buy_price'] = round(avg_price, 4)
@@ -248,7 +261,6 @@ def run_single_stock(args):
                     })
                     open_trade = None
 
-        # append open position as unrealized trade
         if open_trade:
             try:
                 df_last = pd.read_parquet(parquet_path, columns=['trade_date', 'close_qfq'])
@@ -274,7 +286,6 @@ def run_single_stock(args):
                 'sell_size':  0,
             })
 
-        # avg_return_pct: mean of per-trade return_pct (%), closed trades only
         closed = [t for t in trades_out if t['sell_date'] != '持仓中']
         avg_ret_pct = round(
             sum(t['return_pct'] for t in closed) / len(closed), 4

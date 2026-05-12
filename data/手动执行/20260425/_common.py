@@ -48,20 +48,22 @@ def _patch_query(pro, max_retry: int = 30, retry_wait: int = 20):
             'fields': fields,
         }
         url = f"{self._DataApi__http_url}/{api_name}"
-        last_err = None
         for attempt in range(1, max_retry + 1):
             try:
                 res = requests.post(url, json=req_params, timeout=self._DataApi__timeout)
                 if res.status_code != 200:
-                    last_err = f"HTTP {res.status_code}"
-                    print(f"  [HTTP {res.status_code}] {api_name} 尝试{attempt}/{max_retry}，{retry_wait}秒后重试...")
+                    if attempt == max_retry:
+                        res.raise_for_status()
+                    print(f"  {api_name} HTTP {res.status_code} 尝试{attempt}/{max_retry}，{retry_wait}秒后重试...")
                     time.sleep(retry_wait)
                     continue
                 try:
                     result = json.loads(res.text)
                 except json.JSONDecodeError as e:
-                    last_err = f"JSON解析失败(响应体可能被截断): {e}"
-                    print(f"  [JSON ERR] {api_name} 尝试{attempt}/{max_retry}，{retry_wait}秒后重试...")
+                    if attempt == max_retry:
+                        raise
+                    print(f"  {e}")
+                    print(f"  {api_name} 尝试{attempt}/{max_retry}，{retry_wait}秒后重试...")
                     time.sleep(retry_wait)
                     continue
                 biz_code = result.get('code', -1)
@@ -69,20 +71,24 @@ def _patch_query(pro, max_retry: int = 30, retry_wait: int = 20):
                        or kwargs.get('start_date', ''))
                 print(f"  [HTTP 200|code={biz_code}] {api_name} {_id}", flush=True)
                 if biz_code != 0:
-                    last_err = f"biz_code={biz_code} msg={result.get('msg','')}"
                     if biz_code == 502:
                         # 数据不存在，无需重试
                         return pd.DataFrame()
-                    print(f"  [BIZ ERR] {last_err} 尝试{attempt}/{max_retry}，{retry_wait}秒后重试...")
+                    msg = result.get('msg') or result
+                    if attempt == max_retry:
+                        raise RuntimeError(msg)
+                    print(f"  {msg}")
+                    print(f"  {api_name} 尝试{attempt}/{max_retry}，{retry_wait}秒后重试...")
                     time.sleep(retry_wait)
                     continue
                 data = result['data']
                 return pd.DataFrame(data['items'], columns=data['fields'])
             except requests.RequestException as e:
-                last_err = str(e)
-                print(f"  [NET ERR] {api_name} 尝试{attempt}/{max_retry}: {e}，{retry_wait}秒后重试...")
+                if attempt == max_retry:
+                    raise
+                print(f"  {e}")
+                print(f"  {api_name} 尝试{attempt}/{max_retry}，{retry_wait}秒后重试...")
                 time.sleep(retry_wait)
-        raise Exception(f"{api_name} 重试{max_retry}次仍失败，最后错误: {last_err}")
 
     pro.__class__.query = patched_query
     pro.__class__.__getattr__ = lambda self, name: partial(self.query, name)
@@ -153,7 +159,8 @@ def mark_sync(engine, script_name: str, table_name: str, date, status: str):
 
 
 
-def check_or_create_table(engine, table: str, create_sql: str, expected_cols: list[str]):
+def check_or_create_table(engine, table: str, create_sql: str, expected_cols: list[str],
+                          allow_extra_cols: set[str] | None = None):
     """
     表不存在 → 自动建表。
     表已存在 → 比对字段，不一致则报错中断。
@@ -168,7 +175,8 @@ def check_or_create_table(engine, table: str, create_sql: str, expected_cols: li
     existing = {c['name'] for c in insp.get_columns(table, schema=SCHEMA)}
     expected = set(expected_cols)
     missing  = expected - existing
-    extra    = existing - expected - {'update_time'}
+    allow_extra_cols = allow_extra_cols or set()
+    extra    = existing - expected - {'update_time'} - allow_extra_cols
     if missing or extra:
         raise RuntimeError(
             f"[字段不一致] {SCHEMA}.{table}\n"
@@ -248,6 +256,27 @@ def truncate_and_insert(engine, df: pd.DataFrame, table: str, cols: list[str]) -
     tmp = f"_tmp_{table}"
     with engine.begin() as conn:
         conn.execute(text(f"TRUNCATE TABLE {SCHEMA}.{_qt(table)}"))
+        df[cols].to_sql(tmp, conn, schema=SCHEMA, if_exists="replace",
+                        index=False, method="multi", chunksize=5000)
+        conn.execute(text(f"""
+            INSERT INTO {SCHEMA}.{_qt(table)} ({','.join(_qc(c) for c in cols)})
+            SELECT {','.join(_qc(c) for c in cols)} FROM {SCHEMA}.{_qt(tmp)}
+        """))
+        conn.execute(text(f"DROP TABLE IF EXISTS {SCHEMA}.{_qt(tmp)}"))
+    return len(df)
+
+
+def replace_date_df(engine, df: pd.DataFrame, table: str, cols: list[str], trade_date) -> int:
+    """Delete one trade_date partition and insert the fetched full-day rows."""
+    if isinstance(trade_date, str):
+        trade_date = pd.Timestamp(trade_date)
+    date_value = trade_date.date() if hasattr(trade_date, "date") else trade_date
+
+    tmp = f"_tmp_{table}"
+    with engine.begin() as conn:
+        conn.execute(text(f'DELETE FROM {SCHEMA}.{_qt(table)} WHERE "trade_date" = :d'), {"d": date_value})
+        if df is None or df.empty:
+            return 0
         df[cols].to_sql(tmp, conn, schema=SCHEMA, if_exists="replace",
                         index=False, method="multi", chunksize=5000)
         conn.execute(text(f"""
