@@ -65,7 +65,7 @@ def main():
     engine = get_engine()
     ensure_schema(engine)
     ensure_sync_status_table(engine)
-    check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
+    check_or_create_table(engine, TABLE, CREATE_SQL, COLS, allow_extra_cols={"name"})
 
     start = args.start or get_start(engine)
     dates = get_trade_dates(pro, start, args.end)

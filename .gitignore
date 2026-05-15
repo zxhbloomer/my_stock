@@ -52,6 +52,9 @@ env/
 # Specify 框架目录
 .specify/
 
+# Superpowers 本地状态
+.superpowers/
+
 # Claude Code 配置目录
 .claude/
 
@@ -76,3 +79,4 @@ validation_results/
 
 # 回测输出目录（生成文件，不纳入版本控制）
 **/output/
+scripts/bbi/backtrader/tmp/*_output/

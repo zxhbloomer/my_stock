@@ -34,6 +34,8 @@ SCRIPTS = [
     "014_daily.py",
     "018_weekly.py",
     "019_monthly.py",
+    "021_stk_weekly_monthly.py",
+    "022_stk_week_month_adj.py",
     "023_adj_factor.py",
     "027_daily_basic.py",
     "029_stk_limit.py",
@@ -69,11 +71,18 @@ SCRIPTS = [
     # ── 资金流向 ──────────────────────────────────────────────
     "080_moneyflow.py",
     "081_moneyflow_ths.py",
+    "082_moneyflow_dc.py",
+    "083_moneyflow_cnt_ths.py",
+    "084_moneyflow_ind_ths.py",
+    "085_moneyflow_ind_dc.py",
+    "086_moneyflow_mkt_dc.py",
     "087_moneyflow_hsgt.py",
 
     # ── 打板专题数据 ──────────────────────────────────────────
     "088_top_list.py",
     "089_top_inst.py",
+    "091_limit_list_d.py",
+    "092_limit_step.py",
 
     # ── 指数专题 ──────────────────────────────────────────────
     "121_index_basic.py",

@@ -1,5 +1,97 @@
 # 轮动策略回测结果
 
+## 2026-05-15 强趋势持有卖出实验
+
+- 新增设计：`docs/superpowers/specs/2026-05-15-v4-bull-hold-exit-experiment-design.md`。
+- 新增计划：`docs/superpowers/plans/2026-05-15-v4-bull-hold-exit-experiment.md`。
+- 修改实验脚本：`v4_bull_hold_exit_experiment.py`，只在 `tmp` 中运行，不修改正式 `v4`。
+- 已实现 5 个模式：`current`、`trend_line`、`profit_cushion`、`strict_observe`、`weekly_hold`。
+- 已修正实验脚本导入口径，强制读取正式 `v4/config.py`，输出写入 `tmp/v4_bull_hold_*_output`。
+- 已做内存优化：2018 专项实验只读取回测区间加预热窗口，不再全量 840 万行同时处理。
+- 已做 QA 修正：周线持有只使用信号日前已完成周线，不使用未完成周。
+- 2018 结果：5 个模式完全一致，收益 `-31.64%`，最大回撤 `-34.34%`，没有改善。
+- 诊断结论：2018 只有 4 次放量大阴线卖出；只有新城控股是强趋势，但当时盈利约 `3.73%`，低于 10%/15% 利润垫，因此新规则未触发。2018 亏损主因不在“强趋势牛股被过早卖出”，更偏向买入端/熊市开仓问题。
+- 输出文件：`v4_bull_hold_exit_comparison_2018.csv`、`v4_bull_hold_bearish_exit_diag_2018.csv`、`v4_bull_hold_exit_summary_2018.md`。
+
+### 2025 牛股持有补充验证
+
+- 已按同一脚本补跑 `2025-01-01 ~ 2025-12-31`。
+- 结果：`current` 最好，收益 `37.31%`，最大回撤 `-31.70%`。
+- `weekly_hold` 次之，收益 `31.00%`，交易次数从 `191` 降到 `166`，但仍低于基线。
+- `trend_line`、`profit_cushion`、`strict_observe` 均明显变差。
+- 新易盛：`weekly_hold` 确实拿得更久，单票盈利约 `57.63%`，高于基线第一次卖出的 `50.54%`，但组合整体没有因此胜出。
+- 中际旭创：主要问题是买入后快速触发止损，不是放量大阴线卖早的问题。
+- 结论：继续优化“放量大阴线后如何拿住”不是当前最优方向。更值得推进的是买入时机、止损口径、强趋势股二次买入/回补规则。
+- 输出文件：`v4_bull_hold_exit_comparison_2025.csv`、`v4_bull_hold_focus_trades_2025.csv`、`v4_bull_hold_exit_summary_2025.md`。
+
+### 2026-05-15 数据库周线 BBI 三周跌破实验
+
+- 新增计划：`docs/superpowers/plans/2026-05-15-v4-weekly-bbi-db-experiment.md`。
+- 修改实验脚本：`v4_bull_hold_exit_experiment.py`，新增 `weekly_bbi_3w` 模式。
+- 周线数据源改为数据库 `tushare_v2."022_stk_week_month_adj"`，只读取 `freq='week'` 的前复权周线，不再用日线聚合周线。
+- 周线 BBI：`(MA3周 + MA6周 + MA12周 + MA24周) / 4`，至少 24 根周线后生效。
+- 未来函数控制：日线信号日期只通过 `merge_asof(direction='backward')` 对齐 `week_signal_date <= signal_date` 的已完成周线。
+- 对比结果：
+  - 2018 `current`：收益 `-31.64%`，最大回撤 `-34.34%`，交易 `113`。
+  - 2018 `weekly_bbi_3w`：收益 `-34.57%`，最大回撤 `-37.07%`，交易 `118`。
+  - 2025 `current`：收益 `37.31%`，最大回撤 `-31.70%`，交易 `191`。
+  - 2025 `weekly_bbi_3w`：收益 `17.12%`，最大回撤 `-31.70%`，交易 `159`。
+- 诊断结论：`weekly_bbi_3w_exit_signals=0`，说明“三周跌破周线 BBI”过慢，几乎没有真正成为卖出触发器；但它会让强趋势盈利股遇到放量大阴线时不卖，改变持仓路径，2018 和 2025 都没有改善组合表现。
+- 暂不建议合入正式 `v4`。
+- 输出文件：`v4_weekly_bbi_3w_comparison.csv`，以及 `v4_bull_hold_current_20180101_20181231_output`、`v4_bull_hold_weekly_bbi_3w_20180101_20181231_output`、`v4_bull_hold_current_20250101_20251231_output`、`v4_bull_hold_weekly_bbi_3w_20250101_20251231_output`。
+
+### 2026-05-15 数据库周线 BBI 两周跌破补测
+
+- 新增 `weekly_bbi_2w` 模式，逻辑为连续 2 个已完成周 `close_qfq < week_bbi_qfq`。
+- 2018 `weekly_bbi_2w`：收益 `-34.57%`，最大回撤 `-37.07%`，交易 `118`。
+- 2025 `weekly_bbi_2w`：收益 `17.12%`，最大回撤 `-31.70%`，交易 `159`。
+- 结果与 `weekly_bbi_3w` 完全一致。
+- 诊断结论：`weekly_bbi_2w_exit_signals=0`，说明问题不在 2 周还是 3 周，而在当前实验结构下周线 BBI 退出没有真正触发；收益变差主要来自放量大阴线卖出被豁免后改变持仓路径。
+- 暂不建议合入正式 `v4`。
+- 输出文件：`v4_weekly_bbi_2w_3w_comparison.csv`。
+
+### 2026-05-15 数据库周线 BBI 一周跌破补测
+
+- 新增 `weekly_bbi_1w` 模式，逻辑为最近 1 个已完成周 `close_qfq < week_bbi_qfq`。
+- 2018 `weekly_bbi_1w`：收益 `-34.57%`，最大回撤 `-37.07%`，交易 `118`。
+- 2025 `weekly_bbi_1w`：收益 `17.12%`，最大回撤 `-31.70%`，交易 `159`。
+- 结果仍与 `weekly_bbi_2w`、`weekly_bbi_3w` 完全一致。
+- 诊断结论：`weekly_bbi_1w_exit_signals=0`，说明放量大阴线被豁免时，已完成周线仍未跌破周 BBI；周线 BBI 不适合作为放量大阴线的替代卖出条件。
+- 暂不建议合入正式 `v4`。
+- 输出文件：`v4_weekly_bbi_1w_2w_3w_comparison.csv`。
+
+### 2026-05-15 独立周线 BBI 止损实验
+
+- 新增 `weekly_bbi_stop_1w`、`weekly_bbi_stop_2w`、`weekly_bbi_stop_3w` 模式。
+- 规则改为“持仓期间，只要已完成周线跌破 BBI 就触发止损”，不再依赖放量大阴线。
+- 2018 `weekly_bbi_stop_1w`：收益 `-34.25%`，最大回撤 `-37.92%`，交易 `198`，触发 `24` 次。
+- 2018 `weekly_bbi_stop_2w`：收益 `-40.27%`，最大回撤 `-42.52%`，交易 `153`，触发 `6` 次。
+- 2018 `weekly_bbi_stop_3w`：收益 `-40.87%`，最大回撤 `-43.42%`，交易 `141`，触发 `3` 次。
+- 2025 `weekly_bbi_stop_1w`：收益 `48.29%`，最大回撤 `-31.22%`，交易 `190`，触发 `5` 次。
+- 2025 `weekly_bbi_stop_2w`：收益 `41.71%`，最大回撤 `-31.22%`，交易 `178`，触发 `2` 次。
+- 2025 `weekly_bbi_stop_3w`：收益 `37.31%`，最大回撤 `-31.70%`，交易 `191`，触发 `0` 次。
+- 结论：`1w` 在 2025 比 current 更好，但 2018 更差；`2w/3w` 在熊市更差，且牛市收益不如 `1w`。
+- 暂不建议合入正式 `v4`，但 `1w` 可以作为后续继续与现有放量大阴线规则组合比较的候选。
+- 输出文件：`v4_weekly_bbi_independent_stop_comparison.csv`。
+
+## 2026-05-12 熊市实验推进记录
+
+- 新增 `v4_bear_2018_experiment.py`，只读 `scripts/bbi/backtrader/v4/output`，不改主策略。
+- 已完成 2018 参数网格实验并验证通过。
+- 当前最优组合：`market_gate=ma120`，`pullback_threshold=-15%`。
+- 2018 结果：年化 `-15.03%`，最大回撤 `-18.49%`，相对 v4 基线 `-51.17% / -55.46%` 明显改善，但仍未转正。
+- 已按 QA 反馈修正实验脚本：显式读取 `v4/output/market_index.parquet`，并保持市场门禁只使用已完成交易日信号。
+
+## 2026-05-12 63日回撤与10周线实验
+
+- 新增计划：`v4_pullback_63_10w_plan.md`。
+- 新增脚本：`v4_pullback_63_10w_experiment.py`。
+- 实验只在 `tmp` 中运行，不修改 `v4` 主策略。
+- 同脚本重跑 `BASE` 基线，避免直接引用旧 `nav_series.csv` 造成比较口径不一致。
+- 最终结果：2018 最优是 `A + ma120`，即 `63日回撤<=-5%` 且加上证 120 日均线门禁，收益 `-14.99%`，最大回撤 `-18.31%`。
+- 全区间最优是 `A + base`，即 `63日回撤<=-5%` 且不加 120 日均线门禁，收益 `156.58%`，最大回撤 `-47.81%`。
+- 10周线 D/E/F 组没有成为最优，暂不建议合入 v4。
+
 **回测区间**: 2018-01-01 ~ 2026-04-24（约8.3年）  
 **初始资金**: 500,000元  
 **股票池**: 1528只（排除688科创板）  

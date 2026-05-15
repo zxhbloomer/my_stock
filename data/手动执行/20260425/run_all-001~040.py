@@ -32,6 +32,8 @@ SCRIPTS = [
     "014_daily.py",
     "018_weekly.py",
     "019_monthly.py",
+    "021_stk_weekly_monthly.py",
+    "022_stk_week_month_adj.py",
     "023_adj_factor.py",
     "027_daily_basic.py",
     "029_stk_limit.py",

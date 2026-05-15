@@ -27,6 +27,8 @@
 | 013 | bak_basic | 股票历史列表 | PASS | 不需要此接口 |
 | 018 | weekly | 周线行情 | 按日增量 | 无需迁移 |
 | 019 | monthly | 月线行情 | 按日增量 | 无需迁移 |
+| 021 | stk_weekly_monthly | 周/月线行情(每日更新) | 按日增量 | 新脚本，目标表不存在，无需迁移 |
+| 022 | stk_week_month_adj | 周/月线复权行情(每日更新) | 按日增量 | 新脚本，目标表不存在，无需迁移 |
 | 023 | adj_factor | 复权因子 | 按日增量 | ✅ 已迁移 14,135,961 行（tushare.stock_adjfactor） |
 | 027 | daily_basic | 每日指标 | 按日增量 | ✅ 已迁移 13,685,551 行（tushare.stock_dailybasic） |
 | 029 | stk_limit | 每日涨跌停价格 | 按日增量 | 无需迁移 |
@@ -58,9 +60,16 @@
 | 078 | slb_sec_detail | 转融券交易明细(停) | 按日增量 | 无需迁移 |
 | 080 | moneyflow | 个股资金流向 | 按日增量 | ⏭️ 跳过迁移（tushare.moneyflow 缺 *_vol 字段） |
 | 081 | moneyflow_ths | 个股资金流向（THS） | 按日增量 | 无需迁移 |
+| 082 | moneyflow_dc | 个股资金流向（DC） | 按日增量 | 新脚本，目标表不存在，无需迁移 |
+| 083 | moneyflow_cnt_ths | 板块资金流向（THS） | 按日增量 | 新脚本，目标表不存在，无需迁移 |
+| 084 | moneyflow_ind_ths | 行业资金流向（THS） | 按日增量 | 新脚本，目标表不存在，无需迁移 |
+| 085 | moneyflow_ind_dc | 板块资金流向（DC） | 按日增量 | 新脚本，目标表不存在，无需迁移 |
+| 086 | moneyflow_mkt_dc | 大盘资金流向（DC） | 按日增量 | 新脚本，目标表不存在，无需迁移 |
 | 087 | moneyflow_hsgt | 沪深港通资金流向 | 单批全量 | ✅ 可迁移（tushare.moneyflow_hsgt 字段匹配） |
 | 088 | top_list | 龙虎榜每日统计单 | 按日整日替换 | 无需迁移 |
 | 089 | top_inst | 龙虎榜机构交易单 | 按日整日替换 | 无需迁移 |
+| 091 | limit_list_d | 涨跌停和炸板数据 | 按日增量 | 新脚本，目标表不存在，无需迁移 |
+| 092 | limit_step | 涨停股票连板天梯 | 按日增量 | 新脚本，目标表不存在，无需迁移 |
 | 121 | index_basic | 指数基本信息 | 全删全插 | 无需迁移 |
 | 122 | index_daily | 指数日线行情 | 按指数循环 | 无需迁移 |
 | 125 | index_weekly | 指数周线行情 | 按指数循环 | 无需迁移 |
@@ -83,6 +92,8 @@ new/
 ├── 008_stock_company.py
 ├── 018_weekly.py
 ├── 019_monthly.py
+├── 021_stk_weekly_monthly.py
+├── 022_stk_week_month_adj.py
 ├── 023_adj_factor.py
 ├── 027_daily_basic.py
 ├── 029_stk_limit.py
@@ -114,7 +125,16 @@ new/
 ├── 078_slb_sec_detail.py
 ├── 080_moneyflow.py
 ├── 081_moneyflow_ths.py
+├── 082_moneyflow_dc.py
+├── 083_moneyflow_cnt_ths.py
+├── 084_moneyflow_ind_ths.py
+├── 085_moneyflow_ind_dc.py
+├── 086_moneyflow_mkt_dc.py
 ├── 087_moneyflow_hsgt.py
+├── 088_top_list.py
+├── 089_top_inst.py
+├── 091_limit_list_d.py
+├── 092_limit_step.py
 ├── 121_index_basic.py
 ├── 122_index_daily.py
 ├── 125_index_weekly.py

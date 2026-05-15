@@ -16,6 +16,8 @@ python-dotenv>=1.0.0   # 环境变量管理（.env文件支持）
 # GUI 模块依赖
 async-tkinter-loop>=0.9.0  # Tkinter 异步事件循环支持
 tkcalendar>=1.6.0          # 日期选择器组件（可选）
+fastapi>=0.110.0,<0.116.0 # 本地Web同步控制台（兼容 Python 3.8）
+uvicorn>=0.27.0,<0.30.0  # FastAPI开发服务器（兼容 Python 3.8）
 
 # 可选：深度学习模型
 # torch==1.7.0

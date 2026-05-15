@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>数据同步窗口</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --line: #d7dce2;
+      --text: #1f2933;
+      --muted: #65717f;
+      --accent: #1f6feb;
+      --danger: #b42318;
+      --danger-bg: #fff1f0;
+      --ok: #067647;
+      --run: #b54708;
+      --idle: #475467;
+      --head: #eef2f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-width: 900px;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .app {
+      width: 100%;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto auto auto minmax(0, 1fr);
+      gap: 8px;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .topbar,
+    .statusbar,
+    .banner,
+    .table-wrap,
+    .logs {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px 10px;
+      min-height: 74px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .job-count {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      flex-wrap: nowrap;
+    }
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    input {
+      height: 28px;
+      border: 1px solid #c8d0d9;
+      border-radius: 3px;
+      padding: 3px 7px;
+      color: var(--text);
+      background: #fff;
+      font: inherit;
+    }
+
+    input.date-input {
+      width: 92px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    button {
+      height: 28px;
+      max-width: 150px;
+      border: 1px solid #b8c1cc;
+      border-radius: 3px;
+      padding: 3px 9px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: #175cd3;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .48;
+    }
+
+    .statusbar {
+      display: grid;
+      grid-template-columns: 130px minmax(220px, 1fr) 120px;
+      gap: 8px;
+      padding: 7px 10px;
+      min-height: 34px;
+      align-items: center;
+    }
+
+    .status-item {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-pill {
+      display: inline-block;
+      min-width: 58px;
+      max-width: 88px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      color: #fff;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+
+    .status-idle { background: var(--idle); }
+    .status-running { background: var(--run); }
+    .status-success { background: var(--ok); }
+    .status-failed,
+    .status-error { background: var(--danger); }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .banner {
+      display: none;
+      padding: 7px 10px;
+      color: var(--danger);
+      background: var(--danger-bg);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .banner.show {
+      display: block;
+    }
+
+    .table-wrap {
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 1100px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 5px 7px;
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      height: 31px;
+      background: var(--head);
+      color: #344054;
+      font-weight: 700;
+    }
+
+    tbody tr.selected td {
+      background: #eaf2ff;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .col-select { width: 42px; }
+    .col-script { width: 16%; }
+    .col-table { width: 12%; }
+    .col-date { width: 112px; }
+    .col-status { width: 10%; }
+    .col-updated { width: 14%; }
+    .col-elapsed { width: 92px; }
+    .col-feedback { width: 190px; }
+    .col-actions { width: 246px; }
+
+    .select-cell {
+      text-align: center;
+    }
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      vertical-align: middle;
+    }
+
+    .feedback {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .feedback-running {
+      color: var(--run);
+      font-weight: 700;
+    }
+
+    .feedback-error {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .feedback-done {
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .feedback-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .feedback-cell span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    button.stop {
+      width: 48px;
+      max-width: 48px;
+      border-color: #d92d20;
+      color: #b42318;
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+
+    td.actions {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    td.actions button {
+      width: 74px;
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+
+    .empty {
+      height: 80px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .logs {
+      min-height: 0;
+      padding: 8px 10px;
+      overflow: auto;
+      background: #111827;
+      color: #d1d5db;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        min-width: 0;
+      }
+
+      .app {
+        padding: 8px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .toolbar {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 1px;
+      }
+
+      .statusbar {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="topbar">
+      <h1>数据同步窗口<span id="jobCount" class="job-count">（0）</span></h1>
+      <div class="toolbar">
+        <label>目标日期
+          <input id="targetDate" class="date-input" type="text" inputmode="numeric" maxlength="8" autocomplete="off">
+        </label>
+        <button id="syncAll" class="primary" type="button">全部同步</button>
+        <button id="syncSelected" type="button">选择脚本执行（0）</button>
+        <button id="checkAll" type="button">校验今日同步</button>
+        <button id="refresh" type="button">刷新</button>
+      </div>
+    </section>
+
+    <section class="statusbar" aria-live="polite">
+      <div class="status-item">状态 <span id="taskStatus" class="status-pill status-idle">idle</span></div>
+      <div class="status-item">当前脚本 <span id="currentScript" class="muted">-</span></div>
+      <div class="status-item">运行时间 <span id="elapsedTime" class="muted">-</span></div>
+    </section>
+
+    <div id="banner" class="banner"></div>
+
+    <section class="workspace">
+      <section class="table-wrap">
+        <table>
+          <colgroup>
+            <col class="col-select">
+            <col class="col-script">
+            <col class="col-table">
+            <col class="col-date">
+            <col class="col-status">
+            <col class="col-updated">
+            <col class="col-elapsed">
+            <col class="col-feedback">
+            <col class="col-actions">
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="select-cell">选</th>
+              <th>脚本名称</th>
+              <th>表名</th>
+              <th>同步日期</th>
+              <th>状态</th>
+              <th>更新时间</th>
+              <th>运行时间</th>
+              <th>执行反馈</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="jobRows">
+            <tr><td class="empty" colspan="9">加载中</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <pre id="logs" class="logs"></pre>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      jobs: [],
+      task: null,
+      tasks: [],
+      activeScripts: {},
+      taskRunning: false,
+      selectedScripts: new Set(),
+      feedback: {},
+      selectedRunScripts: [],
+      selectedRunKind: "",
+      selectedRunActive: false
+    };
+
+    const els = {
+      targetDate: document.getElementById("targetDate"),
+      syncAll: document.getElementById("syncAll"),
+      syncSelected: document.getElementById("syncSelected"),
+      checkAll: document.getElementById("checkAll"),
+      refresh: document.getElementById("refresh"),
+      jobCount: document.getElementById("jobCount"),
+      taskStatus: document.getElementById("taskStatus"),
+      currentScript: document.getElementById("currentScript"),
+      elapsedTime: document.getElementById("elapsedTime"),
+      banner: document.getElementById("banner"),
+      jobRows: document.getElementById("jobRows"),
+      logs: document.getElementById("logs")
+    };
+
+    function todayYYYYMMDD() {
+      const d = new Date();
+      const y = String(d.getFullYear());
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return y + m + day;
+    }
+
+    function nowTimestamp() {
+      const d = new Date();
+      const y = String(d.getFullYear());
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const h = String(d.getHours()).padStart(2, "0");
+      const min = String(d.getMinutes()).padStart(2, "0");
+      const s = String(d.getSeconds()).padStart(2, "0");
+      return y + "-" + m + "-" + day + " " + h + ":" + min + ":" + s;
+    }
+
+    function toYYYYMMDD(value) {
+      if (!value) return todayYYYYMMDD();
+      const text = String(value).trim();
+      const compact = text.replaceAll("-", "");
+      return /^\d{8}$/.test(compact) ? compact : text;
+    }
+
+    function normalizeRows(payload) {
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload.rows)) return payload.rows;
+      if (Array.isArray(payload.jobs)) return payload.jobs;
+      if (Array.isArray(payload.data)) return payload.data;
+      return [];
+    }
+
+    function displayValue(value) {
+      return value === null || value === undefined || value === "" ? "-" : String(value);
+    }
+
+    function elapsedValue(obj) {
+      const value = obj.elapsed_seconds ?? obj.elapsed_time ?? obj.elapsed ?? obj.duration ?? obj.runtime ?? obj.run_time;
+      return obj.elapsed_seconds === null || obj.elapsed_seconds === undefined
+        ? displayValue(value)
+        : formatSeconds(value);
+    }
+
+    function formatSeconds(value) {
+      const seconds = Number(value);
+      if (!Number.isFinite(seconds)) return displayValue(value);
+      const total = Math.max(0, Math.floor(seconds));
+      const h = Math.floor(total / 3600);
+      const m = Math.floor((total % 3600) / 60);
+      const s = total % 60;
+      if (h > 0) {
+        return [h, m, s].map((part) => String(part).padStart(2, "0")).join(":");
+      }
+      return [m, s].map((part) => String(part).padStart(2, "0")).join(":");
+    }
+
+    function parseDateTime(value) {
+      if (!value || value === "-") return null;
+      const parsed = new Date(String(value).replace(" ", "T"));
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    function formatDuration(secondsValue) {
+      const seconds = Number(secondsValue);
+      if (!Number.isFinite(seconds) || seconds < 0) return "-";
+      if (seconds < 60) return String(Math.floor(seconds)) + "秒";
+      if (seconds < 3600) return (seconds / 60).toFixed(2) + "分钟";
+      return (seconds / 3600).toFixed(2) + "小时";
+    }
+
+    function runtimeValue(job) {
+      const scriptName = displayValue(job.script_name);
+      const active = state.activeScripts[scriptName];
+      if (active && active.status === "running") {
+        const activeStart = parseDateTime(active.updated_at);
+        if (activeStart) {
+          return formatDuration((Date.now() - activeStart.getTime()) / 1000);
+        }
+      }
+
+      const start = parseDateTime(job.last_start_at);
+      const end = parseDateTime(job.last_end_at);
+      if (start && end) {
+        return formatDuration((end.getTime() - start.getTime()) / 1000);
+      }
+      if (start && !end) {
+        return formatDuration((Date.now() - start.getTime()) / 1000);
+      }
+      return elapsedValue(job);
+    }
+
+    function getCurrentScript(task) {
+      return displayValue(task.current_script ?? task.script_name ?? task.current ?? task.running_script);
+    }
+
+    function setBanner(message) {
+      els.banner.textContent = message || "";
+      els.banner.classList.toggle("show", Boolean(message));
+    }
+
+    function selectedScriptsInJobOrder() {
+      return state.jobs
+        .map((job) => displayValue(job.script_name))
+        .filter((scriptName) => state.selectedScripts.has(scriptName));
+    }
+
+    function runnableSelectedScriptsInJobOrder() {
+      return selectedScriptsInJobOrder().filter((scriptName) => !isScriptLocked(scriptName));
+    }
+
+    function isScriptLocked(scriptName) {
+      return Boolean(state.activeScripts[scriptName]);
+    }
+
+    function hasActiveSyncScripts() {
+      return Object.keys(state.activeScripts).length > 0;
+    }
+
+    function statusLabel(status) {
+      const map = {
+        pending: "待执行",
+        running: "执行中",
+        completed: "执行完毕",
+        failed: "有错误",
+        error: "有错误",
+        stopped: "已停止"
+      };
+      return map[status] || displayValue(status);
+    }
+
+    function canStopScript(scriptName) {
+      const active = state.activeScripts[scriptName];
+      return active && (active.status === "pending" || active.status === "running");
+    }
+
+    function setFeedback(scriptName, status, timestamp) {
+      const current = state.feedback[scriptName];
+      if (current && current.status === status && (!timestamp || current.timestamp === timestamp)) return false;
+      state.feedback[scriptName] = {
+        status,
+        timestamp: timestamp || nowTimestamp()
+      };
+      return true;
+    }
+
+    function feedbackText(scriptName) {
+      const item = state.feedback[scriptName];
+      return item ? item.timestamp + " " + item.status : "-";
+    }
+
+    function feedbackClass(scriptName) {
+      const item = state.feedback[scriptName];
+      if (!item) return "feedback";
+      if (item.status === "执行中") return "feedback feedback-running";
+      if (item.status === "有错误") return "feedback feedback-error";
+      if (item.status === "执行完毕") return "feedback feedback-done";
+      return "feedback";
+    }
+
+    function applyTasksPayload(payload) {
+      state.tasks = Array.isArray(payload && payload.tasks) ? payload.tasks : [];
+      state.activeScripts = payload && payload.active_scripts ? payload.active_scripts : {};
+
+      state.tasks.forEach((task) => {
+        const scriptStatus = task.script_status || {};
+        const scriptUpdatedAt = task.script_updated_at || {};
+        Object.keys(scriptStatus).forEach((scriptName) => {
+          setFeedback(scriptName, statusLabel(scriptStatus[scriptName]), scriptUpdatedAt[scriptName]);
+        });
+      });
+    }
+
+    function startScriptFeedback(kind, scriptNames) {
+      state.feedback = {};
+      state.selectedRunScripts = scriptNames;
+      state.selectedRunKind = kind;
+      state.selectedRunActive = scriptNames.length > 0;
+      scriptNames.forEach((scriptName) => setFeedback(scriptName, "待执行"));
+      renderJobs();
+    }
+
+    function updateSelectedFeedbackFromTask(task) {
+      if (!state.selectedRunActive || !task || task.kind !== state.selectedRunKind) return false;
+
+      let changed = false;
+      const taskStatus = displayValue(task.status).toLowerCase();
+      const currentScript = task.current_script || "";
+      const currentIndex = state.selectedRunScripts.indexOf(currentScript);
+
+      if (taskStatus === "running") {
+        if (currentIndex >= 0) {
+          state.selectedRunScripts.forEach((scriptName, index) => {
+            if (index < currentIndex) {
+              changed = setFeedback(scriptName, "执行完毕") || changed;
+            } else if (index === currentIndex) {
+              changed = setFeedback(scriptName, "执行中") || changed;
+            } else if (!state.feedback[scriptName]) {
+              changed = setFeedback(scriptName, "待执行") || changed;
+            }
+          });
+        }
+        return changed;
+      }
+
+      if (taskStatus === "completed") {
+        state.selectedRunScripts.forEach((scriptName) => {
+          changed = setFeedback(scriptName, "执行完毕") || changed;
+        });
+        state.selectedRunActive = false;
+        state.selectedRunKind = "";
+        return changed;
+      }
+
+      if (taskStatus === "failed" || taskStatus === "error") {
+        state.selectedRunScripts.forEach((scriptName, index) => {
+          if (currentIndex >= 0 && index < currentIndex) {
+            changed = setFeedback(scriptName, "执行完毕") || changed;
+          } else if (currentIndex < 0 || index === currentIndex) {
+            changed = setFeedback(scriptName, "有错误") || changed;
+          } else if (!state.feedback[scriptName]) {
+            changed = setFeedback(scriptName, "待执行") || changed;
+          }
+        });
+        state.selectedRunActive = false;
+        state.selectedRunKind = "";
+        return changed;
+      }
+
+      return changed;
+    }
+
+    async function api(path, options = {}) {
+      const init = {
+        method: options.method || "GET",
+        headers: { "Accept": "application/json" }
+      };
+      if (options.body !== undefined) {
+        init.headers["Content-Type"] = "application/json";
+        init.body = JSON.stringify(options.body);
+      }
+
+      let response;
+      try {
+        response = await fetch(path, init);
+      } catch (err) {
+        throw new Error(err.message || "网络请求失败");
+      }
+
+      let data = null;
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        try {
+          data = await response.json();
+        } catch (err) {
+          data = null;
+        }
+      } else {
+        const text = await response.text();
+        data = text ? { detail: text } : null;
+      }
+
+      if (!response.ok) {
+        const detail = data && (data.detail ?? data.error ?? data.message);
+        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail || data || response.statusText));
+      }
+      return data;
+    }
+
+    function setActionState() {
+      document.querySelectorAll("button[data-action]").forEach((btn) => {
+        const scriptName = btn.dataset.scriptName || "";
+        btn.disabled = scriptName ? isScriptLocked(scriptName) : false;
+      });
+      document.querySelectorAll("input[data-select]").forEach((checkbox) => {
+        checkbox.disabled = isScriptLocked(checkbox.dataset.scriptName || "");
+      });
+      const selectedCount = state.selectedScripts.size;
+      const runnableSelectedCount = runnableSelectedScriptsInJobOrder().length;
+      els.syncSelected.textContent = "选择脚本执行（" + selectedCount + "）";
+      els.syncSelected.disabled = runnableSelectedCount === 0;
+      els.syncSelected.classList.toggle("primary", runnableSelectedCount > 0);
+      els.syncAll.disabled = hasActiveSyncScripts();
+      els.checkAll.disabled = false;
+      els.refresh.disabled = false;
+    }
+
+    function renderTask(task) {
+      state.task = task || {};
+      const status = displayValue(state.task.status);
+      state.taskRunning = status.toLowerCase() === "running";
+
+      els.taskStatus.textContent = status;
+      els.taskStatus.className = "status-pill status-" + status.toLowerCase();
+      els.currentScript.textContent = getCurrentScript(state.task);
+      els.elapsedTime.textContent = elapsedValue(state.task);
+
+      const feedbackChanged = updateSelectedFeedbackFromTask(state.task);
+      const logs = Array.isArray(state.task.logs) ? state.task.logs.join("\n") : "";
+      const atBottom = els.logs.scrollTop + els.logs.clientHeight >= els.logs.scrollHeight - 8;
+      els.logs.textContent = logs;
+      if (atBottom || state.taskRunning) {
+        els.logs.scrollTop = els.logs.scrollHeight;
+      }
+
+      if (feedbackChanged) {
+        renderJobs();
+      }
+      setActionState();
+    }
+
+    function renderJobs() {
+      if (!state.jobs.length) {
+        els.jobRows.innerHTML = '<tr><td class="empty" colspan="9">暂无数据</td></tr>';
+        return;
+      }
+
+      const availableScripts = new Set(state.jobs.map((job) => displayValue(job.script_name)));
+      state.selectedScripts.forEach((scriptName) => {
+        if (!availableScripts.has(scriptName)) {
+          state.selectedScripts.delete(scriptName);
+        }
+      });
+
+      els.jobRows.textContent = "";
+      state.jobs.forEach((job) => {
+        const tr = document.createElement("tr");
+        const scriptName = displayValue(job.script_name);
+        const selected = state.selectedScripts.has(scriptName);
+        tr.classList.toggle("selected", selected);
+
+        const selectCell = document.createElement("td");
+        selectCell.className = "select-cell";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = selected;
+        checkbox.dataset.select = "1";
+        checkbox.dataset.scriptName = scriptName;
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) {
+            state.selectedScripts.add(scriptName);
+          } else {
+            state.selectedScripts.delete(scriptName);
+          }
+          renderJobs();
+        });
+        selectCell.appendChild(checkbox);
+        tr.appendChild(selectCell);
+        tr.appendChild(cell(scriptName));
+        tr.appendChild(cell(displayValue(job.table_name)));
+
+        const dateCell = document.createElement("td");
+        const dateInput = document.createElement("input");
+        dateInput.className = "date-input";
+        dateInput.type = "text";
+        dateInput.inputMode = "numeric";
+        dateInput.maxLength = 8;
+        dateInput.autocomplete = "off";
+        dateInput.value = toYYYYMMDD(job.sync_date);
+        dateInput.dataset.scriptName = scriptName;
+        dateCell.appendChild(dateInput);
+        tr.appendChild(dateCell);
+
+        tr.appendChild(cell(displayValue(job.status)));
+        tr.appendChild(cell(displayValue(job.updated_at ?? job.update_time)));
+        tr.appendChild(cell(runtimeValue(job)));
+        tr.appendChild(feedbackCell(scriptName));
+
+        const actions = document.createElement("td");
+        actions.className = "actions";
+        actions.appendChild(actionButton("同步", () => runAction("/api/sync-one", { script_name: scriptName }), scriptName));
+        actions.appendChild(actionButton("保存日期", () => saveSyncDate(scriptName, dateInput.value), scriptName));
+        const checkLabel = job.has_check_spec ? "校验" : "未配置";
+        actions.appendChild(actionButton(checkLabel, () => runAction("/api/check-one", {
+          script_name: scriptName,
+          target_date: toYYYYMMDD(els.targetDate.value)
+        }), scriptName));
+        tr.appendChild(actions);
+
+        els.jobRows.appendChild(tr);
+      });
+      setActionState();
+    }
+
+    function cell(text) {
+      const td = document.createElement("td");
+      td.textContent = text;
+      td.title = text;
+      return td;
+    }
+
+    function feedbackCell(scriptName) {
+      const td = document.createElement("td");
+      td.className = "feedback-cell";
+      const text = document.createElement("span");
+      text.className = feedbackClass(scriptName);
+      text.textContent = feedbackText(scriptName);
+      text.title = text.textContent;
+      td.appendChild(text);
+      if (canStopScript(scriptName)) {
+        const stop = document.createElement("button");
+        stop.type = "button";
+        stop.className = "stop";
+        stop.textContent = "停止";
+        stop.title = "强制停止 " + scriptName;
+        stop.addEventListener("click", () => stopScript(scriptName));
+        td.appendChild(stop);
+      }
+      return td;
+    }
+
+    function actionButton(text, handler, scriptName) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = text;
+      btn.title = text;
+      btn.dataset.action = "1";
+      if (scriptName) {
+        btn.dataset.scriptName = scriptName;
+      }
+      btn.addEventListener("click", handler);
+      return btn;
+    }
+
+    async function runAction(path, body) {
+      if (path === "/api/sync-one" && body && body.script_name && isScriptLocked(body.script_name)) return;
+      if (path === "/api/sync-all" && hasActiveSyncScripts()) return;
+      setBanner("");
+      if (path === "/api/sync-one" && body && body.script_name) {
+        startScriptFeedback("single_sync", [body.script_name]);
+      } else if (path === "/api/sync-all") {
+        startScriptFeedback("full_sync", state.jobs.map((job) => displayValue(job.script_name)));
+      }
+      try {
+        await api(path, { method: "POST", body });
+        await Promise.all([loadTask(), loadTasks(), loadJobs()]);
+      } catch (err) {
+        if (state.selectedRunActive && (path === "/api/sync-one" || path === "/api/sync-all")) {
+          state.selectedRunActive = false;
+          state.selectedRunKind = "";
+          state.selectedRunScripts.forEach((scriptName) => setFeedback(scriptName, "有错误"));
+          renderJobs();
+        }
+        setBanner(err.message);
+      }
+    }
+
+    async function runSelectedScripts() {
+      const scriptNames = runnableSelectedScriptsInJobOrder();
+      if (!scriptNames.length) return;
+
+      setBanner("");
+      startScriptFeedback("selected_sync", scriptNames);
+
+      try {
+        await api("/api/sync-selected", {
+          method: "POST",
+          body: { script_names: scriptNames }
+        });
+        await Promise.all([loadTask(), loadTasks(), loadJobs()]);
+      } catch (err) {
+        state.selectedRunActive = false;
+        state.selectedRunKind = "";
+        scriptNames.forEach((scriptName) => setFeedback(scriptName, "有错误"));
+        renderJobs();
+        setBanner(err.message);
+      }
+    }
+
+    async function saveSyncDate(scriptName, syncDate) {
+      if (isScriptLocked(scriptName)) return;
+      if (!confirm("确认保存同步日期？")) return;
+      try {
+        await runAction("/api/sync-date", {
+          script_name: scriptName,
+          sync_date: toYYYYMMDD(syncDate)
+        });
+      } finally {
+        await loadJobs();
+      }
+    }
+
+    async function stopScript(scriptName) {
+      if (!confirm("确认强制停止 " + scriptName + "？已写入数据库的数据不会自动回滚。")) return;
+      try {
+        await api("/api/stop-script", {
+          method: "POST",
+          body: { script_name: scriptName }
+        });
+        await Promise.all([loadTask(), loadTasks(), loadJobs()]);
+      } catch (err) {
+        setBanner(err.message);
+      }
+    }
+
+    async function loadTask() {
+      try {
+        const task = await api("/api/task");
+        renderTask(task || {});
+      } catch (err) {
+        setBanner(err.message);
+      }
+    }
+
+    async function loadTasks() {
+      try {
+        const payload = await api("/api/tasks");
+        applyTasksPayload(payload || {});
+        renderJobs();
+      } catch (err) {
+        setBanner(err.message);
+      }
+    }
+
+    async function loadJobs() {
+      try {
+        const payload = await api("/api/jobs");
+        state.jobs = normalizeRows(payload);
+        els.jobCount.textContent = "（" + state.jobs.length + "）";
+        renderJobs();
+        setBanner(payload && payload.db_error ? String(payload.db_error) : "");
+      } catch (err) {
+        setBanner(err.message);
+      }
+    }
+
+    async function refreshAll() {
+      setBanner("");
+      await Promise.all([loadTask(), loadTasks(), loadJobs()]);
+    }
+
+    els.syncAll.addEventListener("click", () => runAction("/api/sync-all"));
+    els.syncSelected.addEventListener("click", runSelectedScripts);
+    els.checkAll.addEventListener("click", () => runAction("/api/check-all", {
+      target_date: toYYYYMMDD(els.targetDate.value)
+    }));
+    els.refresh.addEventListener("click", refreshAll);
+
+    els.targetDate.value = todayYYYYMMDD();
+    refreshAll();
+    window.setInterval(loadTask, 1500);
+    window.setInterval(loadTasks, 1500);
+    window.setInterval(loadJobs, 10000);
+  </script>
+</body>
+</html>

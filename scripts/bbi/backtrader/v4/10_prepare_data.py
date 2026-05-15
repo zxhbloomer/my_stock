@@ -152,8 +152,8 @@ def add_strength_features(panel):
     panel["ret_21"] = grouped["close_qfq"].pct_change(LOOKBACK_SHORT)
     panel["ret_63"] = grouped["close_qfq"].pct_change(LOOKBACK_MID)
     panel["ret_126"] = grouped["close_qfq"].pct_change(LOOKBACK_LONG)
-    panel["high_qfq_120"] = rolling_max_by_code(panel, "close_qfq", LONG_PULLBACK_LOOKBACK)
-    panel["pullback_120"] = panel["close_qfq"] / panel["high_qfq_120"] - 1.0
+    panel["high_qfq_63"] = rolling_max_by_code(panel, "close_qfq", LONG_PULLBACK_LOOKBACK)
+    panel["pullback_63"] = panel["close_qfq"] / panel["high_qfq_63"] - 1.0
     log_step("feature returns done", step_start, df=panel)
     step_start = time.perf_counter()
     panel["is_limit_down_close"] = (

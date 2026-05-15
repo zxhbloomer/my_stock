@@ -25,7 +25,7 @@ from config import (
 )
 
 RISK_FREE = 0.02
-REPORT_PORT_START = 8085
+REPORT_PORT_START = 18085
 
 
 def load_v4():
@@ -374,7 +374,7 @@ def make_candidate_figure(scores):
         "signal_date", "rebalance_date", "rank", "ts_code", "name", "score",
         "above_ratio_21", "above_ratio_63", "above_ratio_126",
         "avg_distance_63", "high_pos_21", "high_pos_63", "range_pos_63",
-        "pullback_120",
+        "pullback_63",
         "recent_limit_down_20", "recent_limit_up_20", "recent_limit_up_63",
         "turnover_rate_ma20", "turnover_rate_max20", "volume_ratio_max20",
         "lhb_count_20", "hot_money_risk_hits",
@@ -629,7 +629,7 @@ def make_html(summary, nav, trades, scores, holdings):
     REPORT_PATH.write_text(html, encoding="utf-8")
 
 
-def find_free_port(start_port=REPORT_PORT_START, max_tries=20):
+def find_free_port(start_port=REPORT_PORT_START, max_tries=200):
     for port in range(start_port, start_port + max_tries):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(0.2)
@@ -639,7 +639,12 @@ def find_free_port(start_port=REPORT_PORT_START, max_tries=20):
 
 
 def open_report():
-    port = find_free_port()
+    try:
+        port = find_free_port()
+    except RuntimeError as exc:
+        print(f"Auto open skipped: {exc}")
+        print(f"Open report manually: {REPORT_PATH}")
+        return
     subprocess.Popen(
         [sys.executable, "-m", "http.server", str(port)],
         cwd=str(REPORT_PATH.parent),

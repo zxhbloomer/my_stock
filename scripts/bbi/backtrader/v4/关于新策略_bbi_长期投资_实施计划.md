@@ -1,8 +1,10 @@
 # 关于新策略：BBI 长期投资实施计划
 
+> 最新 tmp 实验已将首笔买入回撤口径调整为分层规则：普通股票 `63 日回撤 <= -5%`，强趋势股票 `63 日回撤 <= -3%`。本文早期的 `120 日回撤 9%` 仅作为历史设计记录。
+
 ## 目标
 
-在 v4 中实现一套长期持有策略：沿用现有 v4 强势排名，等待候选股从近 120 日高点回撤 9% 后买入，按 `8 万 + 6 万 + 4 万 + 2 万` 分批建仓，最多持有 5 只，总投入最多 50 万，单票最多 20 万，并加入 -5% 止损、跌停硬止损、盈利持仓放量大阴线次日卖出。
+在 v4 中实现一套长期持有策略：沿用现有 v4 强势排名，等待候选股从阶段高点回撤后买入，按 `8 万 + 6 万 + 4 万 + 2 万` 分批建仓，最多持有 5 只，总投入最多 50 万，单票最多 20 万，并加入 -5% 止损、跌停硬止损、盈利持仓放量大阴线次日卖出。
 
 ## 文件职责
 
@@ -21,9 +23,10 @@
   - `LONG_MAX_TOTAL_EXPOSURE = 500_000.0`
   - `LONG_POSITION_STEPS = (80_000.0, 60_000.0, 40_000.0, 20_000.0)`
   - `LONG_PULLBACK_LOOKBACK = 120`
-  - `LONG_PULLBACK_THRESHOLD = -0.09`
+  - `LONG_PULLBACK_THRESHOLD = -0.05`
+  - `LONG_STRONG_TREND_PULLBACK_THRESHOLD = -0.03`
   - `LONG_STOP_LOSS_PCT = -0.05`
-  - `LONG_ADD_PROFIT_THRESHOLDS = (0.03, 0.06, 0.10)`
+  - `LONG_ADD_PROFIT_THRESHOLDS = (0.05, 0.10, 0.15)`
   - `LONG_BEARISH_DROP_THRESHOLD = -0.07`
   - `LONG_BEARISH_AMOUNT_MULTIPLIER = 1.5`
   - `LONG_BEARISH_CLOSE_LOW_POSITION = 0.25`
@@ -36,7 +39,7 @@
   - `pre_close`
 - `add_strength_features()` 补充：
   - `high_qfq_120 = rolling_max(close_qfq, 120)`
-  - `pullback_120 = close_qfq / high_qfq_120 - 1`
+  - `pullback_63 = close_qfq / high_qfq_63 - 1`
 - 输出 `panel.parquet` 中保留这些字段。
 
 ### 3. 回测主流程
@@ -47,7 +50,8 @@
   - `T+1` 日开盘执行。
 - 买入逻辑：
   - 选候选排名前 `KEEP_TOP_N`。
-  - 必须满足 `pullback_120 <= -0.09`。
+  - 普通股票必须满足 `pullback_63 <= -0.05`。
+  - 强趋势股票必须满足 `pullback_63 <= -0.03`。
   - 未持仓、未刚触发风险卖出。
   - 持仓数小于 5。
   - 总投入小于 50 万。
@@ -55,7 +59,7 @@
 - 加仓逻辑：
   - 只对已有持仓。
   - 亏损不加仓。
-  - 第 2/3/4 笔分别要求浮盈达到 3%/6%/10%。
+  - 第 2/3/4 笔分别要求整仓累计浮盈达到 5%/10%/15%。
   - 每次加仓金额分别为 6 万、4 万、2 万。
   - 单票总投入不超过 20 万，总投入不超过 50 万。
 - 卖出逻辑：

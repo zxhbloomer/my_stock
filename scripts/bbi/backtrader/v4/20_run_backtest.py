@@ -22,6 +22,7 @@ from config import (
     LONG_MAX_TOTAL_EXPOSURE,
     LONG_POSITION_STEPS,
     LONG_PULLBACK_THRESHOLD,
+    LONG_STRONG_TREND_PULLBACK_THRESHOLD,
     LONG_STOP_LOSS_PCT,
     MARKET_FILTER_ENABLED,
     MARKET_DROP_DD_20_THRESHOLD,
@@ -32,6 +33,9 @@ from config import (
     MAX_HIGH_POS_21,
     MAX_RET_21,
     MIN_RET_63,
+    STRONG_TREND_ABOVE_RATIO_126,
+    STRONG_TREND_ABOVE_RATIO_63,
+    STRONG_TREND_RET_63,
     MIN_COMMISSION,
     MIN_SCORE,
     NAV_SERIES_PATH,
@@ -56,7 +60,7 @@ PANEL_COLUMNS = [
     "hm_turnover_max20_flag", "hm_volume_ratio_max20_flag", "hm_lhb_count20_flag",
     "ret_21", "ret_63", "ret_126",
     "volatility_63", "amount_ma20", "circ_mv_ma20",
-    "pullback_120",
+    "pullback_63",
 ]
 
 
@@ -150,18 +154,26 @@ def score_candidates(signal_panel):
         raise ValueError(
             f"panel missing candidate filter columns {missing_cols}. Run 10_prepare_data.py again."
         )
-    recent_high_risk = candidates["high_pos_21"] >= MAX_HIGH_POS_21
     hot_money_risk_ok = pd.Series(True, index=candidates.index)
     if HOT_MONEY_RISK_ENABLED:
         hot_money_risk_ok = (
             candidates["hot_money_risk_hits"].notna()
             & (candidates["hot_money_risk_hits"] < HOT_MONEY_RISK_MIN_HITS)
         )
+    candidates["strong_trend"] = (
+        (candidates["above_ratio_63"] >= STRONG_TREND_ABOVE_RATIO_63)
+        & (candidates["above_ratio_126"] >= STRONG_TREND_ABOVE_RATIO_126)
+        & (candidates["ret_63"] >= STRONG_TREND_RET_63)
+        & hot_money_risk_ok
+        & (candidates["recent_limit_down_20"] == 0)
+    )
+    recent_high_risk = (candidates["high_pos_21"] >= MAX_HIGH_POS_21) & ~candidates["strong_trend"]
+    ret_21_ok = (candidates["ret_21"] <= MAX_RET_21) | candidates["strong_trend"]
     candidates = candidates[
         (candidates["above_ratio_63"] >= 0.55)
         & (candidates["above_ratio_126"] >= 0.50)
         & (candidates["ret_63"] >= MIN_RET_63)
-        & (candidates["ret_21"] <= MAX_RET_21)
+        & ret_21_ok
         & (candidates["avg_distance_63"] <= MAX_AVG_DISTANCE_63)
         & candidates["high_pos_21"].notna()
         & candidates["high_pos_63"].notna()
@@ -582,7 +594,7 @@ def run_backtest(panel, market, start_date, end_date):
                     "hm_limit_up_20_flag", "hm_limit_up_63_flag", "hm_turnover_ma20_flag",
                     "hm_turnover_max20_flag", "hm_volume_ratio_max20_flag", "hm_lhb_count20_flag",
                     "ret_21", "ret_63", "ret_126",
-                    "volatility_63", "amount_ma20", "circ_mv_ma20", "pullback_120",
+                    "volatility_63", "amount_ma20", "circ_mv_ma20", "pullback_63", "strong_trend",
                 ]
                 score_rows.extend(candidates[score_cols].head(100).to_dict("records"))
                 bought_count = 0
@@ -609,8 +621,17 @@ def run_backtest(panel, market, start_date, end_date):
                         stats["buy_skips"] += 1
 
                 entry_candidates = candidates[
-                    candidates["pullback_120"].notna()
-                    & (candidates["pullback_120"] <= LONG_PULLBACK_THRESHOLD)
+                    candidates["pullback_63"].notna()
+                    & (
+                        (
+                            candidates["strong_trend"].fillna(False)
+                            & (candidates["pullback_63"] <= LONG_STRONG_TREND_PULLBACK_THRESHOLD)
+                        )
+                        | (
+                            ~candidates["strong_trend"].fillna(False)
+                            & (candidates["pullback_63"] <= LONG_PULLBACK_THRESHOLD)
+                        )
+                    )
                 ]
                 target_codes = list(entry_candidates["ts_code"].head(KEEP_TOP_N))
                 for code in target_codes:

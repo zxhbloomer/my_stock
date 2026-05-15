@@ -1,0 +1,1117 @@
+import argparse
+import csv
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from sqlalchemy import create_engine, text
+
+V4_DIR = Path(__file__).resolve().parents[1] / "v4"
+sys.path.insert(0, str(V4_DIR))
+
+from config import (
+    BACKTEST_START_DATE,
+    COMMISSION_BUY,
+    COMMISSION_SELL,
+    DB_URL,
+    INIT_CASH,
+    HOT_MONEY_RISK_ENABLED,
+    HOT_MONEY_RISK_MIN_HITS,
+    KEEP_TOP_N,
+    LAST_HOLDINGS_PATH,
+    LIMIT_DOWN_EXIT_ENABLED,
+    LONG_ADD_PROFIT_THRESHOLDS,
+    LONG_BEARISH_AMOUNT_MULTIPLIER,
+    LONG_BEARISH_CLOSE_LOW_POSITION,
+    LONG_BEARISH_DROP_THRESHOLD,
+    LONG_MAX_HOLDINGS,
+    LONG_MAX_TOTAL_EXPOSURE,
+    LONG_POSITION_STEPS,
+    LONG_PULLBACK_THRESHOLD,
+    LONG_STRONG_TREND_PULLBACK_THRESHOLD,
+    LONG_STOP_LOSS_PCT,
+    MARKET_FILTER_ENABLED,
+    MARKET_DROP_DD_20_THRESHOLD,
+    MARKET_DROP_RET_5_THRESHOLD,
+    MARKET_INDEX_CODE,
+    MARKET_INDEX_PATH,
+    MAX_AVG_DISTANCE_63,
+    MAX_HIGH_POS_21,
+    MAX_RET_21,
+    MIN_RET_63,
+    STRONG_TREND_ABOVE_RATIO_126,
+    STRONG_TREND_ABOVE_RATIO_63,
+    STRONG_TREND_RET_63,
+    MIN_COMMISSION,
+    MIN_SCORE,
+    NAV_SERIES_PATH,
+    OUTPUT_DIR,
+    PANEL_PATH,
+    REBALANCE_LOG_PATH,
+    SCHEMA,
+    SCORES_PATH,
+    SUMMARY_PATH,
+    TRADE_RECORDS_PATH,
+)
+
+TMP_OUTPUT_ROOT = Path(__file__).resolve().parent
+EXPERIMENT_MODE = "current"
+OUTPUT_DIR = TMP_OUTPUT_ROOT / "v4_bull_hold_current_output"
+NAV_SERIES_PATH = OUTPUT_DIR / "nav_series.csv"
+TRADE_RECORDS_PATH = OUTPUT_DIR / "trade_records.csv"
+REBALANCE_LOG_PATH = OUTPUT_DIR / "rebalance_log.csv"
+SCORES_PATH = OUTPUT_DIR / "strength_scores.csv"
+SUMMARY_PATH = OUTPUT_DIR / "summary.json"
+LAST_HOLDINGS_PATH = OUTPUT_DIR / "last_holdings.json"
+
+PANEL_COLUMNS = [
+    "ts_code", "trade_date", "name",
+    "open", "high", "low", "close", "pre_close", "up_limit", "down_limit",
+    "open_qfq", "close_qfq", "bbi_qfq",
+    "amount", "adj_factor", "is_suspended", "is_eligible",
+    "above_ratio_21", "above_ratio_63", "above_ratio_126",
+    "avg_distance_63", "high_pos_21", "high_pos_63", "range_pos_63",
+    "recent_limit_down_20", "recent_limit_up_20", "recent_limit_up_63",
+    "turnover_rate_ma20", "turnover_rate_max20", "volume_ratio_max20",
+    "lhb_count_20", "hot_money_risk_hits",
+    "hm_limit_up_20_flag", "hm_limit_up_63_flag", "hm_turnover_ma20_flag",
+    "hm_turnover_max20_flag", "hm_volume_ratio_max20_flag", "hm_lhb_count20_flag",
+    "ret_21", "ret_63", "ret_126",
+    "volatility_63", "amount_ma20", "circ_mv_ma20",
+    "pullback_63",
+]
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--mode",
+        default="current",
+        choices=[
+            "current",
+            "trend_line",
+            "profit_cushion",
+            "strict_observe",
+            "weekly_hold",
+            "weekly_bbi_1w",
+            "weekly_bbi_2w",
+            "weekly_bbi_3w",
+            "weekly_bbi_stop_1w",
+            "weekly_bbi_stop_2w",
+            "weekly_bbi_stop_3w",
+        ],
+        help="Strong-trend hold/exit experiment mode.",
+    )
+    parser.add_argument("--start", default=BACKTEST_START_DATE, help="YYYY-MM-DD")
+    parser.add_argument("--end", default=None, help="YYYY-MM-DD")
+    return parser.parse_args()
+
+
+def safe_float(value, default=float("nan")):
+    try:
+        if pd.isna(value):
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def calc_commission(amount, is_buy):
+    rate = COMMISSION_BUY if is_buy else COMMISSION_SELL
+    return max(abs(amount) * rate, MIN_COMMISSION)
+
+
+def get_open_price(row):
+    price = safe_float(row.get("open"))
+    return price if price > 0 else None
+
+
+def is_limit_up_at_open(row):
+    price = safe_float(row.get("open"))
+    up_limit = safe_float(row.get("up_limit"))
+    return not pd.isna(price) and not pd.isna(up_limit) and up_limit > 0 and price >= up_limit - 1e-6
+
+
+def is_limit_down_at_open(row):
+    price = safe_float(row.get("open"))
+    down_limit = safe_float(row.get("down_limit"))
+    return not pd.isna(price) and not pd.isna(down_limit) and down_limit > 0 and price <= down_limit + 1e-6
+
+
+def is_limit_down_at_close(row):
+    price = safe_float(row.get("close"))
+    down_limit = safe_float(row.get("down_limit"))
+    return not pd.isna(price) and not pd.isna(down_limit) and down_limit > 0 and price <= down_limit + 1e-6
+
+
+def can_buy(row):
+    if bool(row.get("is_suspended", False)):
+        return False, "suspended"
+    if is_limit_up_at_open(row):
+        return False, "limit_up"
+    if get_open_price(row) is None:
+        return False, "missing_open"
+    return True, ""
+
+
+def can_sell(row):
+    if bool(row.get("is_suspended", False)):
+        return False, "suspended"
+    if is_limit_down_at_open(row):
+        return False, "limit_down"
+    if get_open_price(row) is None:
+        return False, "missing_open"
+    return True, ""
+
+
+def zscore(series):
+    series = pd.to_numeric(series, errors="coerce")
+    std = series.std(ddof=0)
+    if pd.isna(std) or std == 0:
+        return pd.Series(0.0, index=series.index)
+    return (series - series.mean()) / std
+
+
+def score_candidates(signal_panel):
+    candidates = signal_panel[signal_panel["is_eligible"].fillna(False)].copy()
+    required_cols = ["high_pos_21", "high_pos_63", "range_pos_63", "recent_limit_down_20"]
+    if HOT_MONEY_RISK_ENABLED:
+        required_cols.extend([
+            "recent_limit_up_20",
+            "recent_limit_up_63",
+            "turnover_rate_ma20",
+            "turnover_rate_max20",
+            "volume_ratio_max20",
+            "lhb_count_20",
+            "hot_money_risk_hits",
+        ])
+    missing_cols = [col for col in required_cols if col not in candidates.columns]
+    if missing_cols:
+        raise ValueError(
+            f"panel missing candidate filter columns {missing_cols}. Run 10_prepare_data.py again."
+        )
+    hot_money_risk_ok = pd.Series(True, index=candidates.index)
+    if HOT_MONEY_RISK_ENABLED:
+        hot_money_risk_ok = (
+            candidates["hot_money_risk_hits"].notna()
+            & (candidates["hot_money_risk_hits"] < HOT_MONEY_RISK_MIN_HITS)
+        )
+    candidates["strong_trend"] = (
+        (candidates["above_ratio_63"] >= STRONG_TREND_ABOVE_RATIO_63)
+        & (candidates["above_ratio_126"] >= STRONG_TREND_ABOVE_RATIO_126)
+        & (candidates["ret_63"] >= STRONG_TREND_RET_63)
+        & hot_money_risk_ok
+        & (candidates["recent_limit_down_20"] == 0)
+    )
+    recent_high_risk = (candidates["high_pos_21"] >= MAX_HIGH_POS_21) & ~candidates["strong_trend"]
+    ret_21_ok = (candidates["ret_21"] <= MAX_RET_21) | candidates["strong_trend"]
+    candidates = candidates[
+        (candidates["above_ratio_63"] >= 0.55)
+        & (candidates["above_ratio_126"] >= 0.50)
+        & (candidates["ret_63"] >= MIN_RET_63)
+        & ret_21_ok
+        & (candidates["avg_distance_63"] <= MAX_AVG_DISTANCE_63)
+        & candidates["high_pos_21"].notna()
+        & candidates["high_pos_63"].notna()
+        & candidates["range_pos_63"].notna()
+        & candidates["recent_limit_down_20"].notna()
+        & (candidates["recent_limit_down_20"] == 0)
+        & hot_money_risk_ok
+        & ~recent_high_risk
+        & candidates["ret_63"].notna()
+        & candidates["volatility_63"].notna()
+        & candidates["amount_ma20"].notna()
+    ].copy()
+    if candidates.empty:
+        candidates["score"] = []
+        return candidates
+
+    candidates["score"] = (
+        0.30 * zscore(candidates["above_ratio_63"])
+        + 0.25 * zscore(candidates["above_ratio_126"])
+        + 0.15 * zscore(candidates["ret_63"])
+        + 0.10 * zscore(candidates["avg_distance_63"])
+        - 0.15 * zscore(candidates["volatility_63"])
+        + 0.05 * zscore(np.log(candidates["amount_ma20"].clip(lower=1.0)))
+    )
+    candidates = candidates[candidates["score"] >= MIN_SCORE].copy()
+    return candidates.sort_values(
+        ["score", "above_ratio_63", "ret_63", "amount_ma20"],
+        ascending=[False, False, False, False],
+    )
+
+
+def load_market_index():
+    if not MARKET_FILTER_ENABLED:
+        return None
+    if not MARKET_INDEX_PATH.exists():
+        raise FileNotFoundError(f"Missing {MARKET_INDEX_PATH}. Run 10_prepare_data.py first.")
+    market = pd.read_parquet(MARKET_INDEX_PATH)
+    market["trade_date"] = pd.to_datetime(market["trade_date"])
+    missing_cols = [col for col in ["close"] if col not in market.columns]
+    if missing_cols:
+        raise ValueError(
+            f"{MARKET_INDEX_PATH} missing market columns {missing_cols}. "
+            "Run 10_prepare_data.py again."
+        )
+    return market.sort_values("trade_date").set_index("trade_date")
+
+
+def market_short_drop_blocks_buy(market, signal_date):
+    if not MARKET_FILTER_ENABLED:
+        return False, "disabled", {}
+    if market is None or signal_date not in market.index:
+        return True, "missing_market", {}
+    history = market.loc[:signal_date].tail(20).copy()
+    if len(history) < 20:
+        return True, "missing_market_history", {}
+    close = pd.to_numeric(history["close"], errors="coerce")
+    if close.isna().any():
+        return True, "missing_market_history", {}
+
+    current_close = float(close.iloc[-1])
+    ret_5 = current_close / float(close.iloc[-6]) - 1.0 if len(close) >= 6 else float("nan")
+    dd_20 = current_close / float(close.max()) - 1.0
+    snapshot = {
+        "market_ret_5": ret_5,
+        "market_dd_20": dd_20,
+    }
+    if ret_5 <= MARKET_DROP_RET_5_THRESHOLD:
+        return True, "market_5d_drop", snapshot
+    if dd_20 <= MARKET_DROP_DD_20_THRESHOLD:
+        return True, "market_20d_drawdown", snapshot
+    return False, "market_short_drop_ok", snapshot
+
+
+def add_hold_features(panel):
+    panel = panel.sort_values(["ts_code", "trade_date"]).copy()
+    grouped = panel.groupby("ts_code", sort=False)
+    panel["ma20_qfq"] = grouped["close_qfq"].transform(lambda s: s.rolling(20, min_periods=20).mean())
+    panel["ma50_qfq"] = grouped["close_qfq"].transform(lambda s: s.rolling(50, min_periods=50).mean())
+    return panel.reset_index(drop=True)
+
+
+def load_weekly_bbi_from_db(start_date, end_date):
+    start = pd.Timestamp(start_date) - pd.Timedelta(days=900)
+    end = pd.Timestamp(end_date) if end_date else pd.Timestamp.today().normalize()
+    sql = f"""
+        SELECT ts_code, trade_date, close_qfq
+        FROM {SCHEMA}."022_stk_week_month_adj"
+        WHERE freq = 'week'
+          AND trade_date >= CAST(:start_date AS date)
+          AND trade_date <= CAST(:end_date AS date)
+          AND close_qfq IS NOT NULL
+    """
+    engine = create_engine(DB_URL)
+    with engine.connect() as conn:
+        weekly = pd.read_sql(
+            text(sql),
+            conn,
+            params={
+                "start_date": start.strftime("%Y-%m-%d"),
+                "end_date": end.strftime("%Y-%m-%d"),
+            },
+        )
+    if weekly.empty:
+        raise RuntimeError(
+            f"No weekly qfq rows loaded from {SCHEMA}.\"022_stk_week_month_adj\". "
+            "Run the 022 sync script before this experiment."
+        )
+    weekly["trade_date"] = pd.to_datetime(weekly["trade_date"])
+    weekly["close_qfq"] = pd.to_numeric(weekly["close_qfq"], errors="coerce")
+    weekly = weekly.dropna(subset=["ts_code", "trade_date", "close_qfq"])
+    weekly = weekly.sort_values(["ts_code", "trade_date"]).reset_index(drop=True)
+    grouped = weekly.groupby("ts_code", sort=False)["close_qfq"]
+    weekly["week_ma3_qfq"] = grouped.transform(lambda s: s.rolling(3, min_periods=3).mean())
+    weekly["week_ma6_qfq"] = grouped.transform(lambda s: s.rolling(6, min_periods=6).mean())
+    weekly["week_ma12_qfq"] = grouped.transform(lambda s: s.rolling(12, min_periods=12).mean())
+    weekly["week_ma24_qfq"] = grouped.transform(lambda s: s.rolling(24, min_periods=24).mean())
+    weekly["week_bbi_qfq"] = (
+        weekly["week_ma3_qfq"]
+        + weekly["week_ma6_qfq"]
+        + weekly["week_ma12_qfq"]
+        + weekly["week_ma24_qfq"]
+    ) / 4.0
+    weekly["week_below_bbi"] = weekly["close_qfq"] < weekly["week_bbi_qfq"]
+    weekly["week_below_bbi_3w"] = weekly.groupby("ts_code", sort=False)["week_below_bbi"].transform(
+        lambda s: s.rolling(3, min_periods=3).sum()
+    ) >= 3
+    weekly["week_below_bbi_2w"] = weekly.groupby("ts_code", sort=False)["week_below_bbi"].transform(
+        lambda s: s.rolling(2, min_periods=2).sum()
+    ) >= 2
+    return weekly[[
+        "ts_code",
+        "trade_date",
+        "close_qfq",
+        "week_bbi_qfq",
+        "week_below_bbi",
+        "week_below_bbi_2w",
+        "week_below_bbi_3w",
+    ]].rename(columns={
+        "trade_date": "week_signal_date",
+        "close_qfq": "week_close_qfq",
+    })
+
+
+def attach_weekly_bbi(panel, weekly):
+    if weekly is None or weekly.empty:
+        panel["week_signal_date"] = pd.NaT
+        panel["week_close_qfq"] = np.nan
+        panel["week_bbi_qfq"] = np.nan
+        panel["week_below_bbi"] = False
+        panel["week_below_bbi_1w"] = False
+        panel["week_below_bbi_2w"] = False
+        panel["week_below_bbi_3w"] = False
+        return panel
+    merged = pd.merge_asof(
+        panel.sort_values(["trade_date", "ts_code"]),
+        weekly.sort_values(["week_signal_date", "ts_code"]),
+        left_on="trade_date",
+        right_on="week_signal_date",
+        by="ts_code",
+        direction="backward",
+    )
+    merged["week_below_bbi"] = merged["week_below_bbi"].astype("boolean").fillna(False).astype(bool)
+    merged["week_below_bbi_1w"] = merged["week_below_bbi"]
+    merged["week_below_bbi_2w"] = merged["week_below_bbi_2w"].astype("boolean").fillna(False).astype(bool)
+    merged["week_below_bbi_3w"] = merged["week_below_bbi_3w"].astype("boolean").fillna(False).astype(bool)
+    return merged.sort_values(["ts_code", "trade_date"]).reset_index(drop=True)
+
+
+def trim_panel_for_experiment(panel, start_date, end_date):
+    start = pd.Timestamp(start_date)
+    warmup_start = start - pd.Timedelta(days=520)
+    mask = panel["trade_date"] >= warmup_start
+    if end_date:
+        mask &= panel["trade_date"] <= pd.Timestamp(end_date)
+    return panel.loc[mask].copy()
+
+
+def mark_position(code, pos, day_panel):
+    if code in day_panel.index:
+        row = day_panel.loc[code]
+        apply_adj_factor(pos, row)
+        close_price = safe_float(row.get("close"))
+        if close_price > 0:
+            pos["last_price"] = close_price
+            return close_price * pos["shares"]
+    return pos.get("last_price", pos["cost_price"]) * pos["shares"]
+
+
+def update_position_state(code, pos, signal_panel):
+    if code not in signal_panel.index:
+        return
+    row = signal_panel.loc[code]
+    close_qfq = safe_float(row.get("close_qfq"))
+    close_price = safe_float(row.get("close"))
+    if close_price > 0:
+        pos["last_price"] = close_price
+    if close_qfq > 0:
+        previous = safe_float(pos.get("highest_close_qfq"), close_qfq)
+        pos["highest_close_qfq"] = max(previous, close_qfq)
+    profit_pct = calc_position_profit_pct(code, pos, signal_panel)
+    if profit_pct is not None:
+        previous_profit = safe_float(pos.get("highest_profit_pct"), profit_pct)
+        pos["highest_profit_pct"] = max(previous_profit, profit_pct)
+
+
+def calc_position_cost(pos):
+    return pos["cost_price"] * pos["shares"] + pos.get("buy_comm", 0.0)
+
+
+def calc_position_profit_pct(code, pos, signal_panel):
+    if code not in signal_panel.index:
+        return None
+    row = signal_panel.loc[code]
+    apply_adj_factor(pos, row)
+    close_price = safe_float(row.get("close"))
+    if pd.isna(close_price) or close_price <= 0:
+        return None
+    pos["last_price"] = close_price
+    cost_value = calc_position_cost(pos)
+    if cost_value <= 0:
+        return None
+    market_value = close_price * pos["shares"]
+    return market_value / cost_value - 1.0
+
+
+def calc_total_exposure(holdings):
+    return sum(float(pos.get("invested_amount", calc_position_cost(pos))) for pos in holdings.values())
+
+
+def next_position_step(pos):
+    step_index = int(pos.get("step_index", 0))
+    if step_index >= len(LONG_POSITION_STEPS):
+        return None
+    return float(LONG_POSITION_STEPS[step_index])
+
+
+def can_add_position(code, pos, signal_panel):
+    step_index = int(pos.get("step_index", 0))
+    if step_index <= 0 or step_index >= len(LONG_POSITION_STEPS):
+        return False
+    profit_pct = calc_position_profit_pct(code, pos, signal_panel)
+    if profit_pct is None:
+        return False
+    threshold_index = step_index - 1
+    if threshold_index >= len(LONG_ADD_PROFIT_THRESHOLDS):
+        return False
+    return profit_pct >= LONG_ADD_PROFIT_THRESHOLDS[threshold_index]
+
+
+def has_limit_down_signal(code, pos, signal_panel):
+    if not LIMIT_DOWN_EXIT_ENABLED or code not in signal_panel.index:
+        return False
+    row = signal_panel.loc[code]
+    apply_adj_factor(pos, row)
+    close_price = safe_float(row.get("close"))
+    if close_price > 0:
+        pos["last_price"] = close_price
+    return is_limit_down_at_close(row)
+
+
+def has_stop_loss_signal(code, pos, signal_panel):
+    profit_pct = calc_position_profit_pct(code, pos, signal_panel)
+    return profit_pct is not None and profit_pct <= LONG_STOP_LOSS_PCT
+
+
+def has_bearish_volume_signal(code, pos, signal_panel):
+    profit_pct = calc_position_profit_pct(code, pos, signal_panel)
+    if profit_pct is None or profit_pct <= 0 or code not in signal_panel.index:
+        return False
+    row = signal_panel.loc[code]
+    close_price = safe_float(row.get("close"))
+    open_price = safe_float(row.get("open"))
+    low_price = safe_float(row.get("low"))
+    high_price = safe_float(row.get("high"))
+    pre_close = safe_float(row.get("pre_close"))
+    amount = safe_float(row.get("amount"))
+    amount_ma20 = safe_float(row.get("amount_ma20"))
+    values = [close_price, open_price, low_price, high_price, pre_close, amount, amount_ma20]
+    if any(pd.isna(v) or v <= 0 for v in values):
+        return False
+    if close_price >= open_price:
+        return False
+    if close_price / pre_close - 1.0 > LONG_BEARISH_DROP_THRESHOLD:
+        return False
+    if amount < amount_ma20 * LONG_BEARISH_AMOUNT_MULTIPLIER:
+        return False
+    price_range = high_price - low_price
+    if price_range <= 0:
+        return False
+    return close_price <= low_price + price_range * LONG_BEARISH_CLOSE_LOW_POSITION
+
+
+def is_strong_trend_position(code, signal_panel):
+    if code not in signal_panel.index:
+        return False
+    row = signal_panel.loc[code]
+    if "strong_trend" in row.index:
+        return bool(row.get("strong_trend", False))
+    return (
+        safe_float(row.get("above_ratio_63")) >= STRONG_TREND_ABOVE_RATIO_63
+        and safe_float(row.get("above_ratio_126")) >= STRONG_TREND_ABOVE_RATIO_126
+        and safe_float(row.get("ret_63")) >= STRONG_TREND_RET_63
+        and safe_float(row.get("recent_limit_down_20"), 1.0) == 0
+    )
+
+
+def below_daily_hold_line(code, signal_panel, line):
+    if code not in signal_panel.index:
+        return False
+    row = signal_panel.loc[code]
+    close_qfq = safe_float(row.get("close_qfq"))
+    target = safe_float(row.get(line))
+    return close_qfq > 0 and target > 0 and close_qfq < target
+
+
+def bearish_volume_breaks_ma50(code, pos, signal_panel):
+    return has_bearish_volume_signal(code, pos, signal_panel) and below_daily_hold_line(code, signal_panel, "ma50_qfq")
+
+
+def profit_drawdown_from_peak(pos, profit_pct):
+    peak = safe_float(pos.get("highest_profit_pct"))
+    if pd.isna(peak) or profit_pct is None:
+        return 0.0
+    return peak - profit_pct
+
+
+def weekly_hold_exit_signal(code, signal_panel):
+    if code not in signal_panel.index:
+        return False
+    row = signal_panel.loc[code]
+    week_close = safe_float(row.get("week_close_qfq"))
+    ma20w = safe_float(row.get("ma20w_qfq"))
+    return week_close > 0 and ma20w > 0 and week_close < ma20w
+
+
+def weekly_hold_warning_signal(code, signal_panel):
+    if code not in signal_panel.index:
+        return False
+    row = signal_panel.loc[code]
+    week_close = safe_float(row.get("week_close_qfq"))
+    ma10w = safe_float(row.get("ma10w_qfq"))
+    return week_close > 0 and ma10w > 0 and week_close < ma10w
+
+
+def weekly_bbi_3w_exit_signal(code, signal_panel):
+    if code not in signal_panel.index:
+        return False
+    row = signal_panel.loc[code]
+    return bool(row.get("week_below_bbi_3w", False))
+
+
+def weekly_bbi_2w_exit_signal(code, signal_panel):
+    if code not in signal_panel.index:
+        return False
+    row = signal_panel.loc[code]
+    return bool(row.get("week_below_bbi_2w", False))
+
+
+def weekly_bbi_1w_exit_signal(code, signal_panel):
+    if code not in signal_panel.index:
+        return False
+    row = signal_panel.loc[code]
+    return bool(row.get("week_below_bbi_1w", False))
+
+
+def independent_weekly_bbi_stop_reason(code, signal_panel):
+    if EXPERIMENT_MODE == "weekly_bbi_stop_1w" and weekly_bbi_1w_exit_signal(code, signal_panel):
+        return "long_week_bbi_stop_1w"
+    if EXPERIMENT_MODE == "weekly_bbi_stop_2w" and weekly_bbi_2w_exit_signal(code, signal_panel):
+        return "long_week_bbi_stop_2w"
+    if EXPERIMENT_MODE == "weekly_bbi_stop_3w" and weekly_bbi_3w_exit_signal(code, signal_panel):
+        return "long_week_bbi_stop_3w"
+    return None
+
+
+def start_strict_observe(pos, signal_date, row):
+    low_price = safe_float(row.get("low"))
+    if low_price <= 0:
+        return
+    pos["observe_pending"] = True
+    pos["observe_signal_date"] = str(signal_date)[:10]
+    pos["observe_days"] = 0
+    pos["observe_low"] = low_price
+
+
+def clear_strict_observe(pos):
+    for key in ["observe_pending", "observe_signal_date", "observe_days", "observe_low"]:
+        pos.pop(key, None)
+
+
+def strict_observe_failed(code, pos, signal_panel):
+    if code not in signal_panel.index:
+        pos["observe_days"] = int(pos.get("observe_days", 0)) + 1
+        return False
+    row = signal_panel.loc[code]
+    close_price = safe_float(row.get("close"))
+    observe_low = safe_float(pos.get("observe_low"))
+    days = int(pos.get("observe_days", 0)) + 1
+    pos["observe_days"] = days
+    if observe_low > 0 and close_price > 0 and close_price < observe_low:
+        return True
+    if below_daily_hold_line(code, signal_panel, "bbi_qfq") or below_daily_hold_line(code, signal_panel, "ma20_qfq"):
+        return True
+    if has_bearish_volume_signal(code, pos, signal_panel):
+        return True
+    if days >= 3:
+        clear_strict_observe(pos)
+    return False
+
+
+def resolve_bearish_volume_exit(code, pos, signal_panel, signal_date):
+    if not has_bearish_volume_signal(code, pos, signal_panel):
+        return None
+    if code not in signal_panel.index:
+        return "long_bearish_volume_exit"
+    row = signal_panel.loc[code]
+    profit_pct = calc_position_profit_pct(code, pos, signal_panel)
+    strong = is_strong_trend_position(code, signal_panel)
+    if EXPERIMENT_MODE == "trend_line" and strong and profit_pct is not None and profit_pct >= 0.10:
+        if below_daily_hold_line(code, signal_panel, "bbi_qfq") or below_daily_hold_line(code, signal_panel, "ma20_qfq"):
+            return "trend_line_break"
+        if bearish_volume_breaks_ma50(code, pos, signal_panel):
+            return "trend_line_ma50_break"
+        return None
+    if EXPERIMENT_MODE == "profit_cushion" and profit_pct is not None:
+        if profit_pct >= 0.20 and strong:
+            if below_daily_hold_line(code, signal_panel, "ma50_qfq"):
+                return "profit_cushion_ma50_break"
+            if profit_drawdown_from_peak(pos, profit_pct) >= 0.15:
+                return "profit_cushion_peak_drawdown"
+            return None
+        if profit_pct >= 0.10 and strong:
+            if below_daily_hold_line(code, signal_panel, "bbi_qfq") or below_daily_hold_line(code, signal_panel, "ma20_qfq"):
+                return "profit_cushion_daily_break"
+            return None
+    if EXPERIMENT_MODE == "strict_observe" and strong and profit_pct is not None and profit_pct >= 0.15:
+        start_strict_observe(pos, signal_date, row)
+        return None
+    if EXPERIMENT_MODE == "weekly_hold" and strong and profit_pct is not None and profit_pct >= 0.10:
+        if weekly_hold_exit_signal(code, signal_panel):
+            return "weekly_hold_ma20w_break"
+        if weekly_hold_warning_signal(code, signal_panel):
+            pos["weekly_warning"] = True
+        return None
+    if EXPERIMENT_MODE == "weekly_bbi_3w" and strong and profit_pct is not None and profit_pct > 0:
+        if weekly_bbi_3w_exit_signal(code, signal_panel):
+            return "long_week_bbi_3w_exit"
+        return None
+    if EXPERIMENT_MODE == "weekly_bbi_2w" and strong and profit_pct is not None and profit_pct > 0:
+        if weekly_bbi_2w_exit_signal(code, signal_panel):
+            return "long_week_bbi_2w_exit"
+        return None
+    if EXPERIMENT_MODE == "weekly_bbi_1w" and strong and profit_pct is not None and profit_pct > 0:
+        if weekly_bbi_1w_exit_signal(code, signal_panel):
+            return "long_week_bbi_1w_exit"
+        return None
+    return "long_bearish_volume_exit"
+
+
+def apply_adj_factor(pos, row):
+    current = safe_float(row.get("adj_factor"))
+    previous = safe_float(pos.get("last_adj_factor"))
+    if pd.isna(current) or current <= 0:
+        return
+    if pd.isna(previous) or previous <= 0:
+        pos["last_adj_factor"] = current
+        return
+    if abs(current - previous) < 1e-12:
+        return
+    ratio = current / previous
+    if ratio <= 0 or pd.isna(ratio):
+        return
+    pos["shares"] *= ratio
+    pos["cost_price"] /= ratio
+    pos["last_adj_factor"] = current
+
+
+def execute_sell(date, code, pos, day_panel, cash, trades, reason):
+    if code not in day_panel.index:
+        pos["pending_sell"] = True
+        pos["pending_reason"] = reason
+        return cash, False, "missing_row"
+    row = day_panel.loc[code]
+    apply_adj_factor(pos, row)
+    ok, skip_reason = can_sell(row)
+    if not ok:
+        pos["pending_sell"] = True
+        pos["pending_reason"] = reason
+        return cash, False, skip_reason
+    price = get_open_price(row)
+    amount = price * pos["shares"]
+    comm = calc_commission(amount, is_buy=False)
+    cash += amount - comm
+    pnl = (price - pos["cost_price"]) * pos["shares"] - pos["buy_comm"] - comm
+    pnl_pct = pnl / max(pos["cost_price"] * pos["shares"] + pos["buy_comm"], 1.0) * 100.0
+    trades.append({
+        "date": str(date)[:10],
+        "ts_code": code,
+        "name": pos["name"],
+        "action": "sell",
+        "price": round(price, 4),
+        "shares": pos["shares"],
+        "amount": round(amount, 2),
+        "commission": round(comm, 2),
+        "pnl": round(pnl, 2),
+        "pnl_pct": round(pnl_pct, 4),
+        "reason": reason,
+    })
+    return cash, True, ""
+
+
+def execute_buy(date, row, target_amount, cash, holdings, trades, reason):
+    ok, skip_reason = can_buy(row)
+    if not ok:
+        return cash, False, skip_reason
+    price = get_open_price(row)
+    shares = int(target_amount / price / 100) * 100
+    if shares < 100:
+        return cash, False, "insufficient_cash"
+    amount = price * shares
+    comm = calc_commission(amount, is_buy=True)
+    if amount + comm > cash:
+        shares = int((cash - MIN_COMMISSION) / price / 100) * 100
+        amount = price * shares
+        comm = calc_commission(amount, is_buy=True)
+    if shares < 100 or amount + comm > cash:
+        return cash, False, "insufficient_cash"
+    cash -= amount + comm
+    code = row["ts_code"]
+    if code in holdings:
+        pos = holdings[code]
+        old_shares = pos["shares"]
+        old_cost_value = pos["cost_price"] * old_shares
+        new_shares = old_shares + shares
+        pos["shares"] = new_shares
+        pos["cost_price"] = (old_cost_value + amount) / new_shares
+        pos["buy_comm"] = pos.get("buy_comm", 0.0) + comm
+        pos["last_price"] = price
+        pos["last_adj_factor"] = safe_float(row.get("adj_factor"), None)
+        pos["invested_amount"] = pos.get("invested_amount", 0.0) + amount + comm
+        pos["step_index"] = int(pos.get("step_index", 1)) + 1
+        close_qfq = safe_float(row.get("close_qfq"))
+        if close_qfq > 0:
+            pos["highest_close_qfq"] = max(safe_float(pos.get("highest_close_qfq"), close_qfq), close_qfq)
+    else:
+        close_qfq = safe_float(row.get("close_qfq"))
+        holdings[code] = {
+            "name": row["name"],
+            "shares": shares,
+            "cost_price": price,
+            "buy_comm": comm,
+            "last_price": price,
+            "last_adj_factor": safe_float(row.get("adj_factor"), None),
+            "buy_date": str(date)[:10],
+            "pending_sell": False,
+            "invested_amount": amount + comm,
+            "step_index": 1,
+            "highest_close_qfq": close_qfq if close_qfq > 0 else None,
+            "highest_profit_pct": 0.0,
+        }
+    trades.append({
+        "date": str(date)[:10],
+        "ts_code": code,
+        "name": row["name"],
+        "action": "buy",
+        "price": round(price, 4),
+        "shares": shares,
+        "amount": round(amount, 2),
+        "commission": round(comm, 2),
+        "pnl": "",
+        "pnl_pct": "",
+        "reason": reason,
+    })
+    return cash, True, ""
+
+
+def calc_max_drawdown(nav_df):
+    curve = nav_df["nav"] / nav_df["nav"].iloc[0]
+    dd = curve / curve.cummax() - 1.0
+    return float(dd.min() * 100.0)
+
+
+def build_panel_by_date(panel):
+    return {
+        date: group_index.to_numpy()
+        for date, group_index in panel.groupby("trade_date", sort=True).groups.items()
+    }
+
+
+def get_day_panel(panel, panel_by_date, date):
+    indexer = panel_by_date[date]
+    return panel.iloc[indexer].set_index("ts_code", drop=False)
+
+
+def run_backtest(panel, market, start_date, end_date):
+    if end_date:
+        panel = panel[panel["trade_date"] <= pd.Timestamp(end_date)].copy()
+    panel = panel[panel["trade_date"] >= pd.Timestamp(start_date)].copy()
+    panel = panel.sort_values(["trade_date", "ts_code"]).reset_index(drop=True)
+    panel_by_date = build_panel_by_date(panel)
+    all_dates = sorted(panel_by_date)
+
+    cash = INIT_CASH
+    holdings = {}
+    trades = []
+    rebalance_log = []
+    score_rows = []
+    nav_rows = []
+    stats = {
+        "signal_days": 0,
+        "market_block_days": 0,
+        "missing_market_days": 0,
+        "buy_fills": 0,
+        "add_buy_fills": 0,
+        "sell_fills": 0,
+        "buy_skips": 0,
+        "sell_delays": 0,
+        "limit_down_exit_signals": 0,
+        "limit_down_exit_fills": 0,
+        "stop_loss_signals": 0,
+        "stop_loss_fills": 0,
+        "bearish_volume_exit_signals": 0,
+        "bearish_volume_exit_fills": 0,
+        "weekly_bbi_1w_exit_signals": 0,
+        "weekly_bbi_1w_exit_fills": 0,
+        "weekly_bbi_2w_exit_signals": 0,
+        "weekly_bbi_2w_exit_fills": 0,
+        "weekly_bbi_3w_exit_signals": 0,
+        "weekly_bbi_3w_exit_fills": 0,
+        "weekly_bbi_stop_signals": 0,
+        "weekly_bbi_stop_fills": 0,
+    }
+
+    for i, date in enumerate(all_dates):
+        day_panel = get_day_panel(panel, panel_by_date, date)
+        risk_exit_codes = set()
+
+        for code in list(holdings):
+            if holdings[code].get("pending_sell"):
+                pending_reason = holdings[code].get("pending_reason", "pending_sell")
+                cash, sold, reason = execute_sell(date, code, holdings[code], day_panel, cash, trades, pending_reason)
+                if sold:
+                    del holdings[code]
+                    risk_exit_codes.add(code)
+                    stats["sell_fills"] += 1
+                else:
+                    stats["sell_delays"] += 1
+
+        if i > 0 and holdings:
+            signal_date = all_dates[i - 1]
+            signal_panel = get_day_panel(panel, panel_by_date, signal_date)
+            exit_reasons = {}
+            for code in list(holdings):
+                pos = holdings[code]
+                if pos.get("pending_sell"):
+                    continue
+                update_position_state(code, pos, signal_panel)
+                if has_stop_loss_signal(code, pos, signal_panel):
+                    exit_reasons[code] = "long_stop_loss"
+                    stats["stop_loss_signals"] += 1
+                elif has_limit_down_signal(code, pos, signal_panel):
+                    exit_reasons[code] = "long_limit_down_exit"
+                    stats["limit_down_exit_signals"] += 1
+                elif (weekly_stop_reason := independent_weekly_bbi_stop_reason(code, signal_panel)):
+                    exit_reasons[code] = weekly_stop_reason
+                    stats["weekly_bbi_stop_signals"] += 1
+                elif pos.get("observe_pending") and strict_observe_failed(code, pos, signal_panel):
+                    exit_reasons[code] = "strict_observe_failed"
+                    stats["bearish_volume_exit_signals"] += 1
+                else:
+                    exit_reason = resolve_bearish_volume_exit(code, pos, signal_panel, signal_date)
+                    if exit_reason:
+                        exit_reasons[code] = exit_reason
+                        if exit_reason == "long_week_bbi_1w_exit":
+                            stats["weekly_bbi_1w_exit_signals"] += 1
+                        if exit_reason == "long_week_bbi_2w_exit":
+                            stats["weekly_bbi_2w_exit_signals"] += 1
+                        if exit_reason == "long_week_bbi_3w_exit":
+                            stats["weekly_bbi_3w_exit_signals"] += 1
+                        stats["bearish_volume_exit_signals"] += 1
+            for code, exit_reason in exit_reasons.items():
+                cash, sold, reason = execute_sell(
+                    date,
+                    code,
+                    holdings[code],
+                    day_panel,
+                    cash,
+                    trades,
+                    exit_reason,
+                )
+                if sold:
+                    del holdings[code]
+                    risk_exit_codes.add(code)
+                    stats["sell_fills"] += 1
+                    if exit_reason == "long_stop_loss":
+                        stats["stop_loss_fills"] += 1
+                    elif exit_reason == "long_limit_down_exit":
+                        stats["limit_down_exit_fills"] += 1
+                    elif exit_reason.startswith("long_week_bbi_stop_"):
+                        stats["weekly_bbi_stop_fills"] += 1
+                    elif exit_reason not in {"long_stop_loss", "long_limit_down_exit"}:
+                        stats["bearish_volume_exit_fills"] += 1
+                        if exit_reason == "long_week_bbi_1w_exit":
+                            stats["weekly_bbi_1w_exit_fills"] += 1
+                        if exit_reason == "long_week_bbi_2w_exit":
+                            stats["weekly_bbi_2w_exit_fills"] += 1
+                        if exit_reason == "long_week_bbi_3w_exit":
+                            stats["weekly_bbi_3w_exit_fills"] += 1
+                else:
+                    stats["sell_delays"] += 1
+
+        if i > 0:
+            signal_date = all_dates[i - 1]
+            stats["signal_days"] += 1
+            short_drop_blocked, short_drop_reason, short_drop_snapshot = market_short_drop_blocks_buy(market, signal_date)
+            if short_drop_blocked:
+                stats["market_block_days"] += 1
+                if short_drop_reason in {"missing_market", "missing_market_history"}:
+                    stats["missing_market_days"] += 1
+                rebalance_log.append({
+                    "date": str(date)[:10],
+                    "signal_date": str(signal_date)[:10],
+                    "market_reason": short_drop_reason,
+                    "candidate_count": 0,
+                    "bought_count": 0,
+                    "market_ret_5": round(short_drop_snapshot.get("market_ret_5", float("nan")), 4),
+                    "market_dd_20": round(short_drop_snapshot.get("market_dd_20", float("nan")), 4),
+                    "cash": round(cash, 2),
+                })
+            else:
+                signal_panel = get_day_panel(panel, panel_by_date, signal_date)
+                candidates = score_candidates(signal_panel).reset_index(drop=True)
+                candidates["rank"] = np.arange(1, len(candidates) + 1)
+                candidates["signal_date"] = str(signal_date)[:10]
+                candidates["rebalance_date"] = str(date)[:10]
+                score_cols = [
+                    "signal_date", "rebalance_date", "rank", "ts_code", "name", "score",
+                    "above_ratio_21", "above_ratio_63", "above_ratio_126",
+                    "avg_distance_63", "high_pos_21", "high_pos_63", "range_pos_63",
+                    "recent_limit_down_20", "recent_limit_up_20", "recent_limit_up_63",
+                    "turnover_rate_ma20", "turnover_rate_max20", "volume_ratio_max20",
+                    "lhb_count_20", "hot_money_risk_hits",
+                    "hm_limit_up_20_flag", "hm_limit_up_63_flag", "hm_turnover_ma20_flag",
+                    "hm_turnover_max20_flag", "hm_volume_ratio_max20_flag", "hm_lhb_count20_flag",
+                    "ret_21", "ret_63", "ret_126",
+                    "volatility_63", "amount_ma20", "circ_mv_ma20", "pullback_63", "strong_trend",
+                ]
+                score_rows.extend(candidates[score_cols].head(100).to_dict("records"))
+                bought_count = 0
+                candidate_by_code = candidates.set_index("ts_code", drop=False)
+                for code in list(holdings):
+                    if code in risk_exit_codes or code not in candidate_by_code.index or code not in day_panel.index:
+                        continue
+                    pos = holdings[code]
+                    if pos.get("pending_sell") or not can_add_position(code, pos, signal_panel):
+                        continue
+                    target_amount = next_position_step(pos)
+                    if target_amount is None:
+                        continue
+                    available_exposure = LONG_MAX_TOTAL_EXPOSURE - calc_total_exposure(holdings)
+                    target_amount = min(target_amount, available_exposure)
+                    if target_amount < 100:
+                        continue
+                    cash, bought, reason = execute_buy(date, day_panel.loc[code], target_amount, cash, holdings, trades, "long_add_buy")
+                    if bought:
+                        bought_count += 1
+                        stats["buy_fills"] += 1
+                        stats["add_buy_fills"] += 1
+                    else:
+                        stats["buy_skips"] += 1
+
+                entry_candidates = candidates[
+                    candidates["pullback_63"].notna()
+                    & (
+                        (
+                            candidates["strong_trend"].fillna(False)
+                            & (candidates["pullback_63"] <= LONG_STRONG_TREND_PULLBACK_THRESHOLD)
+                        )
+                        | (
+                            ~candidates["strong_trend"].fillna(False)
+                            & (candidates["pullback_63"] <= LONG_PULLBACK_THRESHOLD)
+                        )
+                    )
+                ]
+                target_codes = list(entry_candidates["ts_code"].head(KEEP_TOP_N))
+                for code in target_codes:
+                    if len(holdings) >= LONG_MAX_HOLDINGS:
+                        break
+                    if code in holdings or code in risk_exit_codes or code not in day_panel.index:
+                        continue
+                    available_exposure = LONG_MAX_TOTAL_EXPOSURE - calc_total_exposure(holdings)
+                    target_amount = min(float(LONG_POSITION_STEPS[0]), available_exposure)
+                    if target_amount < 100:
+                        break
+                    cash, bought, reason = execute_buy(date, day_panel.loc[code], target_amount, cash, holdings, trades, "long_initial_buy")
+                    if bought:
+                        bought_count += 1
+                        stats["buy_fills"] += 1
+                    else:
+                        stats["buy_skips"] += 1
+                rebalance_log.append({
+                    "date": str(date)[:10],
+                    "signal_date": str(signal_date)[:10],
+                    "market_reason": short_drop_reason,
+                    "candidate_count": int(len(candidates)),
+                    "entry_candidate_count": int(len(entry_candidates)),
+                    "bought_count": int(bought_count),
+                    "market_ret_5": round(short_drop_snapshot.get("market_ret_5", float("nan")), 4),
+                    "market_dd_20": round(short_drop_snapshot.get("market_dd_20", float("nan")), 4),
+                    "cash": round(cash, 2),
+                })
+
+        nav = cash + sum(mark_position(c, p, day_panel) for c, p in holdings.items())
+        nav_rows.append({"date": str(date)[:10], "nav": round(nav, 2), "cash": round(cash, 2), "holdings": len(holdings)})
+
+    nav_df = pd.DataFrame(nav_rows)
+    total_ret = nav_df["nav"].iloc[-1] / INIT_CASH - 1.0
+    days = max((pd.Timestamp(nav_df["date"].iloc[-1]) - pd.Timestamp(nav_df["date"].iloc[0])).days, 1)
+    annual_ret = (1.0 + total_ret) ** (365.0 / days) - 1.0
+    max_dd = calc_max_drawdown(nav_df)
+    stats.update({
+        "mode": EXPERIMENT_MODE,
+        "start_date": str(nav_df["date"].iloc[0]),
+        "end_date": str(nav_df["date"].iloc[-1]),
+        "init_cash": INIT_CASH,
+        "final_nav": float(nav_df["nav"].iloc[-1]),
+        "total_return_pct": round(total_ret * 100.0, 4),
+        "annual_return_pct": round(annual_ret * 100.0, 4),
+        "max_drawdown_pct": round(max_dd, 4),
+        "calmar_ratio": round((annual_ret * 100.0) / abs(max_dd), 4) if max_dd < 0 else 0.0,
+        "trade_records": len(trades),
+    })
+    return nav_df, pd.DataFrame(trades), pd.DataFrame(rebalance_log), pd.DataFrame(score_rows), holdings, stats
+
+
+def write_last_holdings(holdings):
+    holdings_out = {
+        code: {
+            "shares": round(float(pos.get("shares", 0.0)), 4),
+            "cost_price": round(float(pos.get("cost_price", 0.0)), 4),
+            "last_price": round(float(pos.get("last_price", pos.get("cost_price", 0.0))), 4),
+            "name": pos.get("name", code),
+            "pending_sell": bool(pos.get("pending_sell", False)),
+            "pending_reason": pos.get("pending_reason", ""),
+            "buy_date": pos.get("buy_date", ""),
+            "invested_amount": round(float(pos.get("invested_amount", 0.0)), 2),
+            "step_index": int(pos.get("step_index", 0)),
+        }
+        for code, pos in holdings.items()
+    }
+    LAST_HOLDINGS_PATH.write_text(
+        json.dumps(holdings_out, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def main():
+    global EXPERIMENT_MODE, OUTPUT_DIR, NAV_SERIES_PATH, TRADE_RECORDS_PATH
+    global REBALANCE_LOG_PATH, SCORES_PATH, SUMMARY_PATH, LAST_HOLDINGS_PATH
+
+    args = parse_args()
+    EXPERIMENT_MODE = args.mode
+    start_label = args.start.replace("-", "")
+    end_label = (args.end or "latest").replace("-", "")
+    OUTPUT_DIR = TMP_OUTPUT_ROOT / f"v4_bull_hold_{args.mode}_{start_label}_{end_label}_output"
+    NAV_SERIES_PATH = OUTPUT_DIR / "nav_series.csv"
+    TRADE_RECORDS_PATH = OUTPUT_DIR / "trade_records.csv"
+    REBALANCE_LOG_PATH = OUTPUT_DIR / "rebalance_log.csv"
+    SCORES_PATH = OUTPUT_DIR / "strength_scores.csv"
+    SUMMARY_PATH = OUTPUT_DIR / "summary.json"
+    LAST_HOLDINGS_PATH = OUTPUT_DIR / "last_holdings.json"
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    if not PANEL_PATH.exists():
+        raise FileNotFoundError(f"Missing {PANEL_PATH}. Run 10_prepare_data.py first.")
+    try:
+        panel = pd.read_parquet(PANEL_PATH, columns=PANEL_COLUMNS)
+    except Exception as exc:
+        raise RuntimeError(
+            f"{PANEL_PATH} is missing required v4 columns. "
+            "Run 10_prepare_data.py again before 20_run_backtest.py."
+        ) from exc
+    panel["trade_date"] = pd.to_datetime(panel["trade_date"])
+    panel = trim_panel_for_experiment(panel, args.start, args.end)
+    panel = add_hold_features(panel)
+    weekly = load_weekly_bbi_from_db(args.start, args.end)
+    panel = attach_weekly_bbi(panel, weekly)
+    market = load_market_index()
+    nav_df, trades_df, rebalance_df, scores_df, holdings, stats = run_backtest(panel, market, args.start, args.end)
+
+    nav_df.to_csv(NAV_SERIES_PATH, index=False)
+    trades_df.to_csv(TRADE_RECORDS_PATH, index=False, quoting=csv.QUOTE_MINIMAL)
+    rebalance_df.to_csv(REBALANCE_LOG_PATH, index=False)
+    scores_df.to_csv(SCORES_PATH, index=False)
+    write_last_holdings(holdings)
+    SUMMARY_PATH.write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    print(f"Backtest done. Final NAV: {stats['final_nav']:,.2f}")
+    print(f"Annual return: {stats['annual_return_pct']:.2f}%  Max DD: {stats['max_drawdown_pct']:.2f}%")
+    print(f"Market blocks: {stats['market_block_days']}  Trades: {stats['trade_records']}")
+
+
+if __name__ == "__main__":
+    main()
