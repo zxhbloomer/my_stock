@@ -6,6 +6,12 @@ import pandas as pd
 
 from config import (
     BACKTEST_START_DATE,
+    BEAR_PROBE_BBI_SLOPE_WINDOW,
+    BEAR_PROBE_BREADTH_IMPROVE_5,
+    BEAR_PROBE_BUY_ENABLED,
+    BEAR_PROBE_MAX_TOTAL_EXPOSURE,
+    BEAR_PROBE_MIN_BREADTH,
+    BEAR_PROBE_POSITION_FRACTION,
     COMMISSION_BUY,
     COMMISSION_SELL,
     DOWNTREND_BUY_FILTER_ENABLED,
@@ -71,6 +77,7 @@ PANEL_COLUMNS = [
     "hm_limit_up_20_flag", "hm_limit_up_63_flag", "hm_turnover_ma20_flag",
     "hm_turnover_max20_flag", "hm_volume_ratio_max20_flag", "hm_lhb_count20_flag",
     "ret_21", "ret_63", "ret_126",
+    "close_qfq", "bbi_qfq",
     "ma20_qfq", "ma20_slope_10", "early_weakness_downtrend",
     "up_accel_exhaustion", "bear_down_accel_risk", "accel_exhaustion_forbid_buy",
     "volatility_63", "amount_ma20", "circ_mv_ma20",
@@ -327,7 +334,48 @@ def build_market_regime(market, panel):
     )
     regime = regime.join(breadth_daily, how="left")
     regime["regime"] = regime.apply(classify_market_regime, axis=1)
+    regime = add_bear_probe_market_features(regime)
     return regime
+
+
+def add_bear_probe_market_features(market_regime, min_breadth=BEAR_PROBE_MIN_BREADTH, breadth_improve=BEAR_PROBE_BREADTH_IMPROVE_5):
+    out = market_regime.copy()
+    if "trade_date" in out.columns:
+        out["trade_date"] = pd.to_datetime(out["trade_date"])
+        out = out.sort_values("trade_date").set_index("trade_date", drop=False)
+    else:
+        out = out.sort_index()
+    breadth = pd.to_numeric(out["breadth_above_bbi"], errors="coerce")
+    close = pd.to_numeric(out["close"], errors="coerce")
+    out["breadth_change_5"] = breadth - breadth.shift(5)
+    out["market_ma20"] = close.rolling(20, min_periods=3).mean()
+    out["market_ma20_slope_5"] = out["market_ma20"] / out["market_ma20"].shift(5) - 1.0
+    out["market_ma20_slope_3"] = out["market_ma20"] / out["market_ma20"].shift(3) - 1.0
+    out["bear_probe_market_ok"] = (
+        out["regime"].eq("bear")
+        & (breadth >= min_breadth)
+        & (out["breadth_change_5"] >= breadth_improve)
+        & (close >= out["market_ma20"])
+        & ((out["market_ma20_slope_5"] >= 0) | (out["market_ma20_slope_3"] >= 0))
+    )
+    return out
+
+
+def add_bear_probe_stock_features(panel):
+    out = panel.copy().sort_values(["ts_code", "trade_date"]).reset_index(drop=True)
+    grouped = out.groupby("ts_code", sort=False)
+    close = pd.to_numeric(out["close_qfq"], errors="coerce")
+    bbi = pd.to_numeric(out["bbi_qfq"], errors="coerce")
+    out["bbi_slope_5"] = grouped["bbi_qfq"].pct_change(BEAR_PROBE_BBI_SLOPE_WINDOW, fill_method=None)
+    out["ret_5_probe"] = grouped["close_qfq"].pct_change(5, fill_method=None)
+    risk = out.get("accel_exhaustion_forbid_buy", pd.Series(False, index=out.index)).fillna(False).astype(bool)
+    out["bear_probe_stock_ok"] = (
+        (close > bbi)
+        & (out["bbi_slope_5"] > 0)
+        & (out["ret_5_probe"] > 0)
+        & ~risk
+    )
+    return out
 
 
 def get_market_regime(market_regime, signal_date):
@@ -338,6 +386,8 @@ def get_market_regime(market_regime, signal_date):
     snapshot = {
         "market_regime": regime,
         "breadth_above_bbi": safe_float(row.get("breadth_above_bbi")),
+        "breadth_change_5": safe_float(row.get("breadth_change_5")),
+        "bear_probe_market_ok": bool(row.get("bear_probe_market_ok", False)),
         "market_dd_252": safe_float(row.get("dd_252")),
         "market_ma120_slope_20": safe_float(row.get("ma120_slope_20")),
     }
@@ -387,6 +437,16 @@ def calc_position_profit_pct(code, pos, signal_panel):
 
 def calc_total_exposure(holdings):
     return sum(float(pos.get("invested_amount", calc_position_cost(pos))) for pos in holdings.values())
+
+
+def calc_bear_probe_exposure(holdings):
+    return sum(float(pos.get("invested_amount", 0.0)) for pos in holdings.values() if pos.get("probe_entry"))
+
+
+def calc_bear_probe_target_amount(normal_first_step, cash, current_probe_exposure):
+    target = normal_first_step * BEAR_PROBE_POSITION_FRACTION
+    remaining_probe = BEAR_PROBE_MAX_TOTAL_EXPOSURE - current_probe_exposure
+    return max(0.0, min(target, cash, remaining_probe))
 
 
 def next_position_step(pos):
@@ -582,6 +642,8 @@ def get_day_panel(panel, panel_by_date, date):
 
 
 def run_backtest(panel, market, start_date, end_date):
+    if BEAR_PROBE_BUY_ENABLED and "bear_probe_stock_ok" not in panel.columns:
+        panel = add_bear_probe_stock_features(panel)
     market_regime = build_market_regime(market, panel)
     if end_date:
         panel = panel[panel["trade_date"] <= pd.Timestamp(end_date)].copy()
@@ -614,6 +676,9 @@ def run_backtest(panel, market, start_date, end_date):
         "regime_bear_exit_signals": 0,
         "regime_bear_exit_fills": 0,
         "regime_bear_block_days": 0,
+        "bear_probe_enabled": bool(BEAR_PROBE_BUY_ENABLED),
+        "bear_probe_signal_days": 0,
+        "bear_probe_buys": 0,
         "downtrend_filter_enabled": bool(DOWNTREND_BUY_FILTER_ENABLED),
         "downtrend_filter_candidate_blocks": 0,
         "downtrend_filter_signal_days": 0,
@@ -699,7 +764,13 @@ def run_backtest(panel, market, start_date, end_date):
             regime_blocked = MARKET_REGIME_FILTER_ENABLED and market_regime_name == "bear"
             if regime_blocked:
                 stats["regime_bear_block_days"] += 1
-            if short_drop_blocked or regime_blocked:
+            probe_open = (
+                BEAR_PROBE_BUY_ENABLED
+                and regime_blocked
+                and not short_drop_blocked
+                and bool(regime_snapshot.get("bear_probe_market_ok", False))
+            )
+            if short_drop_blocked or (regime_blocked and not probe_open):
                 stats["market_block_days"] += 1
                 if short_drop_reason in {"missing_market", "missing_market_history"}:
                     stats["missing_market_days"] += 1
@@ -715,6 +786,8 @@ def run_backtest(panel, market, start_date, end_date):
                     "market_dd_20": round(short_drop_snapshot.get("market_dd_20", float("nan")), 4),
                     "market_dd_252": round(regime_snapshot.get("market_dd_252", float("nan")), 4),
                     "breadth_above_bbi": round(regime_snapshot.get("breadth_above_bbi", float("nan")), 4),
+                    "breadth_change_5": round(regime_snapshot.get("breadth_change_5", float("nan")), 4),
+                    "bear_probe_market_ok": bool(regime_snapshot.get("bear_probe_market_ok", False)),
                     "cash": round(cash, 2),
                 })
             else:
@@ -735,33 +808,40 @@ def run_backtest(panel, market, start_date, end_date):
                     "ret_21", "ret_63", "ret_126",
                     "ma20_qfq", "ma20_slope_10", "early_weakness_downtrend",
                     "up_accel_exhaustion", "bear_down_accel_risk", "accel_exhaustion_forbid_buy",
+                    "bbi_slope_5", "ret_5_probe", "bear_probe_stock_ok",
                     "volatility_63", "amount_ma20", "circ_mv_ma20", "pullback_63", "strong_trend",
                 ]
                 score_rows.extend(candidates[score_cols].head(100).to_dict("records"))
                 bought_count = 0
                 candidate_by_code = candidates.set_index("ts_code", drop=False)
-                for code in list(holdings):
-                    if code in risk_exit_codes or code not in candidate_by_code.index or code not in day_panel.index:
-                        continue
-                    pos = holdings[code]
-                    if pos.get("pending_sell") or not can_add_position(code, pos, signal_panel):
-                        continue
-                    target_amount = next_position_step(pos)
-                    if target_amount is None:
-                        continue
-                    available_exposure = LONG_MAX_TOTAL_EXPOSURE - calc_total_exposure(holdings)
-                    target_amount = min(target_amount, available_exposure)
-                    if target_amount < 100:
-                        continue
-                    cash, bought, reason = execute_buy(date, day_panel.loc[code], target_amount, cash, holdings, trades, "long_add_buy")
-                    if bought:
-                        bought_count += 1
-                        stats["buy_fills"] += 1
-                        stats["add_buy_fills"] += 1
-                    else:
-                        stats["buy_skips"] += 1
+                if not probe_open:
+                    for code in list(holdings):
+                        if code in risk_exit_codes or code not in candidate_by_code.index or code not in day_panel.index:
+                            continue
+                        pos = holdings[code]
+                        if pos.get("pending_sell") or not can_add_position(code, pos, signal_panel):
+                            continue
+                        target_amount = next_position_step(pos)
+                        if target_amount is None:
+                            continue
+                        available_exposure = LONG_MAX_TOTAL_EXPOSURE - calc_total_exposure(holdings)
+                        target_amount = min(target_amount, available_exposure)
+                        if target_amount < 100:
+                            continue
+                        cash, bought, reason = execute_buy(date, day_panel.loc[code], target_amount, cash, holdings, trades, "long_add_buy")
+                        if bought:
+                            bought_count += 1
+                            stats["buy_fills"] += 1
+                            stats["add_buy_fills"] += 1
+                        else:
+                            stats["buy_skips"] += 1
 
                 pullback_threshold, strong_pullback_threshold = regime_pullback_thresholds(market_regime_name)
+                if probe_open:
+                    stats["bear_probe_signal_days"] += 1
+                    candidates = candidates[candidates["bear_probe_stock_ok"].fillna(False)].copy()
+                    pullback_threshold = min(pullback_threshold, -0.02)
+                    strong_pullback_threshold = min(strong_pullback_threshold, -0.015)
                 entry_candidates = candidates[
                     candidates["pullback_63"].notna()
                     & (
@@ -782,13 +862,25 @@ def run_backtest(panel, market, start_date, end_date):
                     if code in holdings or code in risk_exit_codes or code not in day_panel.index:
                         continue
                     available_exposure = LONG_MAX_TOTAL_EXPOSURE - calc_total_exposure(holdings)
-                    target_amount = min(float(LONG_POSITION_STEPS[0]), available_exposure)
+                    if probe_open:
+                        target_amount = calc_bear_probe_target_amount(
+                            float(LONG_POSITION_STEPS[0]),
+                            cash,
+                            calc_bear_probe_exposure(holdings),
+                        )
+                    else:
+                        target_amount = min(float(LONG_POSITION_STEPS[0]), available_exposure)
+                    target_amount = min(target_amount, available_exposure)
                     if target_amount < 100:
                         break
-                    cash, bought, reason = execute_buy(date, day_panel.loc[code], target_amount, cash, holdings, trades, "long_initial_buy")
+                    buy_reason = "bear_probe_initial_buy" if probe_open else "long_initial_buy"
+                    cash, bought, reason = execute_buy(date, day_panel.loc[code], target_amount, cash, holdings, trades, buy_reason)
                     if bought:
                         bought_count += 1
                         stats["buy_fills"] += 1
+                        if probe_open:
+                            holdings[code]["probe_entry"] = True
+                            stats["bear_probe_buys"] += 1
                     else:
                         stats["buy_skips"] += 1
                 rebalance_log.append({
@@ -803,6 +895,8 @@ def run_backtest(panel, market, start_date, end_date):
                     "market_dd_20": round(short_drop_snapshot.get("market_dd_20", float("nan")), 4),
                     "market_dd_252": round(regime_snapshot.get("market_dd_252", float("nan")), 4),
                     "breadth_above_bbi": round(regime_snapshot.get("breadth_above_bbi", float("nan")), 4),
+                    "breadth_change_5": round(regime_snapshot.get("breadth_change_5", float("nan")), 4),
+                    "bear_probe_market_ok": bool(regime_snapshot.get("bear_probe_market_ok", False)),
                     "pullback_threshold": round(pullback_threshold, 4),
                     "strong_pullback_threshold": round(strong_pullback_threshold, 4),
                     "cash": round(cash, 2),
