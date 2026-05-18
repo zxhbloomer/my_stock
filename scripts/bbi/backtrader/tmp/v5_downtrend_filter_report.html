@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>v5 下降趋势买入过滤实验报表</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #1f2933;
+      --muted: #65727f;
+      --line: #d9e0e7;
+      --good: #187a5b;
+      --bad: #b42318;
+      --warn: #9a6700;
+      --blue: #1f5f99;
+      --soft-green: #e8f5ef;
+      --soft-blue: #e8f1fa;
+      --soft-warn: #fff4db;
+      --soft-red: #fdeceb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    header {
+      background: #17212b;
+      color: #fff;
+      padding: 28px 36px 24px;
+      border-bottom: 4px solid #2a8c6a;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    header p {
+      margin: 0;
+      color: #c8d2dc;
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 28px 48px;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin: 0 0 18px;
+      padding: 20px;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      font-weight: 650;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 94px;
+      background: #fbfcfd;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 25px;
+      line-height: 1.2;
+      margin-top: 6px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .metric.good { background: var(--soft-green); border-color: #b7ddcf; }
+    .metric.warn { background: var(--soft-warn); border-color: #efd28f; }
+    .metric.blue { background: var(--soft-blue); border-color: #b9d2ea; }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .badge.good { color: var(--good); background: var(--soft-green); }
+    .badge.warn { color: var(--warn); background: var(--soft-warn); }
+    .badge.bad { color: var(--bad); background: var(--soft-red); }
+    .badge.blue { color: var(--blue); background: var(--soft-blue); }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 920px;
+      background: #fff;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #eef2f6;
+      color: #344250;
+      font-weight: 650;
+    }
+
+    th:first-child, td:first-child,
+    th:nth-child(2), td:nth-child(2) {
+      text-align: left;
+    }
+
+    tr.highlight td {
+      background: #f0faf6;
+      font-weight: 650;
+    }
+
+    tr.baseline td {
+      background: #f7f9fb;
+    }
+
+    .positive { color: var(--good); font-weight: 650; }
+    .negative { color: var(--bad); font-weight: 650; }
+    .muted { color: var(--muted); }
+
+    .note {
+      border-left: 4px solid #2a8c6a;
+      background: #f4faf7;
+      padding: 12px 14px;
+      margin: 12px 0;
+    }
+
+    .warning {
+      border-left: 4px solid #c99319;
+      background: #fff8e8;
+      padding: 12px 14px;
+      margin: 12px 0;
+    }
+
+    ul, ol {
+      margin: 8px 0 0 20px;
+      padding: 0;
+    }
+
+    li { margin: 6px 0; }
+
+    code {
+      background: #eef2f6;
+      border: 1px solid #d7dee6;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    footer {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 18px;
+    }
+
+    @media (max-width: 820px) {
+      header { padding: 22px 20px; }
+      main { padding: 16px; }
+      .grid { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+    }
+
+    @media (max-width: 520px) {
+      .grid { grid-template-columns: 1fr; }
+      header h1 { font-size: 23px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>v5 下降趋势买入过滤实验报表</h1>
+    <p>数据来源：scripts/bbi/backtrader/tmp/v5_downtrend_filter_output/results.csv；回测区间 2018-01-02 至 2026-05-14。</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>结论摘要</h2>
+      <div class="grid">
+        <div class="metric good">
+          <span>最佳方案总收益</span>
+          <strong>214.56%</strong>
+          <span>block_early_weakness</span>
+        </div>
+        <div class="metric blue">
+          <span>相对 v5 增量</span>
+          <strong>+73.64pct</strong>
+          <span>v5 为 140.92%</span>
+        </div>
+        <div class="metric good">
+          <span>最大回撤</span>
+          <strong>-30.61%</strong>
+          <span>v5 为 -31.18%</span>
+        </div>
+        <div class="metric warn">
+          <span>交易数</span>
+          <strong>782</strong>
+          <span>v5 为 632，交易更频繁</span>
+        </div>
+      </div>
+
+      <div class="note">
+        推荐方向：<strong>不要直接作为默认生产逻辑合并</strong>，但建议合并为 v5 的可配置实验开关，并进入下一轮稳健性验证。当前证据显示收益显著改善，但这个结果来自“全候选集过滤”，会同时影响首次买入和加仓买入，不是单纯的首次开仓过滤。
+      </div>
+    </section>
+
+    <section>
+      <h2>核心方案定义</h2>
+      <p>最佳方案 <code>block_early_weakness</code> 的规则：</p>
+      <pre><code>close_qfq &lt; MA20
+AND MA20_slope_10 &lt; 0
+AND ret_21 &lt; 0</code></pre>
+      <p>含义：如果个股已经跌破 20 日均线，20 日均线开始下行，且 21 日收益为负，则不进入 v5 候选买入池。这个规则比 MA120 或 lower-high/lower-low 更早，能拦截 v5 原始策略仍可能参与的短期弱势下跌段。</p>
+    </section>
+
+    <section>
+      <h2>全周期对比</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>方案</th>
+              <th>定位</th>
+              <th>总收益</th>
+              <th>年化</th>
+              <th>最大回撤</th>
+              <th>Calmar</th>
+              <th>交易数</th>
+              <th>平均现金</th>
+              <th>平均持仓</th>
+              <th>阻断候选</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="highlight">
+              <td>block_early_weakness</td>
+              <td><span class="badge good">当前最佳</span></td>
+              <td class="positive">214.56%</td>
+              <td class="positive">14.68%</td>
+              <td>-30.61%</td>
+              <td class="positive">0.4795</td>
+              <td>782</td>
+              <td>41.78%</td>
+              <td>4.29</td>
+              <td>32206</td>
+            </tr>
+            <tr class="baseline">
+              <td>baseline_v5</td>
+              <td><span class="badge blue">主基准</span></td>
+              <td>140.92%</td>
+              <td>11.08%</td>
+              <td>-31.18%</td>
+              <td>0.3554</td>
+              <td>632</td>
+              <td>34.34%</td>
+              <td>4.44</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>v4 production baseline</td>
+              <td><span class="badge blue">历史参考</span></td>
+              <td>118.02%</td>
+              <td>9.76%</td>
+              <td>-46.31%</td>
+              <td>0.2108</td>
+              <td>642</td>
+              <td class="muted">未列</td>
+              <td class="muted">未列</td>
+              <td class="muted">-</td>
+            </tr>
+            <tr>
+              <td>block_bbi_breakdown</td>
+              <td><span class="badge bad">不建议</span></td>
+              <td>99.04%</td>
+              <td>8.57%</td>
+              <td>-32.58%</td>
+              <td>0.2631</td>
+              <td>839</td>
+              <td>31.36%</td>
+              <td>4.32</td>
+              <td>28053</td>
+            </tr>
+            <tr>
+              <td>block_early_weakness_initial_only</td>
+              <td><span class="badge bad">验证失败</span></td>
+              <td>76.42%</td>
+              <td>7.02%</td>
+              <td class="negative">-39.90%</td>
+              <td>0.1760</td>
+              <td>872</td>
+              <td>29.71%</td>
+              <td>4.30</td>
+              <td>32206</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">其他严格长趋势定义，如 MA120 斜率、lower high/lower low、strict/strong downtrend，对实际组合没有影响，结果与 v5 完全一致。</p>
+    </section>
+
+    <section>
+      <h2>关键年份诊断</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>方案</th>
+              <th>2018</th>
+              <th>2022</th>
+              <th>2024</th>
+              <th>2025</th>
+              <th>2026</th>
+              <th>解读</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="highlight">
+              <td>block_early_weakness</td>
+              <td>-25.71%</td>
+              <td>-11.67%</td>
+              <td>-4.06%</td>
+              <td class="positive">34.13%</td>
+              <td class="positive">4.97%</td>
+              <td>熊市年份改善，2025/2026 明显增强；2024 小幅劣化。</td>
+            </tr>
+            <tr class="baseline">
+              <td>baseline_v5</td>
+              <td>-27.49%</td>
+              <td>-14.68%</td>
+              <td>-3.03%</td>
+              <td>14.22%</td>
+              <td>1.38%</td>
+              <td>稳定基线，收益弱于最佳方案。</td>
+            </tr>
+            <tr>
+              <td>block_bbi_breakdown</td>
+              <td>-23.96%</td>
+              <td>-12.04%</td>
+              <td>-4.06%</td>
+              <td class="negative">-4.52%</td>
+              <td class="positive">18.89%</td>
+              <td>改善部分熊市，但伤害 2025，整体不如 v5。</td>
+            </tr>
+            <tr>
+              <td>block_early_weakness_initial_only</td>
+              <td>-25.71%</td>
+              <td>-13.30%</td>
+              <td>-7.17%</td>
+              <td>17.49%</td>
+              <td class="negative">-4.42%</td>
+              <td>首次开仓过滤不够，整体收益和回撤都不合格。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">年份收益是日历切片诊断，从每年第一条 NAV 重新计算，不用于精确分解全周期收益。</p>
+    </section>
+
+    <section>
+      <h2>是否合并</h2>
+      <div class="warning">
+        <strong>建议：暂不作为默认生产逻辑合并。</strong> 当前结果足够强，值得进入 v5 正式代码的可配置实验开关；但不建议直接替换默认策略，因为存在参数挖掘、交易次数上升、全候选集过滤影响加仓行为等风险。
+      </div>
+      <h3>可以合并的范围</h3>
+      <ul>
+        <li>合并为配置项，例如 <code>DOWNTREND_BUY_FILTER_ENABLED = False</code>，默认关闭。</li>
+        <li>增加候选过滤原因和统计输出，HTML 报告中展示被过滤数量、影响买入次数、影响加仓次数。</li>
+        <li>保留 v5 原始逻辑作为 baseline，可一键对比。</li>
+      </ul>
+      <h3>不应直接合并的范围</h3>
+      <ul>
+        <li>不要直接默认启用 <code>block_early_weakness</code>。</li>
+        <li>不要合并 <code>initial_only</code>，回测已经显示它显著劣化。</li>
+        <li>不要合并 <code>block_bbi_breakdown</code>，全周期低于 v5。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>下一步</h2>
+      <ol>
+        <li><strong>做稳健性验证：</strong>滚动窗口或 walk-forward，例如 2018-2021 训练、2022-2024 验证、2025-2026 样本外确认。</li>
+        <li><strong>做参数敏感性：</strong>测试 MA10/MA20/MA30、ret_10/ret_21/ret_42、斜率窗口 5/10/20，确认不是单点参数碰巧有效。</li>
+        <li><strong>做交易归因：</strong>标记每一笔买入/加仓是否因为过滤而改变，输出“被替换买入”“跳过加仓”“新增交易”的 PnL 差异。</li>
+        <li><strong>做成本压力测试：</strong>提高佣金和滑点，尤其关注交易数从 632 增至 782 后，收益是否仍稳定。</li>
+        <li><strong>生产化设计：</strong>如果稳健性通过，再把该过滤器放进 v5 `score_candidates` 后、买入前的候选过滤层，并在报告中展示过滤原因。</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>验证记录</h2>
+      <p>已执行：</p>
+      <ul>
+        <li><code>python -m py_compile scripts\bbi\backtrader\tmp\v5_downtrend_filter_experiment.py</code></li>
+        <li><code>python -m unittest scripts\bbi\backtrader\tmp\test_v5_downtrend_filter.py -v</code>，结果：5 个测试通过。</li>
+        <li><code>python -X utf8 scripts\bbi\backtrader\tmp\v5_downtrend_filter_experiment.py</code>，结果已写入 `results.csv` 和 `summary.md`。</li>
+      </ul>
+      <footer>生成位置：scripts/bbi/backtrader/tmp/v5_downtrend_filter_report.html</footer>
+    </section>
+  </main>
+</body>
+</html>

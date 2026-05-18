@@ -115,6 +115,12 @@ def fmt_arrow(value, is_pct=False, is_currency=False):
     return text
 
 
+def fmt_pct(value):
+    if pd.isna(value):
+        return "-"
+    return f"{value * 100:.2f}%"
+
+
 def font_color(value):
     if pd.isna(value) or value == 0:
         return "#333333"
@@ -154,6 +160,13 @@ def fmt_date(value):
 def build_monthly_return_data(nav):
     nav_indexed = nav.set_index("date")
     monthly_nav = nav_indexed["nav"].resample("ME").last()
+    if "cash" in nav_indexed.columns:
+        monthly_cash = nav_indexed["cash"].resample("ME").last()
+    else:
+        monthly_cash = pd.Series(np.nan, index=monthly_nav.index)
+    monthly_stock_value = monthly_nav - monthly_cash
+    monthly_stock_ratio = monthly_stock_value / monthly_nav
+    monthly_cash_ratio = monthly_cash / monthly_nav
     prev_month_nav = monthly_nav.shift(1)
     prev_month_nav.iloc[0] = INIT_CASH
     monthly_pnl = monthly_nav - prev_month_nav
@@ -190,6 +203,10 @@ def build_monthly_return_data(nav):
         "year_labels": year_labels,
         "row_bg": row_bg,
         "monthly_nav": monthly_nav,
+        "monthly_stock_value": monthly_stock_value,
+        "monthly_cash": monthly_cash,
+        "monthly_stock_ratio": monthly_stock_ratio,
+        "monthly_cash_ratio": monthly_cash_ratio,
         "monthly_pnl": monthly_pnl,
         "monthly_ret": monthly_ret,
         "total_ret": total_ret,
@@ -217,14 +234,18 @@ def make_equity_figure(nav):
 
 def make_monthly_return_table_html(nav):
     data = build_monthly_return_data(nav)
-    headers = ["年份", "月份", "月末总资产", "当月盈亏(元)", "当月收益率", "总收益率", "年内收益率", "年收益率"]
+    headers = [
+        "年份", "月份", "月末总资产", "股票市值", "现金余额", "股票仓位", "现金占比",
+        "当月盈亏(元)", "当月收益率", "总收益率", "年内收益率", "年收益率",
+    ]
     year_groups = {}
     for idx, date in enumerate(data["dates"]):
         year_groups.setdefault(date.year, []).append(idx)
     html = ['<div class="monthly-table-wrap"><table class="monthly-return-table">']
     html.append(
         "<colgroup>"
-        "<col class=\"year-col\"><col class=\"month-col\"><col class=\"asset-col\">"
+        "<col class=\"year-col\"><col class=\"month-col\"><col class=\"asset-col\"><col class=\"asset-col\"><col class=\"asset-col\">"
+        "<col class=\"rate-col\"><col class=\"rate-col\">"
         "<col class=\"pnl-col\"><col class=\"rate-col\"><col class=\"rate-col\">"
         "<col class=\"rate-col\"><col class=\"rate-col\">"
         "</colgroup>"
@@ -241,6 +262,10 @@ def make_monthly_return_table_html(nav):
         row = [
             (d.strftime("%m月"), "neutral"),
             (f"{data['monthly_nav'].iloc[i]:,.0f}", "neutral"),
+            (fmt_int(data["monthly_stock_value"].iloc[i]), "neutral"),
+            (fmt_int(data["monthly_cash"].iloc[i]), "neutral"),
+            (fmt_pct(data["monthly_stock_ratio"].iloc[i]), "neutral"),
+            (fmt_pct(data["monthly_cash_ratio"].iloc[i]), "neutral"),
             (fmt_arrow(data["monthly_pnl"].iloc[i], is_currency=True), signed_class(data["monthly_pnl"].iloc[i])),
             (fmt_arrow(data["monthly_ret"].iloc[i], is_pct=True), signed_class(data["monthly_ret"].iloc[i])),
             (fmt_arrow(data["total_ret"].iloc[i], is_pct=True), signed_class(data["total_ret"].iloc[i])),
@@ -281,9 +306,12 @@ def make_equity_table_figure(nav):
         name="资金（元）", line=dict(color="#2196F3", width=2),
     ), row=1, col=1)
     fig.add_trace(go.Table(
-        columnwidth=[50, 40, 110, 110, 90, 95, 95, 90],
+        columnwidth=[50, 40, 110, 105, 105, 80, 80, 110, 90, 95, 95, 90],
         header=dict(
-            values=["年份", "月份", "月末总资产", "当月盈亏(元)", "当月收益率", "总收益率", "年内收益率", "年收益率"],
+            values=[
+                "年份", "月份", "月末总资产", "股票市值", "现金余额", "股票仓位", "现金占比",
+                "当月盈亏(元)", "当月收益率", "总收益率", "年内收益率", "年收益率",
+            ],
             fill_color="#2c3e50", font=dict(color="white", size=11),
             align="center", height=28, line_color="#d0d7de",
         ),
@@ -292,17 +320,25 @@ def make_equity_table_figure(nav):
                 data["year_labels"],
                 [d.strftime("%m月") for d in dates],
                 [f"{v:,.0f}" for v in data["monthly_nav"].values],
+                [fmt_int(v) for v in data["monthly_stock_value"].values],
+                [fmt_int(v) for v in data["monthly_cash"].values],
+                [fmt_pct(v) for v in data["monthly_stock_ratio"].values],
+                [fmt_pct(v) for v in data["monthly_cash_ratio"].values],
                 [fmt_arrow(v, is_currency=True) for v in data["monthly_pnl"].values],
                 [fmt_arrow(v, is_pct=True) for v in data["monthly_ret"].values],
                 [fmt_arrow(v, is_pct=True) for v in data["total_ret"].values],
                 [fmt_arrow(v, is_pct=True) for v in data["ytd_ret"].values],
                 data["annual_col"],
             ],
-            fill_color=[data["row_bg"]] * 8,
-            align=["center", "center", "right", "right", "right", "right", "right", "right"],
+            fill_color=[data["row_bg"]] * 12,
+            align=["center", "center", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"],
             font=dict(
                 size=11,
                 color=[
+                    neutral,
+                    neutral,
+                    neutral,
+                    neutral,
                     neutral,
                     neutral,
                     neutral,
@@ -314,7 +350,7 @@ def make_equity_table_figure(nav):
                 ],
             ),
             height=24,
-            line_color=[data["row_bg"]] + [["#d0d7de"] * n] * 7,
+            line_color=[data["row_bg"]] + [["#d0d7de"] * n] * 11,
             line_width=1,
         ),
     ), row=1, col=2)
@@ -586,10 +622,10 @@ def make_html(summary, nav, trades, scores, holdings):
   .wide-section {{ overflow-x: auto; }}
   .section-title {{ font-size: 1.05em; font-weight: bold; color: #2c3e50; margin-bottom: 8px;
                     padding-bottom: 6px; border-bottom: 2px solid #f39c12; }}
-  .equity-grid {{ display: grid; grid-template-columns: 760px 780px; gap: 16px; align-items: start; min-width: 1556px; }}
+  .equity-grid {{ display: grid; grid-template-columns: 760px 1160px; gap: 16px; align-items: start; min-width: 1936px; }}
   .equity-chart, .equity-table {{ min-width: 0; }}
   .monthly-table-wrap {{ height: 600px; overflow: auto; border: 1px solid #d0d7de; }}
-  .monthly-return-table {{ border-collapse: separate; border-spacing: 0; table-layout: fixed; width: 760px; font-size: 12px; }}
+  .monthly-return-table {{ border-collapse: separate; border-spacing: 0; table-layout: fixed; width: 1140px; font-size: 12px; }}
   .monthly-return-table .year-col {{ width: 52px; }}
   .monthly-return-table .month-col {{ width: 48px; }}
   .monthly-return-table .asset-col {{ width: 105px; }}

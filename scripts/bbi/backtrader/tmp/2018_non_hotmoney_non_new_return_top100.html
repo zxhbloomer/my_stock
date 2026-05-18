@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>2018 非游资非新股收益排行 Top 100</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --line: #d8dde6;
+      --text: #172033;
+      --muted: #5f6b7a;
+      --head: #26364d;
+      --pos: #b42318;
+      --neg: #176b3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+      line-height: 1.45;
+    }
+    main {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 28px 24px 40px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .sub {
+      color: var(--muted);
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .stat strong {
+      font-size: 22px;
+    }
+    .note {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      font-size: 13px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 9px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: var(--head);
+      color: #fff;
+      font-weight: 600;
+      z-index: 1;
+    }
+    td:nth-child(2), td:nth-child(3), th:nth-child(2), th:nth-child(3) {
+      text-align: left;
+    }
+    tbody tr:hover {
+      background: #eef3f8;
+    }
+    .pos { color: var(--pos); font-weight: 700; }
+    .neg { color: var(--neg); font-weight: 700; }
+    .table-wrap {
+      overflow: auto;
+      max-height: calc(100vh - 240px);
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>2018 非游资、非新股收益排行 Top 100</h1>
+    <div class="sub">收益按 2018 年首末交易日前复权收盘价计算，降序排列。</div>
+    <section class="stats">
+      <div class="stat"><span>2018 有行情股票数</span><strong>3210</strong></div>
+      <div class="stat"><span>覆盖全年交易窗口</span><strong>2911</strong></div>
+      <div class="stat"><span>排除新股后</span><strong>2479</strong></div>
+      <div class="stat"><span>排除 ST/停牌异常后</span><strong>2406</strong></div>
+      <div class="stat"><span>排除游资类后</span><strong>1468</strong></div>
+    </section>
+    <section class="note">
+      口径：首个交易日不晚于 2018-01-10，末个交易日不早于 2018-12-20；2018 年首个交易日上市满 365 天；
+      全年无 ST 标记和停牌标记；游资类使用项目 v4 的 hot_money_risk_hits，保留全年最大值不超过 1 的股票。
+      本版未加入“非脉冲式上涨”过滤。
+    </section>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>排名</th><th>代码</th><th>名称</th><th>全年收益</th>
+            <th>起始日</th><th>结束日</th><th>起始前复权收盘</th><th>结束前复权收盘</th>
+            <th>上市日</th><th>起始上市天数</th><th>最大游资命中</th>
+            <th>20日涨停最大数</th><th>63日涨停最大数</th><th>20日龙虎榜最大数</th>
+            <th>20日均换手最大</th><th>20日量比最大</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>002399.SZ</td><td>海普瑞</td><td class='pos'>50.74%</td><td>2018-01-02</td><td>2018-12-28</td><td>14.4957</td><td>21.8515</td><td>2010-05-06</td><td>2798</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0.67</td><td>8.21</td></tr><tr><td>2</td><td>600132.SH</td><td>重庆啤酒</td><td class='pos'>50.30%</td><td>2018-01-02</td><td>2018-12-28</td><td>16.9407</td><td>25.4611</td><td>1997-10-30</td><td>7369</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.47</td><td>4.01</td></tr><tr><td>3</td><td>300012.SZ</td><td>华测检测</td><td class='pos'>48.78%</td><td>2018-01-02</td><td>2018-12-28</td><td>4.2586</td><td>6.3358</td><td>2009-10-30</td><td>2986</td><td>1</td><td>1</td><td>1</td><td>1</td><td>2.49</td><td>4.29</td></tr><tr><td>4</td><td>600763.SH</td><td>通策医疗</td><td class='pos'>48.04%</td><td>2018-01-02</td><td>2018-12-28</td><td>22.4643</td><td>33.2550</td><td>1996-10-30</td><td>7734</td><td>1</td><td>1</td><td>2</td><td>0</td><td>1.70</td><td>3.34</td></tr><tr><td>5</td><td>002679.SZ</td><td>福建金森</td><td class='pos'>42.12%</td><td>2018-01-02</td><td>2018-12-28</td><td>11.8842</td><td>16.8894</td><td>2012-06-05</td><td>2037</td><td>1</td><td>0</td><td>1</td><td>1</td><td>1.97</td><td>5.58</td></tr><tr><td>6</td><td>601888.SH</td><td>中国中免</td><td class='pos'>40.88%</td><td>2018-01-02</td><td>2018-12-28</td><td>39.7407</td><td>55.9879</td><td>2009-10-15</td><td>3001</td><td>0</td><td>1</td><td>1</td><td>0</td><td>0.80</td><td>2.94</td></tr><tr><td>7</td><td>002376.SZ</td><td>新北洋</td><td class='pos'>37.14%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.5036</td><td>13.0331</td><td>2010-03-23</td><td>2842</td><td>1</td><td>1</td><td>1</td><td>1</td><td>3.91</td><td>3.55</td></tr><tr><td>8</td><td>300365.SZ</td><td>恒华科技</td><td class='pos'>36.93%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.9989</td><td>13.6914</td><td>2014-01-23</td><td>1440</td><td>1</td><td>1</td><td>1</td><td>0</td><td>4.04</td><td>9.34</td></tr><tr><td>9</td><td>300357.SZ</td><td>我武生物</td><td class='pos'>33.86%</td><td>2018-01-02</td><td>2018-12-28</td><td>14.6830</td><td>19.6554</td><td>2014-01-21</td><td>1442</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1.59</td><td>2.85</td></tr><tr><td>10</td><td>600436.SH</td><td>片仔癀</td><td class='pos'>32.74%</td><td>2018-01-02</td><td>2018-12-28</td><td>62.0162</td><td>82.3216</td><td>2003-06-16</td><td>5314</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1.56</td><td>2.74</td></tr><tr><td>11</td><td>002032.SZ</td><td>苏泊尔</td><td class='pos'>32.07%</td><td>2018-01-02</td><td>2018-12-28</td><td>30.3371</td><td>40.0663</td><td>2004-08-17</td><td>4886</td><td>1</td><td>1</td><td>1</td><td>0</td><td>0.58</td><td>4.08</td></tr><tr><td>12</td><td>300389.SZ</td><td>艾比森</td><td class='pos'>31.96%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.6978</td><td>12.7969</td><td>2014-08-01</td><td>1250</td><td>1</td><td>0</td><td>0</td><td>1</td><td>1.90</td><td>9.54</td></tr><tr><td>13</td><td>300429.SZ</td><td>强力新材</td><td class='pos'>31.89%</td><td>2018-01-02</td><td>2018-12-28</td><td>12.2400</td><td>16.1429</td><td>2015-03-24</td><td>1015</td><td>1</td><td>1</td><td>1</td><td>1</td><td>3.83</td><td>5.75</td></tr><tr><td>14</td><td>603288.SH</td><td>海天味业</td><td class='pos'>31.31%</td><td>2018-01-02</td><td>2018-12-28</td><td>23.0582</td><td>30.2775</td><td>2014-02-11</td><td>1421</td><td>0</td><td>1</td><td>1</td><td>0</td><td>0.23</td><td>2.69</td></tr><tr><td>15</td><td>300529.SZ</td><td>健帆生物</td><td class='pos'>31.21%</td><td>2018-01-02</td><td>2018-12-28</td><td>14.8310</td><td>19.4597</td><td>2016-08-02</td><td>518</td><td>1</td><td>1</td><td>1</td><td>1</td><td>3.73</td><td>3.63</td></tr><tr><td>16</td><td>300015.SZ</td><td>爱尔眼科</td><td class='pos'>30.49%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.1854</td><td>6.7665</td><td>2009-10-30</td><td>2986</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.98</td><td>2.44</td></tr><tr><td>17</td><td>300001.SZ</td><td>特锐德</td><td class='pos'>27.71%</td><td>2018-01-02</td><td>2018-12-28</td><td>13.4835</td><td>17.2201</td><td>2009-10-30</td><td>2986</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1.42</td><td>3.34</td></tr><tr><td>18</td><td>600027.SH</td><td>华电国际</td><td class='pos'>27.19%</td><td>2018-01-02</td><td>2018-12-28</td><td>2.7609</td><td>3.5117</td><td>2005-02-03</td><td>4716</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.68</td><td>4.01</td></tr><tr><td>19</td><td>002414.SZ</td><td>高德红外</td><td class='pos'>26.97%</td><td>2018-01-02</td><td>2018-12-28</td><td>2.4898</td><td>3.1614</td><td>2010-07-16</td><td>2727</td><td>1</td><td>1</td><td>1</td><td>1</td><td>2.03</td><td>3.56</td></tr><tr><td>20</td><td>300572.SZ</td><td>安车检测</td><td class='pos'>23.32%</td><td>2018-01-02</td><td>2018-12-28</td><td>21.7922</td><td>26.8749</td><td>2016-12-06</td><td>392</td><td>1</td><td>1</td><td>1</td><td>0</td><td>2.08</td><td>5.71</td></tr><tr><td>21</td><td>603899.SH</td><td>晨光股份</td><td class='pos'>22.77%</td><td>2018-01-02</td><td>2018-12-28</td><td>22.2543</td><td>27.3225</td><td>2015-01-27</td><td>1071</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.76</td><td>4.51</td></tr><tr><td>22</td><td>600529.SH</td><td>山东药玻</td><td class='pos'>21.23%</td><td>2018-01-02</td><td>2018-12-28</td><td>10.1088</td><td>12.2545</td><td>2002-06-03</td><td>5692</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.61</td><td>3.64</td></tr><tr><td>23</td><td>002557.SZ</td><td>洽洽食品</td><td class='pos'>20.92%</td><td>2018-01-02</td><td>2018-12-28</td><td>13.1752</td><td>15.9319</td><td>2011-03-02</td><td>2498</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1.96</td><td>4.19</td></tr><tr><td>24</td><td>600011.SH</td><td>华能国际</td><td class='pos'>19.51%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.3289</td><td>6.3686</td><td>2001-12-06</td><td>5871</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.30</td><td>3.62</td></tr><tr><td>25</td><td>600872.SH</td><td>中炬高新</td><td class='pos'>19.15%</td><td>2018-01-02</td><td>2018-12-28</td><td>23.0382</td><td>27.4497</td><td>1995-01-24</td><td>8379</td><td>1</td><td>0</td><td>0</td><td>1</td><td>1.65</td><td>3.24</td></tr><tr><td>26</td><td>002506.SZ</td><td>协鑫集成</td><td class='pos'>17.65%</td><td>2018-01-02</td><td>2018-12-28</td><td>4.2500</td><td>5.0000</td><td>2010-11-18</td><td>2602</td><td>1</td><td>1</td><td>1</td><td>1</td><td>2.19</td><td>5.87</td></tr><tr><td>27</td><td>603866.SH</td><td>桃李面包</td><td class='pos'>17.31%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.6322</td><td>11.2998</td><td>2015-12-22</td><td>742</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.95</td><td>3.96</td></tr><tr><td>28</td><td>002563.SZ</td><td>森马服饰</td><td class='pos'>16.62%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.1587</td><td>6.0160</td><td>2011-03-11</td><td>2489</td><td>1</td><td>1</td><td>2</td><td>2</td><td>0.66</td><td>4.52</td></tr><tr><td>29</td><td>300037.SZ</td><td>新宙邦</td><td class='pos'>16.36%</td><td>2018-01-02</td><td>2018-12-28</td><td>10.7256</td><td>12.4808</td><td>2010-01-08</td><td>2916</td><td>1</td><td>1</td><td>1</td><td>1</td><td>4.73</td><td>6.23</td></tr><tr><td>30</td><td>300144.SZ</td><td>宋城演艺</td><td class='pos'>15.70%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.6796</td><td>11.1994</td><td>2010-12-09</td><td>2581</td><td>1</td><td>0</td><td>0</td><td>1</td><td>1.56</td><td>4.85</td></tr><tr><td>31</td><td>600009.SH</td><td>上海机场</td><td class='pos'>15.47%</td><td>2018-01-02</td><td>2018-12-28</td><td>42.2258</td><td>48.7592</td><td>1998-02-18</td><td>7258</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.77</td><td>2.91</td></tr><tr><td>32</td><td>000739.SZ</td><td>普洛药业</td><td class='pos'>15.37%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.7148</td><td>6.5933</td><td>1997-05-09</td><td>7543</td><td>1</td><td>1</td><td>2</td><td>2</td><td>1.20</td><td>5.77</td></tr><tr><td>33</td><td>600483.SH</td><td>福能股份</td><td class='pos'>15.04%</td><td>2018-01-02</td><td>2018-12-28</td><td>4.6590</td><td>5.3597</td><td>2004-05-31</td><td>4964</td><td>1</td><td>1</td><td>1</td><td>0</td><td>0.46</td><td>4.23</td></tr><tr><td>34</td><td>600305.SH</td><td>恒顺醋业</td><td class='pos'>14.74%</td><td>2018-01-02</td><td>2018-12-28</td><td>6.6407</td><td>7.6196</td><td>2001-02-06</td><td>6174</td><td>1</td><td>0</td><td>0</td><td>0</td><td>4.26</td><td>4.47</td></tr><tr><td>35</td><td>600729.SH</td><td>重百集团</td><td class='pos'>14.49%</td><td>2018-01-02</td><td>2018-12-28</td><td>16.0767</td><td>18.4059</td><td>1996-07-02</td><td>7854</td><td>1</td><td>1</td><td>1</td><td>0</td><td>1.95</td><td>3.61</td></tr><tr><td>36</td><td>002299.SZ</td><td>圣农发展</td><td class='pos'>14.31%</td><td>2018-01-02</td><td>2018-12-28</td><td>11.5344</td><td>13.1844</td><td>2009-10-21</td><td>2995</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.99</td><td>3.56</td></tr><tr><td>37</td><td>002690.SZ</td><td>美亚光电</td><td class='pos'>13.52%</td><td>2018-01-02</td><td>2018-12-28</td><td>11.7878</td><td>13.3818</td><td>2012-07-31</td><td>1981</td><td>1</td><td>0</td><td>0</td><td>0</td><td>2.19</td><td>3.08</td></tr><tr><td>38</td><td>601229.SH</td><td>上海银行</td><td class='pos'>12.47%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.0685</td><td>5.7007</td><td>2016-11-16</td><td>412</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.59</td><td>3.52</td></tr><tr><td>39</td><td>002683.SZ</td><td>广东宏大</td><td class='pos'>12.15%</td><td>2018-01-02</td><td>2018-12-28</td><td>6.6133</td><td>7.4167</td><td>2012-06-12</td><td>2030</td><td>1</td><td>1</td><td>1</td><td>0</td><td>2.49</td><td>6.67</td></tr><tr><td>40</td><td>300059.SZ</td><td>东方财富</td><td class='pos'>11.85%</td><td>2018-01-02</td><td>2018-12-28</td><td>4.2736</td><td>4.7799</td><td>2010-03-19</td><td>2846</td><td>0</td><td>1</td><td>1</td><td>1</td><td>6.78</td><td>2.81</td></tr><tr><td>41</td><td>600845.SH</td><td>XD宝信软</td><td class='pos'>11.79%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.2636</td><td>5.8843</td><td>1994-03-11</td><td>8698</td><td>0</td><td>1</td><td>1</td><td>1</td><td>2.61</td><td>2.73</td></tr><tr><td>42</td><td>600612.SH</td><td>老凤祥</td><td class='pos'>11.63%</td><td>2018-01-02</td><td>2018-12-28</td><td>32.9342</td><td>36.7657</td><td>1992-08-14</td><td>9272</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.55</td><td>4.98</td></tr><tr><td>43</td><td>600299.SH</td><td>安迪苏</td><td class='pos'>11.58%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.1480</td><td>10.2071</td><td>2000-04-20</td><td>6466</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.96</td><td>4.02</td></tr><tr><td>44</td><td>002821.SZ</td><td>凯莱英</td><td class='pos'>11.49%</td><td>2018-01-02</td><td>2018-12-28</td><td>40.7428</td><td>45.4242</td><td>2016-11-18</td><td>410</td><td>1</td><td>0</td><td>0</td><td>1</td><td>2.48</td><td>6.83</td></tr><tr><td>45</td><td>300214.SZ</td><td>日科化学</td><td class='pos'>11.09%</td><td>2018-01-02</td><td>2018-12-28</td><td>4.6910</td><td>5.2112</td><td>2011-05-11</td><td>2428</td><td>1</td><td>1</td><td>1</td><td>1</td><td>3.58</td><td>17.96</td></tr><tr><td>46</td><td>600886.SH</td><td>国投电力</td><td class='pos'>10.80%</td><td>2018-01-02</td><td>2018-12-28</td><td>6.0627</td><td>6.7175</td><td>1996-01-18</td><td>8020</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0.45</td><td>3.49</td></tr><tr><td>47</td><td>002353.SZ</td><td>杰瑞股份</td><td class='pos'>10.72%</td><td>2018-01-02</td><td>2018-12-28</td><td>12.5764</td><td>13.9249</td><td>2010-02-05</td><td>2888</td><td>1</td><td>1</td><td>2</td><td>1</td><td>2.52</td><td>4.48</td></tr><tr><td>48</td><td>002364.SZ</td><td>中恒电气</td><td class='pos'>10.66%</td><td>2018-01-02</td><td>2018-12-28</td><td>10.0175</td><td>11.0858</td><td>2010-03-05</td><td>2860</td><td>1</td><td>1</td><td>1</td><td>0</td><td>1.55</td><td>8.22</td></tr><tr><td>49</td><td>300400.SZ</td><td>劲拓股份</td><td class='pos'>10.45%</td><td>2018-01-02</td><td>2018-12-28</td><td>11.9896</td><td>13.2428</td><td>2014-10-10</td><td>1180</td><td>1</td><td>0</td><td>0</td><td>1</td><td>2.65</td><td>3.39</td></tr><tr><td>50</td><td>600570.SH</td><td>恒生电子</td><td class='pos'>9.76%</td><td>2018-01-02</td><td>2018-12-28</td><td>15.0117</td><td>16.4770</td><td>2003-12-16</td><td>5131</td><td>1</td><td>1</td><td>1</td><td>0</td><td>5.18</td><td>3.28</td></tr><tr><td>51</td><td>600801.SH</td><td>华新建材</td><td class='pos'>9.67%</td><td>2018-01-02</td><td>2018-12-28</td><td>7.8028</td><td>8.5577</td><td>1994-01-03</td><td>8765</td><td>1</td><td>1</td><td>1</td><td>0</td><td>3.78</td><td>3.33</td></tr><tr><td>52</td><td>000429.SZ</td><td>粤高速Ａ</td><td class='pos'>9.45%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.2305</td><td>5.7251</td><td>1998-02-20</td><td>7256</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.37</td><td>4.03</td></tr><tr><td>53</td><td>300498.SZ</td><td>温氏股份</td><td class='pos'>9.09%</td><td>2018-01-02</td><td>2018-12-28</td><td>17.2419</td><td>18.8097</td><td>2015-11-02</td><td>792</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.54</td><td>4.34</td></tr><tr><td>54</td><td>002419.SZ</td><td>天虹股份</td><td class='pos'>8.82%</td><td>2018-01-02</td><td>2018-12-28</td><td>8.4513</td><td>9.1968</td><td>2010-06-01</td><td>2772</td><td>1</td><td>2</td><td>2</td><td>1</td><td>1.96</td><td>3.84</td></tr><tr><td>55</td><td>300423.SZ</td><td>昇辉科技</td><td class='pos'>8.52%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.2728</td><td>10.0631</td><td>2015-02-17</td><td>1050</td><td>1</td><td>1</td><td>1</td><td>1</td><td>4.47</td><td>6.27</td></tr><tr><td>56</td><td>300394.SZ</td><td>天孚通信</td><td class='pos'>8.52%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.8374</td><td>6.3346</td><td>2015-02-17</td><td>1050</td><td>1</td><td>1</td><td>1</td><td>1</td><td>2.99</td><td>5.93</td></tr><tr><td>57</td><td>603012.SH</td><td>创力集团</td><td class='pos'>8.19%</td><td>2018-01-02</td><td>2018-12-28</td><td>6.6750</td><td>7.2217</td><td>2015-03-20</td><td>1019</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0.73</td><td>5.95</td></tr><tr><td>58</td><td>300575.SZ</td><td>中旗股份</td><td class='pos'>7.72%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.9663</td><td>6.4269</td><td>2016-12-20</td><td>378</td><td>1</td><td>0</td><td>0</td><td>1</td><td>4.53</td><td>3.31</td></tr><tr><td>59</td><td>000975.SZ</td><td>山金国际</td><td class='pos'>7.70%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.8791</td><td>6.3320</td><td>2000-06-08</td><td>6417</td><td>1</td><td>0</td><td>0</td><td>1</td><td>1.35</td><td>3.86</td></tr><tr><td>60</td><td>600271.SH</td><td>航天信息</td><td class='pos'>7.54%</td><td>2018-01-02</td><td>2018-12-28</td><td>19.7262</td><td>21.2139</td><td>2003-07-11</td><td>5289</td><td>0</td><td>1</td><td>1</td><td>1</td><td>2.88</td><td>2.93</td></tr><tr><td>61</td><td>600673.SH</td><td>东阳光</td><td class='pos'>7.22%</td><td>2018-01-02</td><td>2018-12-28</td><td>6.3008</td><td>6.7555</td><td>1993-09-17</td><td>8873</td><td>0</td><td>1</td><td>1</td><td>1</td><td>1.84</td><td>2.69</td></tr><tr><td>62</td><td>603568.SH</td><td>伟明环保</td><td class='pos'>6.87%</td><td>2018-01-02</td><td>2018-12-28</td><td>8.6105</td><td>9.2019</td><td>2015-05-28</td><td>950</td><td>1</td><td>0</td><td>1</td><td>0</td><td>3.46</td><td>3.33</td></tr><tr><td>63</td><td>002115.SZ</td><td>三维通信</td><td class='pos'>6.72%</td><td>2018-01-02</td><td>2018-12-28</td><td>7.0167</td><td>7.4879</td><td>2007-02-15</td><td>3974</td><td>1</td><td>1</td><td>1</td><td>0</td><td>6.59</td><td>3.47</td></tr><tr><td>64</td><td>000650.SZ</td><td>仁和药业</td><td class='pos'>5.63%</td><td>2018-01-02</td><td>2018-12-28</td><td>4.4339</td><td>4.6835</td><td>1996-12-10</td><td>7693</td><td>1</td><td>1</td><td>1</td><td>2</td><td>4.48</td><td>7.81</td></tr><tr><td>65</td><td>600900.SH</td><td>长江电力</td><td class='pos'>5.60%</td><td>2018-01-02</td><td>2018-12-28</td><td>11.7484</td><td>12.4061</td><td>2003-11-18</td><td>5159</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.27</td><td>2.89</td></tr><tr><td>66</td><td>601339.SH</td><td>百隆东方</td><td class='pos'>5.50%</td><td>2018-01-02</td><td>2018-12-28</td><td>3.6061</td><td>3.8044</td><td>2012-06-12</td><td>2030</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.40</td><td>6.27</td></tr><tr><td>67</td><td>002410.SZ</td><td>广联达</td><td class='pos'>5.02%</td><td>2018-01-02</td><td>2018-12-28</td><td>13.5762</td><td>14.2576</td><td>2010-05-25</td><td>2779</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1.69</td><td>5.21</td></tr><tr><td>68</td><td>600377.SH</td><td>宁沪高速</td><td class='pos'>4.91%</td><td>2018-01-02</td><td>2018-12-28</td><td>6.8015</td><td>7.1357</td><td>2001-01-16</td><td>6195</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.18</td><td>3.33</td></tr><tr><td>69</td><td>002372.SZ</td><td>伟星新材</td><td class='pos'>4.26%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.5670</td><td>9.9742</td><td>2010-03-18</td><td>2847</td><td>1</td><td>1</td><td>1</td><td>1</td><td>0.87</td><td>4.30</td></tr><tr><td>70</td><td>603606.SH</td><td>东方电缆</td><td class='pos'>4.17%</td><td>2018-01-02</td><td>2018-12-28</td><td>6.2097</td><td>6.4687</td><td>2014-10-15</td><td>1175</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.01</td><td>4.97</td></tr><tr><td>71</td><td>600548.SH</td><td>深高速</td><td class='pos'>3.74%</td><td>2018-01-02</td><td>2018-12-28</td><td>6.0379</td><td>6.2636</td><td>2001-12-25</td><td>5852</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.28</td><td>4.45</td></tr><tr><td>72</td><td>600236.SH</td><td>桂冠电力</td><td class='pos'>3.74%</td><td>2018-01-02</td><td>2018-12-28</td><td>3.2454</td><td>3.3667</td><td>2000-03-23</td><td>6494</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.40</td><td>3.63</td></tr><tr><td>73</td><td>300305.SZ</td><td>裕兴股份</td><td class='pos'>3.57%</td><td>2018-01-02</td><td>2018-12-28</td><td>7.1880</td><td>7.4450</td><td>2012-03-29</td><td>2105</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.37</td><td>4.15</td></tr><tr><td>74</td><td>002537.SZ</td><td>海联金汇</td><td class='pos'>3.35%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.8470</td><td>10.1771</td><td>2011-01-10</td><td>2549</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.25</td><td>4.42</td></tr><tr><td>75</td><td>600406.SH</td><td>国电南瑞</td><td class='pos'>3.34%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.1246</td><td>9.4290</td><td>2003-10-16</td><td>5192</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.20</td><td>5.74</td></tr><tr><td>76</td><td>603508.SH</td><td>思维列控</td><td class='pos'>3.31%</td><td>2018-01-02</td><td>2018-12-28</td><td>15.2601</td><td>15.7650</td><td>2015-12-24</td><td>740</td><td>1</td><td>1</td><td>1</td><td>0</td><td>4.05</td><td>5.98</td></tr><tr><td>77</td><td>300457.SZ</td><td>赢合科技</td><td class='pos'>3.20%</td><td>2018-01-02</td><td>2018-12-28</td><td>17.3997</td><td>17.9570</td><td>2015-05-14</td><td>964</td><td>1</td><td>0</td><td>1</td><td>0</td><td>3.47</td><td>3.58</td></tr><tr><td>78</td><td>603806.SH</td><td>福斯特</td><td class='pos'>2.97%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.2783</td><td>5.4350</td><td>2014-09-05</td><td>1215</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.43</td><td>5.13</td></tr><tr><td>79</td><td>603708.SH</td><td>家家悦</td><td class='pos'>2.94%</td><td>2018-01-02</td><td>2018-12-28</td><td>13.2908</td><td>13.6816</td><td>2016-12-13</td><td>385</td><td>1</td><td>0</td><td>0</td><td>0</td><td>5.38</td><td>4.30</td></tr><tr><td>80</td><td>002741.SZ</td><td>光华科技</td><td class='pos'>2.87%</td><td>2018-01-02</td><td>2018-12-28</td><td>15.2777</td><td>15.7155</td><td>2015-02-16</td><td>1051</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.16</td><td>4.09</td></tr><tr><td>81</td><td>002311.SZ</td><td>海大集团</td><td class='pos'>2.63%</td><td>2018-01-02</td><td>2018-12-28</td><td>21.1323</td><td>21.6891</td><td>2009-11-27</td><td>2958</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.44</td><td>2.50</td></tr><tr><td>82</td><td>600984.SH</td><td>建设机械</td><td class='pos'>1.96%</td><td>2018-01-02</td><td>2018-12-28</td><td>3.7559</td><td>3.8297</td><td>2004-07-07</td><td>4927</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.35</td><td>5.04</td></tr><tr><td>83</td><td>600346.SH</td><td>恒力石化</td><td class='pos'>1.81%</td><td>2018-01-02</td><td>2018-12-28</td><td>7.7390</td><td>7.8788</td><td>2001-08-20</td><td>5979</td><td>1</td><td>0</td><td>0</td><td>0</td><td>2.96</td><td>3.55</td></tr><tr><td>84</td><td>300142.SZ</td><td>沃森生物</td><td class='pos'>1.65%</td><td>2018-01-02</td><td>2018-12-28</td><td>18.6495</td><td>18.9572</td><td>2010-11-12</td><td>2608</td><td>1</td><td>1</td><td>1</td><td>3</td><td>1.64</td><td>4.00</td></tr><tr><td>85</td><td>601177.SH</td><td>杭齿前进</td><td class='pos'>1.08%</td><td>2018-01-02</td><td>2018-12-28</td><td>8.6674</td><td>8.7612</td><td>2010-10-11</td><td>2640</td><td>1</td><td>1</td><td>2</td><td>1</td><td>1.07</td><td>12.40</td></tr><tr><td>86</td><td>300497.SZ</td><td>富祥股份</td><td class='pos'>1.04%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.1466</td><td>9.2418</td><td>2015-12-22</td><td>742</td><td>1</td><td>1</td><td>1</td><td>0</td><td>3.94</td><td>5.03</td></tr><tr><td>87</td><td>002203.SZ</td><td>海亮股份</td><td class='pos'>0.94%</td><td>2018-01-02</td><td>2018-12-28</td><td>7.1966</td><td>7.2643</td><td>2008-01-16</td><td>3639</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.93</td><td>4.28</td></tr><tr><td>88</td><td>300470.SZ</td><td>中密控股</td><td class='pos'>0.67%</td><td>2018-01-02</td><td>2018-12-28</td><td>19.7734</td><td>19.9055</td><td>2015-06-12</td><td>935</td><td>1</td><td>0</td><td>0</td><td>0</td><td>2.18</td><td>4.09</td></tr><tr><td>89</td><td>603608.SH</td><td>天创时尚</td><td class='pos'>0.32%</td><td>2018-01-02</td><td>2018-12-28</td><td>10.1883</td><td>10.2204</td><td>2016-02-18</td><td>684</td><td>1</td><td>1</td><td>1</td><td>1</td><td>3.18</td><td>9.12</td></tr><tr><td>90</td><td>002228.SZ</td><td>合兴包装</td><td class='pos'>0.31%</td><td>2018-01-02</td><td>2018-12-28</td><td>3.3164</td><td>3.3268</td><td>2008-05-08</td><td>3526</td><td>1</td><td>1</td><td>2</td><td>1</td><td>2.45</td><td>8.63</td></tr><tr><td>91</td><td>600276.SH</td><td>恒瑞医药</td><td class='neg'>-0.00%</td><td>2018-01-02</td><td>2018-12-28</td><td>29.8118</td><td>29.8110</td><td>2000-10-18</td><td>6285</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.71</td><td>3.01</td></tr><tr><td>92</td><td>603338.SH</td><td>浙江鼎力</td><td class='neg'>-0.22%</td><td>2018-01-02</td><td>2018-12-28</td><td>26.8920</td><td>26.8328</td><td>2015-03-25</td><td>1014</td><td>1</td><td>1</td><td>1</td><td>0</td><td>2.91</td><td>3.53</td></tr><tr><td>93</td><td>601928.SH</td><td>凤凰传媒</td><td class='neg'>-0.36%</td><td>2018-01-02</td><td>2018-12-28</td><td>5.5782</td><td>5.5582</td><td>2011-11-30</td><td>2225</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.43</td><td>4.35</td></tr><tr><td>94</td><td>300271.SZ</td><td>华宇软件</td><td class='neg'>-0.62%</td><td>2018-01-02</td><td>2018-12-28</td><td>14.9829</td><td>14.8902</td><td>2011-10-26</td><td>2260</td><td>1</td><td>1</td><td>1</td><td>0</td><td>4.14</td><td>3.99</td></tr><tr><td>95</td><td>002714.SZ</td><td>牧原股份</td><td class='neg'>-0.68%</td><td>2018-01-02</td><td>2018-12-28</td><td>11.0546</td><td>10.9796</td><td>2014-01-28</td><td>1435</td><td>1</td><td>1</td><td>2</td><td>1</td><td>1.05</td><td>3.27</td></tr><tr><td>96</td><td>002127.SZ</td><td>南极电商</td><td class='neg'>-0.71%</td><td>2018-01-02</td><td>2018-12-28</td><td>7.0359</td><td>6.9860</td><td>2007-04-18</td><td>3912</td><td>1</td><td>1</td><td>1</td><td>2</td><td>1.60</td><td>2.97</td></tr><tr><td>97</td><td>600897.SH</td><td>厦门空港</td><td class='neg'>-0.71%</td><td>2018-01-02</td><td>2018-12-28</td><td>13.2385</td><td>13.1445</td><td>1996-05-31</td><td>7886</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0.68</td><td>4.90</td></tr><tr><td>98</td><td>600100.SH</td><td>同方股份</td><td class='neg'>-0.91%</td><td>2018-01-02</td><td>2018-12-28</td><td>9.7682</td><td>9.6793</td><td>1997-06-27</td><td>7494</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1.45</td><td>4.19</td></tr><tr><td>99</td><td>002812.SZ</td><td>恩捷股份</td><td class='neg'>-0.93%</td><td>2018-01-02</td><td>2018-12-28</td><td>27.7207</td><td>27.4620</td><td>2016-09-14</td><td>475</td><td>0</td><td>1</td><td>1</td><td>1</td><td>1.85</td><td>2.63</td></tr><tr><td>100</td><td>600498.SH</td><td>烽火通信</td><td class='neg'>-1.10%</td><td>2018-01-02</td><td>2018-12-28</td><td>27.1716</td><td>26.8735</td><td>2001-08-23</td><td>5976</td><td>1</td><td>0</td><td>0</td><td>0</td><td>2.26</td><td>4.36</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</body>
+</html>
