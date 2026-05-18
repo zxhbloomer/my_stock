@@ -96,6 +96,40 @@ def query_df(conn, sql, params=None):
     return pd.DataFrame(result.fetchall(), columns=result.keys())
 
 
+def filter_point_in_time_universe(stocks, start_date, end_date, requested_codes):
+    stocks = stocks.copy()
+    stocks["list_date"] = pd.to_datetime(stocks["list_date"], errors="coerce")
+    stocks["delist_date"] = pd.to_datetime(stocks["delist_date"], errors="coerce")
+    start_ts = pd.Timestamp(start_date)
+    end_ts = pd.Timestamp(end_date)
+    stocks = stocks[
+        stocks["list_date"].notna()
+        & (stocks["list_date"] <= end_ts)
+        & (stocks["delist_date"].isna() | (stocks["delist_date"] >= start_ts))
+    ]
+    for prefix in EXCLUDE_CODE_PREFIXES:
+        stocks = stocks[~stocks["ts_code"].str.startswith(prefix)]
+    if requested_codes:
+        stocks = stocks[stocks["ts_code"].isin(requested_codes)]
+    return stocks.reset_index(drop=True)
+
+
+def compute_point_in_time_eligibility(panel):
+    listed_on_trade_date = (
+        panel["list_date"].notna()
+        & (panel["trade_date"] >= panel["list_date"])
+        & (panel["delist_date"].isna() | (panel["trade_date"] <= panel["delist_date"]))
+    )
+    return (
+        listed_on_trade_date
+        & panel["is_listed_long_enough"]
+        & panel["is_liquid"]
+        & ~panel["is_st"]
+        & ~panel["is_suspended"]
+        & panel["above_ratio_126"].notna()
+    )
+
+
 def rolling_mean_by_code(panel, column, window):
     return (
         panel.groupby("ts_code", sort=False)[column]
@@ -300,21 +334,12 @@ def main():
         stock_sql = f"""
             SELECT ts_code, name, list_date, delist_date, market, exchange, list_status
             FROM {SCHEMA}."001_stock_basic"
-            WHERE list_status = 'L'
-              AND delist_date IS NULL
-              AND name NOT LIKE '%ST%'
-              AND name NOT LIKE '%退%'
         """
         stocks = query_df(conn, stock_sql)
     log_step("stock universe query done", step_start, total_start, stocks)
 
     step_start = time.perf_counter()
-    for prefix in EXCLUDE_CODE_PREFIXES:
-        stocks = stocks[~stocks["ts_code"].str.startswith(prefix)]
-    if requested_codes:
-        stocks = stocks[stocks["ts_code"].isin(requested_codes)]
-    stocks = stocks.reset_index(drop=True)
-    stocks["list_date"] = pd.to_datetime(stocks["list_date"], errors="coerce")
+    stocks = filter_point_in_time_universe(stocks, start_date, end_date, requested_codes)
     stocks.to_csv(STOCK_LIST_PATH, index=False)
     valid_codes = set(stocks["ts_code"])
     log_step("stock universe filtered", step_start, total_start, stocks, f"stocks={len(stocks):,}")
@@ -491,7 +516,7 @@ def main():
     panel["is_lhb"] = panel["is_lhb"].eq(True)
     log_step("panel type cleanup done", step_start, total_start, panel)
     step_start = time.perf_counter()
-    panel = panel.merge(stocks[["ts_code", "name", "list_date"]], on="ts_code", how="left")
+    panel = panel.merge(stocks[["ts_code", "name", "list_date", "delist_date"]], on="ts_code", how="left")
     log_step("stock info merge done", step_start, total_start, panel)
     step_start = time.perf_counter()
     panel = add_strength_features(panel)
@@ -500,13 +525,7 @@ def main():
     panel["list_days"] = (panel["trade_date"] - panel["list_date"]).dt.days
     panel["is_listed_long_enough"] = panel["list_days"] >= FILTER_MIN_LIST_DAYS
     panel["is_liquid"] = (panel["amount_ma20"] >= FILTER_MIN_AMOUNT) & (panel["circ_mv_ma20"] >= FILTER_MIN_CIRC_MV)
-    panel["is_eligible"] = (
-        panel["is_listed_long_enough"]
-        & panel["is_liquid"]
-        & ~panel["is_st"]
-        & ~panel["is_suspended"]
-        & panel["above_ratio_126"].notna()
-    )
+    panel["is_eligible"] = compute_point_in_time_eligibility(panel)
     counts = panel.groupby("ts_code").size()
     keep_codes = set(counts[counts >= MIN_HISTORY_ROWS].index)
     panel = panel.loc[panel["ts_code"].isin(keep_codes)]

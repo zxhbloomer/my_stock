@@ -72,6 +72,7 @@ PANEL_COLUMNS = [
     "hm_turnover_max20_flag", "hm_volume_ratio_max20_flag", "hm_lhb_count20_flag",
     "ret_21", "ret_63", "ret_126",
     "ma20_qfq", "ma20_slope_10", "early_weakness_downtrend",
+    "up_accel_exhaustion", "bear_down_accel_risk", "accel_exhaustion_forbid_buy",
     "volatility_63", "amount_ma20", "circ_mv_ma20",
     "pullback_63",
 ]
@@ -733,6 +734,7 @@ def run_backtest(panel, market, start_date, end_date):
                     "hm_turnover_max20_flag", "hm_volume_ratio_max20_flag", "hm_lhb_count20_flag",
                     "ret_21", "ret_63", "ret_126",
                     "ma20_qfq", "ma20_slope_10", "early_weakness_downtrend",
+                    "up_accel_exhaustion", "bear_down_accel_risk", "accel_exhaustion_forbid_buy",
                     "volatility_63", "amount_ma20", "circ_mv_ma20", "pullback_63", "strong_trend",
                 ]
                 score_rows.extend(candidates[score_cols].head(100).to_dict("records"))
