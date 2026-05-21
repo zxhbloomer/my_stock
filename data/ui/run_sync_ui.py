@@ -37,6 +37,20 @@ class SelectedScriptsRequest(BaseModel):
     script_names: List[str]
 
 
+class SmartIncrementalCheckRequest(BaseModel):
+    mode: str
+
+
+class SmartIncrementalSyncItem(BaseModel):
+    script_name: str
+    run_start: str = ""
+    run_end: str = ""
+
+
+class SmartIncrementalSyncRequest(BaseModel):
+    items: List[SmartIncrementalSyncItem]
+
+
 class CheckRequest(BaseModel):
     target_date: str
 
@@ -116,6 +130,23 @@ def api_sync_all():
 def api_sync_selected(payload: SelectedScriptsRequest):
     try:
         service.run_selected_sync_background(payload.script_names)
+        return {"ok": True}
+    except DOMAIN_ERRORS as exc:
+        raise api_error(exc)
+
+
+@app.post("/api/smart-incremental-check")
+def api_smart_incremental_check(payload: SmartIncrementalCheckRequest):
+    try:
+        return service.smart_incremental_check(payload.mode)
+    except DOMAIN_ERRORS as exc:
+        raise api_error(exc)
+
+
+@app.post("/api/smart-incremental-sync")
+def api_smart_incremental_sync(payload: SmartIncrementalSyncRequest):
+    try:
+        service.run_smart_incremental_sync_background([item.dict() for item in payload.items])
         return {"ok": True}
     except DOMAIN_ERRORS as exc:
         raise api_error(exc)

@@ -13,3 +13,4 @@ Current temporary experiments:
 
 - `tmp_v1_bear_accel_bbi_*`: bear-market accelerated decline plus BBI reclaim experiment.
 - `tmp_v2_bull_pullback_bbi_*`: bull/non-bear pullback plus BBI reclaim experiment.
+- `tmp_v5_bear_defensive_quality_*`: bear-probe defensive candidate experiment using low-volatility, quality, dividend, and relative-strength overlays on top of current v6.

@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -48,6 +49,7 @@ class TaskState:
     logs: list = field(default_factory=list)
     stop_requested: bool = False
     process: object = None
+    script_processes: dict = field(default_factory=dict)
 
 
 class TaskBusyError(Exception):
@@ -101,6 +103,19 @@ class SyncService:
     def load_check_specs(self):
         module = self._load_module("tushare_sync_check_today", "run_check_today_sync.py")
         return {spec.script: spec for spec in module.TABLE_SPECS}
+
+    def load_script_default_starts(self):
+        defaults = {}
+        for script_name in self.load_script_names():
+            script_path = self._resolve_script_path(script_name)
+            try:
+                source = script_path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                source = script_path.read_text(encoding="utf-8", errors="ignore")
+            match = re.search(r'DEFAULT_START\s*=\s*["\'](\d{8})["\']', source)
+            if match:
+                defaults[script_name] = match.group(1)
+        return defaults
 
     def load_jobs(self):
         check_specs = self.load_check_specs()
@@ -314,7 +329,7 @@ class SyncService:
             if current_status == "pending":
                 self._script_locks.pop(script_name, None)
             elif current_status == "running":
-                process = task.process
+                process = task.script_processes.get(script_name) or task.process
             if self.state.task_id == task.task_id:
                 self.state = task
 
@@ -341,6 +356,300 @@ class SyncService:
 
     def _check_module(self):
         return self._load_module("tushare_sync_check_today", "run_check_today_sync.py")
+
+    def smart_incremental_check(self, mode):
+        if mode not in {"all", "today"}:
+            raise InvalidSyncDateError("智能增量模式必须是 all 或 today")
+
+        module = self._check_module()
+        target_date = datetime.now().strftime("%Y%m%d")
+        base_start = "20100101"
+        specs_by_script = {spec.script: spec for spec in module.TABLE_SPECS}
+        script_names = self.load_script_names()
+        script_defaults = self.load_script_default_starts()
+        issues = []
+        unconfigured = []
+
+        with self.get_engine().connect() as conn:
+            all_tables = module.get_all_tables(conn, SCHEMA)
+            if mode == "today":
+                if not module.is_open_trade_date(conn, SCHEMA, target_date):
+                    return {
+                        "mode": mode,
+                        "start_date": target_date,
+                        "end_date": target_date,
+                        "issues": [],
+                        "unconfigured": [],
+                        "message": "{} 不是 SSE 交易日，跳过今日日期检查".format(target_date),
+                    }
+                expected_dates_by_start = {target_date: [target_date]}
+            else:
+                expected_dates_by_start = {}
+
+            for script_name in script_names:
+                spec = specs_by_script.get(script_name)
+                if spec is None:
+                    unconfigured.append({
+                        "script_name": script_name,
+                        "table_name": Path(script_name).stem,
+                        "category": "not_configured",
+                        "status": "not_configured",
+                        "message": "脚本未配置检查规则",
+                        "syncable": False,
+                    })
+                    continue
+
+                start_date = target_date if mode == "today" else self._effective_full_start(
+                    base_start,
+                    script_defaults.get(script_name),
+                )
+                issue = self._scan_smart_issue_for_spec(
+                    conn=conn,
+                    module=module,
+                    spec=spec,
+                    all_tables=all_tables,
+                    mode=mode,
+                    start_date=start_date,
+                    end_date=target_date,
+                    expected_dates_by_start=expected_dates_by_start,
+                )
+                if issue:
+                    issues.append(issue)
+
+        return {
+            "mode": mode,
+            "start_date": target_date if mode == "today" else base_start,
+            "end_date": target_date,
+            "issues": issues,
+            "unconfigured": unconfigured,
+            "message": "发现 {} 个问题脚本，{} 个未配置脚本".format(len(issues), len(unconfigured)),
+        }
+
+    def _scan_smart_issue_for_spec(self, conn, module, spec, all_tables, mode, start_date, end_date, expected_dates_by_start):
+        table_exists = spec.table in all_tables
+        if not table_exists:
+            return self._build_smart_issue(
+                spec=spec,
+                status="missing_table",
+                start_date=start_date,
+                end_date=end_date,
+                missing_dates=[],
+                low_count_dates=[],
+                today_count=None,
+                previous_count=None,
+                syncable=True,
+                message="表不存在",
+            )
+
+        if spec.category == "static":
+            count = module.count_table(conn, SCHEMA, spec.table)
+            if count == 0:
+                return self._build_smart_issue(
+                    spec=spec,
+                    status="empty_static",
+                    start_date=start_date,
+                    end_date=end_date,
+                    missing_dates=[],
+                    low_count_dates=[],
+                    today_count=count,
+                    previous_count=None,
+                    syncable=True,
+                    message="静态表为空",
+                )
+            return None
+
+        if spec.category == "periodic":
+            return self._build_smart_issue(
+                spec=spec,
+                status="skipped_periodic",
+                start_date=start_date,
+                end_date=end_date,
+                missing_dates=[],
+                low_count_dates=[],
+                today_count=None,
+                previous_count=None,
+                syncable=False,
+                message="周/月频表暂不做逐日智能增量检查",
+            )
+
+        if not spec.date_col:
+            return None
+
+        if spec.category == "sparse":
+            if mode == "all":
+                return self._build_smart_issue(
+                    spec=spec,
+                    status="skipped_sparse",
+                    start_date=start_date,
+                    end_date=end_date,
+                    missing_dates=[],
+                    low_count_dates=[],
+                    today_count=None,
+                    previous_count=None,
+                    syncable=False,
+                    message="事件类表不做全历史逐日强校验，仅支持今天日期提示",
+                )
+            if mode == "today":
+                today_count = module.count_date(conn, SCHEMA, spec.table, spec.date_col, end_date)
+                if today_count == 0:
+                    return self._build_smart_issue(
+                        spec=spec,
+                        status="sparse_empty",
+                        start_date=end_date,
+                        end_date=end_date,
+                        missing_dates=[end_date],
+                        low_count_dates=[],
+                        today_count=today_count,
+                        previous_count=None,
+                        syncable=False,
+                        message="事件类表今日为空，仅提示",
+                    )
+            return None
+
+        expected_dates = self._get_expected_trade_dates(conn, start_date, end_date, expected_dates_by_start)
+        if not expected_dates:
+            return self._build_smart_issue(
+                spec=spec,
+                status="no_trade_dates",
+                start_date=start_date,
+                end_date=end_date,
+                missing_dates=[],
+                low_count_dates=[],
+                today_count=None,
+                previous_count=None,
+                syncable=False,
+                message="扫描区间内没有 SSE 交易日",
+            )
+
+        counts = self._count_dates(conn, spec.table, spec.date_col, start_date, end_date)
+        missing_dates = []
+        low_count_dates = []
+        previous_count = None
+        for trade_date in expected_dates:
+            count = counts.get(trade_date, 0)
+            if count == 0:
+                missing_dates.append(trade_date)
+            elif previous_count and count < previous_count * module.LOW_COUNT_RATIO:
+                low_count_dates.append(trade_date)
+            if count > 0:
+                previous_count = count
+
+        if missing_dates or low_count_dates:
+            status = "missing" if missing_dates else "low_count"
+            parts = []
+            if missing_dates:
+                parts.append("缺失 {} 个交易日".format(len(missing_dates)))
+            if low_count_dates:
+                parts.append("可疑低行数 {} 个交易日".format(len(low_count_dates)))
+            today_count = counts.get(end_date)
+            return self._build_smart_issue(
+                spec=spec,
+                status=status,
+                start_date=start_date,
+                end_date=end_date,
+                missing_dates=missing_dates,
+                low_count_dates=low_count_dates,
+                today_count=today_count,
+                previous_count=previous_count,
+                syncable=True,
+                message="；".join(parts),
+            )
+        return None
+
+    def _get_expected_trade_dates(self, conn, start_date, end_date, cache):
+        cache_key = "{}:{}".format(start_date, end_date)
+        if cache_key in cache:
+            return cache[cache_key]
+        rows = conn.execute(text(f"""
+            SELECT cal_date
+            FROM {SCHEMA}."003_trade_cal"
+            WHERE exchange='SSE'
+              AND is_open=1
+              AND cal_date BETWEEN :start_date AND :end_date
+            ORDER BY cal_date
+        """), {"start_date": start_date, "end_date": end_date}).fetchall()
+        dates = [self._format_compact_date(row[0]) for row in rows if row and row[0]]
+        cache[cache_key] = dates
+        return dates
+
+    def _count_dates(self, conn, table, date_col, start_date, end_date):
+        rows = conn.execute(text(
+            f"""
+            SELECT "{date_col}", COUNT(*)
+            FROM {SCHEMA}."{table}"
+            WHERE "{date_col}" BETWEEN :start_date AND :end_date
+            GROUP BY "{date_col}"
+            """
+        ), {"start_date": start_date, "end_date": end_date}).fetchall()
+        return {self._format_compact_date(row[0]): int(row[1]) for row in rows if row and row[0]}
+
+    @staticmethod
+    def _effective_full_start(base_start, script_default_start):
+        if not script_default_start:
+            return base_start
+        return max(base_start, script_default_start)
+
+    @staticmethod
+    def _build_smart_issue(
+        spec,
+        status,
+        start_date,
+        end_date,
+        missing_dates,
+        low_count_dates,
+        today_count,
+        previous_count,
+        syncable,
+        message,
+    ):
+        missing_dates = list(missing_dates or [])
+        low_count_dates = list(low_count_dates or [])
+        problem_dates = sorted(set(missing_dates + low_count_dates))
+        if problem_dates:
+            run_start = problem_dates[0]
+            run_end = end_date
+            date_range = "{} ~ {}".format(problem_dates[0], problem_dates[-1])
+        elif spec.date_col:
+            run_start = start_date
+            run_end = end_date
+            date_range = "{} ~ {}".format(start_date, end_date)
+        else:
+            run_start = ""
+            run_end = ""
+            date_range = "-"
+
+        if spec.date_col:
+            command = "python -X utf8 {} --start {} --end {}".format(spec.script, run_start, run_end)
+        else:
+            command = "python -X utf8 {}".format(spec.script)
+
+        return {
+            "script_name": spec.script,
+            "table_name": spec.table,
+            "date_col": spec.date_col,
+            "category": spec.category,
+            "status": status,
+            "start_date": start_date,
+            "end_date": end_date,
+            "run_start": run_start,
+            "run_end": run_end,
+            "date_range": date_range,
+            "missing_dates": missing_dates[:200],
+            "low_count_dates": low_count_dates[:200],
+            "missing_count": len(missing_dates),
+            "low_count_count": len(low_count_dates),
+            "today_count": today_count,
+            "previous_count": previous_count,
+            "syncable": bool(syncable),
+            "command": command,
+            "message": message,
+        }
+
+    @staticmethod
+    def _format_compact_date(value):
+        if hasattr(value, "strftime"):
+            return value.strftime("%Y%m%d")
+        return str(value).replace("-", "")[:8]
 
     def check_all(self, target_date):
         self.validate_sync_date(target_date)
@@ -443,6 +752,46 @@ class SyncService:
         thread.start()
         return self.get_task_state()
 
+    def run_smart_incremental_sync_background(self, items):
+        sync_items = self._normalize_smart_sync_items(items)
+        script_names = [item["script_name"] for item in sync_items]
+        task_id = self._start_task("smart_incremental_sync", None, script_names)
+        thread = threading.Thread(target=self._run_smart_incremental_sync_worker, args=(sync_items, task_id), daemon=True)
+        thread.start()
+        return self.get_task_state()
+
+    def _normalize_smart_sync_items(self, items):
+        if not items:
+            raise UnknownScriptError("未选择需要同步的脚本")
+        normalized = []
+        seen = set()
+        specs = self.load_check_specs()
+        for item in items:
+            script_name = str(item.get("script_name", "")).strip()
+            if not script_name or script_name in seen:
+                continue
+            self.ensure_whitelisted(script_name)
+            spec = specs.get(script_name)
+            if spec is None:
+                raise UnknownScriptError("{} 未配置智能增量检查规则".format(script_name))
+            args = []
+            run_start = str(item.get("run_start") or "").strip()
+            run_end = str(item.get("run_end") or "").strip()
+            if spec.date_col:
+                if not run_start or not run_end:
+                    raise InvalidSyncDateError("{} 缺少同步起止日期".format(script_name))
+                self.validate_sync_date(run_start)
+                self.validate_sync_date(run_end)
+                args = ["--start", run_start, "--end", run_end]
+            normalized.append({
+                "script_name": script_name,
+                "args": args,
+            })
+            seen.add(script_name)
+        if not normalized:
+            raise UnknownScriptError("未选择需要同步的脚本")
+        return normalized
+
     def run_check_all_background(self, target_date):
         self.validate_sync_date(target_date)
         task_id = self._start_task("check_all", None)
@@ -528,6 +877,56 @@ class SyncService:
             self._append_log("ERROR: {}".format(error))
             self._finish_task("failed", 1, error, task_id=task_id)
 
+    def _run_smart_incremental_sync_worker(self, items, task_id=None):
+        task_id = task_id or self._current_task_id()
+        self._set_thread_task(task_id)
+        failures = []
+        threads = []
+        result_lock = threading.Lock()
+
+        def run_item(item):
+            self._set_thread_task(task_id)
+            script_name = item["script_name"]
+            try:
+                if self._is_script_stopped(task_id, script_name):
+                    return
+                self._set_script_status(task_id, script_name, "running")
+                return_code = self._run_script(script_name, item.get("args") or [])
+                if self._is_script_stopped(task_id, script_name):
+                    return
+                if return_code == 0:
+                    self._set_script_status(task_id, script_name, "completed")
+                else:
+                    self._set_script_status(task_id, script_name, "failed")
+                    error = "{} exited with code {}".format(script_name, return_code)
+                    self._append_log("ERROR: {}".format(error))
+                    with result_lock:
+                        failures.append(error)
+            except Exception as exc:
+                error = "{} failed: {}".format(script_name, exc)
+                self._set_script_status(task_id, script_name, "failed")
+                self._append_log("ERROR: {}".format(error))
+                with result_lock:
+                    failures.append(error)
+            finally:
+                self._release_script_lock(task_id, script_name)
+
+        try:
+            for item in items:
+                thread = threading.Thread(target=run_item, args=(item,), daemon=True)
+                threads.append(thread)
+                thread.start()
+            for thread in threads:
+                thread.join()
+            if failures:
+                self._finish_task("failed", 1, "; ".join(failures), task_id=task_id)
+            else:
+                self._finish_task("completed", 0, task_id=task_id)
+        except Exception as exc:
+            error = str(exc)
+            self._append_log("ERROR: {}".format(error))
+            self._finish_task("failed", 1, error, task_id=task_id)
+
     def _run_check_all_worker(self, target_date, task_id=None):
         task_id = task_id or self._current_task_id()
         self._set_thread_task(task_id)
@@ -562,18 +961,24 @@ class SyncService:
             self._append_log("ERROR: {}".format(error))
             self._finish_task("failed", 1, error, task_id=task_id)
 
-    def _run_script(self, script_name):
+    def _run_script(self, script_name, args=None):
+        args = list(args or [])
         self.ensure_whitelisted(script_name)
         script_path = self._resolve_script_path(script_name)
         runtime_started_at = datetime.now()
         runtime_engine = self._safe_record_runtime_start(script_name, runtime_started_at)
         self._append_log("-" * 80)
-        self._append_log("[RUN] {}".format(script_name))
+        command = [sys.executable, "-X", "utf8", str(script_path)] + args
+        display_command = "python -X utf8 {}{}".format(
+            script_name,
+            "" if not args else " " + " ".join(args),
+        )
+        self._append_log("[RUN] {}".format(display_command))
         task_id = self._current_task_id()
         process = None
         try:
             process = subprocess.Popen(
-                [sys.executable, "-X", "utf8", str(script_path)],
+                command,
                 cwd=str(self.sync_dir),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -587,9 +992,10 @@ class SyncService:
                     task = self._get_task_locked(task_id)
                     if task is not None:
                         task.process = process
+                        task.script_processes[script_name] = process
             if process.stdout is not None:
                 for line in process.stdout:
-                    self._append_log(line)
+                    self._append_log("[{}] {}".format(script_name, line.rstrip()))
             return process.wait()
         finally:
             self._safe_record_runtime_finish(runtime_engine, script_name, runtime_started_at, datetime.now())
@@ -598,6 +1004,8 @@ class SyncService:
                     task = self._get_task_locked(task_id)
                     if task is not None and task.process is process:
                         task.process = None
+                    if task is not None and task.script_processes.get(script_name) is process:
+                        task.script_processes.pop(script_name, None)
 
     def _resolve_script_path(self, script_name):
         script_part = Path(script_name)

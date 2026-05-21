@@ -333,6 +333,109 @@
       overflow-wrap: anywhere;
     }
 
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(17, 24, 39, .45);
+    }
+
+    .modal-backdrop.show {
+      display: flex;
+    }
+
+    .modal {
+      width: min(1500px, 98vw);
+      height: 92vh;
+      max-height: 92vh;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      box-shadow: 0 18px 48px rgba(15, 23, 42, .28);
+      padding: 10px;
+    }
+
+    .modal-head,
+    .modal-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .modal-tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .smart-summary {
+      min-height: 26px;
+      color: var(--muted);
+    }
+
+    .smart-table-wrap {
+      min-height: 260px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      border: 1px solid var(--line);
+    }
+
+    .smart-table {
+      min-width: 0;
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .smart-table th,
+    .smart-table td {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .smart-table .col-smart-select { width: 42px; }
+    .smart-table .col-smart-script { width: 150px; }
+    .smart-table .col-smart-table { width: 140px; }
+    .smart-table .col-smart-type { width: 100px; }
+    .smart-table .col-smart-count { width: 74px; }
+    .smart-table .col-smart-range { width: 160px; }
+    .smart-table .col-smart-status { width: 120px; }
+    .smart-table .col-smart-message { width: auto; }
+    .smart-table .col-smart-feedback { width: 150px; }
+    .smart-table .col-smart-action { width: 128px; }
+
+    .smart-row-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .smart-row-actions button {
+      width: 58px;
+      max-width: 58px;
+      padding-left: 4px;
+      padding-right: 4px;
+    }
+
+    .smart-row-actions button.stop {
+      width: 48px;
+      max-width: 48px;
+    }
+
     @media (max-width: 900px) {
       body {
         min-width: 0;
@@ -368,6 +471,7 @@
           <input id="targetDate" class="date-input" type="text" inputmode="numeric" maxlength="8" autocomplete="off">
         </label>
         <button id="syncAll" class="primary" type="button">全部同步</button>
+        <button id="smartIncremental" class="primary" type="button">智能增量</button>
         <button id="syncSelected" type="button">选择脚本执行（0）</button>
         <button id="checkAll" type="button">校验今日同步</button>
         <button id="refresh" type="button">刷新</button>
@@ -419,6 +523,62 @@
     </section>
   </main>
 
+  <div id="smartModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="smartTitle">
+    <section class="modal">
+      <div class="modal-head">
+        <div id="smartTitle" class="modal-title">智能增量检查</div>
+        <button id="smartCloseTop" type="button">关闭</button>
+      </div>
+      <div class="modal-tools">
+        <button id="smartAllDates" class="primary" type="button">全部日期</button>
+        <button id="smartToday" type="button">今天日期</button>
+        <span id="smartSummary" class="smart-summary">选择扫描范围后开始检查。</span>
+      </div>
+      <div class="smart-table-wrap">
+        <table class="smart-table">
+          <colgroup>
+            <col class="col-smart-select">
+            <col class="col-smart-script">
+            <col class="col-smart-table">
+            <col class="col-smart-type">
+            <col class="col-smart-count">
+            <col class="col-smart-count">
+            <col class="col-smart-range">
+            <col class="col-smart-status">
+            <col class="col-smart-message">
+            <col class="col-smart-feedback">
+            <col class="col-smart-action">
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="select-cell">选</th>
+              <th>脚本</th>
+              <th>表名</th>
+              <th>类型</th>
+              <th>缺失数</th>
+              <th>可疑数</th>
+              <th>日期范围</th>
+              <th>状态</th>
+              <th>说明</th>
+              <th>执行反馈</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="smartRows">
+            <tr><td class="empty" colspan="10">尚未检查</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-actions">
+        <span id="smartSelectedCount" class="muted">已选择 0 个</span>
+        <div class="modal-tools">
+          <button id="smartSyncSelected" class="primary" type="button">同步选中</button>
+          <button id="smartCloseBottom" type="button">关闭</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
   <script>
     const state = {
       jobs: [],
@@ -430,7 +590,11 @@
       feedback: {},
       selectedRunScripts: [],
       selectedRunKind: "",
-      selectedRunActive: false
+      selectedRunActive: false,
+      smartRows: [],
+      smartSelected: new Set(),
+      smartChecking: false,
+      smartFeedback: {}
     };
 
     const els = {
@@ -438,6 +602,7 @@
       syncAll: document.getElementById("syncAll"),
       syncSelected: document.getElementById("syncSelected"),
       checkAll: document.getElementById("checkAll"),
+      smartIncremental: document.getElementById("smartIncremental"),
       refresh: document.getElementById("refresh"),
       jobCount: document.getElementById("jobCount"),
       taskStatus: document.getElementById("taskStatus"),
@@ -445,7 +610,16 @@
       elapsedTime: document.getElementById("elapsedTime"),
       banner: document.getElementById("banner"),
       jobRows: document.getElementById("jobRows"),
-      logs: document.getElementById("logs")
+      logs: document.getElementById("logs"),
+      smartModal: document.getElementById("smartModal"),
+      smartCloseTop: document.getElementById("smartCloseTop"),
+      smartCloseBottom: document.getElementById("smartCloseBottom"),
+      smartAllDates: document.getElementById("smartAllDates"),
+      smartToday: document.getElementById("smartToday"),
+      smartSummary: document.getElementById("smartSummary"),
+      smartRows: document.getElementById("smartRows"),
+      smartSelectedCount: document.getElementById("smartSelectedCount"),
+      smartSyncSelected: document.getElementById("smartSyncSelected")
     };
 
     function todayYYYYMMDD() {
@@ -612,14 +786,25 @@
     function applyTasksPayload(payload) {
       state.tasks = Array.isArray(payload && payload.tasks) ? payload.tasks : [];
       state.activeScripts = payload && payload.active_scripts ? payload.active_scripts : {};
+      let smartChanged = false;
 
       state.tasks.forEach((task) => {
         const scriptStatus = task.script_status || {};
         const scriptUpdatedAt = task.script_updated_at || {};
         Object.keys(scriptStatus).forEach((scriptName) => {
           setFeedback(scriptName, statusLabel(scriptStatus[scriptName]), scriptUpdatedAt[scriptName]);
+          if (state.smartRows.some((row) => smartRowKey(row) === scriptName)) {
+            state.smartFeedback[scriptName] = {
+              status: statusLabel(scriptStatus[scriptName]),
+              timestamp: scriptUpdatedAt[scriptName] || nowTimestamp()
+            };
+            smartChanged = true;
+          }
         });
       });
+      if (smartChanged && els.smartModal.classList.contains("show")) {
+        renderSmartRows();
+      }
     }
 
     function startScriptFeedback(kind, scriptNames) {
@@ -733,7 +918,9 @@
       els.syncSelected.classList.toggle("primary", runnableSelectedCount > 0);
       els.syncAll.disabled = hasActiveSyncScripts();
       els.checkAll.disabled = false;
+      els.smartIncremental.disabled = false;
       els.refresh.disabled = false;
+      setSmartActionState();
     }
 
     function renderTask(task) {
@@ -918,6 +1105,247 @@
       }
     }
 
+    function openSmartModal() {
+      els.smartModal.classList.add("show");
+      renderSmartRows();
+    }
+
+    function closeSmartModal() {
+      els.smartModal.classList.remove("show");
+    }
+
+    function smartRowKey(row) {
+      return displayValue(row.script_name);
+    }
+
+    function smartFeedbackText(scriptName) {
+      const item = state.smartFeedback[scriptName];
+      return item ? item.timestamp + " " + item.status : "-";
+    }
+
+    function smartFeedbackClass(scriptName) {
+      const item = state.smartFeedback[scriptName];
+      if (!item) return "feedback";
+      if (item.status === "执行中") return "feedback feedback-running";
+      if (item.status === "有错误") return "feedback feedback-error";
+      if (item.status === "执行完毕") return "feedback feedback-done";
+      return "feedback";
+    }
+
+    function setSmartFeedback(scriptName, status) {
+      state.smartFeedback[scriptName] = {
+        status,
+        timestamp: nowTimestamp()
+      };
+    }
+
+    function normalizeSmartRows(payload) {
+      const issues = Array.isArray(payload && payload.issues) ? payload.issues : [];
+      const unconfigured = Array.isArray(payload && payload.unconfigured) ? payload.unconfigured : [];
+      return issues.concat(unconfigured);
+    }
+
+    async function runSmartCheck(mode) {
+      setBanner("");
+      state.smartChecking = true;
+      els.smartSummary.textContent = mode === "all" ? "正在扫描全部日期..." : "正在扫描今天日期...";
+      setSmartActionState();
+      try {
+        const payload = await api("/api/smart-incremental-check", {
+          method: "POST",
+          body: { mode }
+        });
+        state.smartRows = normalizeSmartRows(payload);
+        state.smartFeedback = {};
+        state.smartSelected = new Set(
+          state.smartRows
+            .filter((row) => row.syncable && !isScriptLocked(displayValue(row.script_name)))
+            .map((row) => smartRowKey(row))
+        );
+        const message = payload && payload.message ? String(payload.message) : "";
+        els.smartSummary.textContent = [
+          mode === "all" ? "全部日期" : "今天日期",
+          displayValue(payload && payload.start_date),
+          "~",
+          displayValue(payload && payload.end_date),
+          message
+        ].join(" ");
+        renderSmartRows();
+      } catch (err) {
+        els.smartSummary.textContent = "检查失败";
+        setBanner(err.message);
+      } finally {
+        state.smartChecking = false;
+        setSmartActionState();
+      }
+    }
+
+    function renderSmartRows() {
+      if (!state.smartRows.length) {
+        els.smartRows.innerHTML = '<tr><td class="empty" colspan="10">尚未检查或没有发现问题</td></tr>';
+        setSmartActionState();
+        return;
+      }
+
+      els.smartRows.textContent = "";
+      state.smartRows.forEach((row) => {
+        const key = smartRowKey(row);
+        const scriptName = displayValue(row.script_name);
+        const syncable = Boolean(row.syncable) && !isScriptLocked(scriptName);
+        const tr = document.createElement("tr");
+        tr.classList.toggle("selected", state.smartSelected.has(key));
+
+        const selectCell = document.createElement("td");
+        selectCell.className = "select-cell";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = state.smartSelected.has(key);
+        checkbox.disabled = !syncable;
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) {
+            state.smartSelected.add(key);
+          } else {
+            state.smartSelected.delete(key);
+          }
+          renderSmartRows();
+        });
+        selectCell.appendChild(checkbox);
+        tr.appendChild(selectCell);
+        tr.appendChild(cell(scriptName));
+        tr.appendChild(cell(displayValue(row.table_name)));
+        tr.appendChild(cell(displayValue(row.category)));
+        tr.appendChild(cell(displayValue(row.missing_count ?? 0)));
+        tr.appendChild(cell(displayValue(row.low_count_count ?? 0)));
+        tr.appendChild(cell(displayValue(row.date_range)));
+        tr.appendChild(cell(displayValue(row.status)));
+        tr.appendChild(cell(displayValue(row.message)));
+        const feedback = document.createElement("td");
+        const feedbackText = document.createElement("span");
+        feedbackText.className = smartFeedbackClass(scriptName);
+        feedbackText.textContent = smartFeedbackText(scriptName);
+        feedbackText.title = feedbackText.textContent;
+        feedback.appendChild(feedbackText);
+        tr.appendChild(feedback);
+
+        const actions = document.createElement("td");
+        actions.className = "smart-row-actions";
+        const sync = document.createElement("button");
+        sync.type = "button";
+        sync.textContent = "同步";
+        sync.title = row.command || "同步 " + scriptName;
+        sync.disabled = !syncable;
+        sync.addEventListener("click", () => syncOneSmartItem(row));
+        actions.appendChild(sync);
+        const stop = document.createElement("button");
+        stop.type = "button";
+        stop.className = "stop";
+        stop.textContent = "停止";
+        stop.title = "强制停止 " + scriptName;
+        stop.disabled = !canStopScript(scriptName);
+        stop.addEventListener("click", () => stopSmartScript(scriptName));
+        actions.appendChild(stop);
+        tr.appendChild(actions);
+        els.smartRows.appendChild(tr);
+      });
+      setSmartActionState();
+    }
+
+    function selectedSmartItems() {
+      return state.smartRows
+        .filter((row) => state.smartSelected.has(smartRowKey(row)) && row.syncable)
+        .map((row) => ({
+          script_name: row.script_name,
+          run_start: row.run_start || "",
+          run_end: row.run_end || ""
+        }));
+    }
+
+    function setSmartActionState() {
+      const selectedCount = selectedSmartItems().length;
+      els.smartSelectedCount.textContent = "已选择 " + selectedCount + " 个";
+      els.smartSyncSelected.disabled = selectedCount === 0 || state.smartChecking;
+      els.smartAllDates.disabled = state.smartChecking;
+      els.smartToday.disabled = state.smartChecking;
+    }
+
+    async function syncSelectedSmartItems() {
+      const items = selectedSmartItems();
+      if (!items.length) return;
+
+      const scriptNames = items.map((item) => item.script_name);
+      setBanner("");
+      scriptNames.forEach((scriptName) => setSmartFeedback(scriptName, "执行中"));
+      startScriptFeedback("smart_incremental_sync", scriptNames);
+      renderSmartRows();
+
+      try {
+        await api("/api/smart-incremental-sync", {
+          method: "POST",
+          body: { items }
+        });
+        await Promise.all([loadTask(), loadTasks(), loadJobs()]);
+      } catch (err) {
+        state.selectedRunActive = false;
+        state.selectedRunKind = "";
+        scriptNames.forEach((scriptName) => setFeedback(scriptName, "有错误"));
+        scriptNames.forEach((scriptName) => setSmartFeedback(scriptName, "有错误"));
+        renderJobs();
+        renderSmartRows();
+        setBanner(err.message);
+      }
+    }
+
+    async function syncOneSmartItem(row) {
+      if (!row || !row.syncable) return;
+      const scriptName = displayValue(row.script_name);
+      if (isScriptLocked(scriptName)) return;
+
+      setBanner("");
+      setSmartFeedback(scriptName, "执行中");
+      startScriptFeedback("smart_incremental_sync", [scriptName]);
+      renderSmartRows();
+
+      try {
+        await api("/api/smart-incremental-sync", {
+          method: "POST",
+          body: {
+            items: [{
+              script_name: row.script_name,
+              run_start: row.run_start || "",
+              run_end: row.run_end || ""
+            }]
+          }
+        });
+        await Promise.all([loadTask(), loadTasks(), loadJobs()]);
+      } catch (err) {
+        state.selectedRunActive = false;
+        state.selectedRunKind = "";
+        setFeedback(scriptName, "有错误");
+        setSmartFeedback(scriptName, "有错误");
+        renderJobs();
+        renderSmartRows();
+        setBanner(err.message);
+      }
+    }
+
+    async function stopSmartScript(scriptName) {
+      if (!canStopScript(scriptName)) return;
+      if (!confirm("确认强制停止 " + scriptName + "？已写入数据库的数据不会自动回滚。")) return;
+      try {
+        await api("/api/stop-script", {
+          method: "POST",
+          body: { script_name: scriptName }
+        });
+        setSmartFeedback(scriptName, "已停止");
+        await Promise.all([loadTask(), loadTasks(), loadJobs()]);
+        renderSmartRows();
+      } catch (err) {
+        setSmartFeedback(scriptName, "有错误");
+        renderSmartRows();
+        setBanner(err.message);
+      }
+    }
+
     async function saveSyncDate(scriptName, syncDate) {
       if (isScriptLocked(scriptName)) return;
       if (!confirm("确认保存同步日期？")) return;
@@ -985,6 +1413,17 @@
     els.checkAll.addEventListener("click", () => runAction("/api/check-all", {
       target_date: toYYYYMMDD(els.targetDate.value)
     }));
+    els.smartIncremental.addEventListener("click", openSmartModal);
+    els.smartCloseTop.addEventListener("click", closeSmartModal);
+    els.smartCloseBottom.addEventListener("click", closeSmartModal);
+    els.smartAllDates.addEventListener("click", () => runSmartCheck("all"));
+    els.smartToday.addEventListener("click", () => runSmartCheck("today"));
+    els.smartSyncSelected.addEventListener("click", syncSelectedSmartItems);
+    els.smartModal.addEventListener("click", (event) => {
+      if (event.target === els.smartModal) {
+        closeSmartModal();
+      }
+    });
     els.refresh.addEventListener("click", refreshAll);
 
     els.targetDate.value = todayYYYYMMDD();
