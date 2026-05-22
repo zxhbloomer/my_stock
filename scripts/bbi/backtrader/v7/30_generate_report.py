@@ -56,6 +56,7 @@ def calc_metrics(nav, summary):
     excess = daily_ret - RISK_FREE / 252
     sharpe = excess.mean() / excess.std() * np.sqrt(252) if excess.std() > 0 else 0.0
     metrics = {
+        "总收益": f"{summary.get('total_return_pct', 0.0):.2f}%",
         "累积净值": f"{nav['equity_curve'].iloc[-1]:.2f}",
         "年化收益": f"{summary.get('annual_return_pct', 0.0):.2f}%",
         "最大回撤": f"{summary.get('max_drawdown_pct', 0.0):.2f}%",
@@ -520,6 +521,7 @@ def make_trade_table_html(trades):
         "long_limit_down_exit": "长期策略跌停硬止损",
         "long_bearish_volume_exit": "长期策略放量大阴线卖出",
         "long_regime_bear_exit": "熊市确认后浮亏卖出",
+        "bear_probe_initial_buy": "熊市小仓位试探买入",
         "market_bearish_volume": "大盘放量阴线风控",
         "market_regime_bear": "熊市确认后不开仓",
         "market_5d_not_weak": "大盘未弱不触发",
@@ -658,7 +660,7 @@ def make_html(summary, nav, trades, scores, holdings):
 <div class="header">
   <h2>v7 BBI月度强弱轮动策略报表</h2>
   <p>回测区间：{start_date} ~ {end_date} &nbsp;|&nbsp; 初始资金：{INIT_CASH:,.0f}元 &nbsp;|&nbsp; 单票目标：约{BASE_POSITION_AMOUNT:,.0f}元起，封顶{MAX_POSITION_AMOUNT:,.0f}元</p>
-  <p>策略口径：每月第一个实际交易日开盘调仓，使用上一交易日收盘后的 BBI 强弱排名；若上证指数短期大跌或市场状态为熊市，则本次不新开仓。牛市、震荡市使用不同首买回撤阈值；熊市风控分为“熊市确认后不开仓”和“熊市确认后浮亏卖出”。</p>
+  <p>策略口径：每月第一个实际交易日开盘调仓，使用上一交易日收盘后的 BBI 强弱排名；若上证指数短期大跌或市场状态为熊市，则本次不新开仓。已合入“牛市提前买入”：牛市首买回撤阈值提前到 -2.5%（强趋势 -1.2%），震荡/熊市仍使用原阈值；止损、熊市过滤、熊市小仓位试探不变。</p>
   <p>候选过滤：价格达到近 21 日最高价 95% 以上不买；近 20 个交易日出现过收盘跌停不买；游资风险命中 2 项及以上不买；加速失速/下跌风险不买（保留早期弱势下降趋势过滤，并额外排除上涨加速后失速、熊市式下跌加速风险）。</p>
 </div>
 {sections_html}
