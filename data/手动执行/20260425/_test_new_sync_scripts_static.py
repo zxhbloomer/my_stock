@@ -63,6 +63,57 @@ EXPECTED = {
         "pk": 'PK     = ["trade_date", "ts_code", "nums"]',
         "fields": ["ts_code", "name", "trade_date", "nums"],
     },
+    "094_ths_index.py": {
+        "table": 'TABLE         = "094_ths_index"',
+        "api": "pro.ths_index",
+        "pk": 'PK     = ["ts_code"]',
+        "fields": ["ts_code", "name", "count", "exchange", "list_date", "type"],
+        "requires_sync_start": False,
+    },
+    "095_ths_daily.py": {
+        "table": 'TABLE         = "095_ths_daily"',
+        "api": "pro.ths_daily",
+        "pk": 'PK     = ["ts_code", "trade_date"]',
+        "fields": ["pre_close", "avg_price", "turnover_rate", "total_mv", "float_mv"],
+    },
+    "096_ths_member.py": {
+        "table": 'TABLE         = "096_ths_member"',
+        "api": "pro.ths_member",
+        "pk": 'PK     = ["ts_code", "con_code", "is_new_key"]',
+        "fields": ["con_code", "con_name", "weight", "in_date", "out_date", "is_new"],
+        "requires_sync_start": False,
+    },
+    "097_dc_index.py": {
+        "table": 'TABLE         = "097_dc_index"',
+        "api": "pro.dc_index",
+        "pk": 'PK     = ["ts_code", "trade_date"]',
+        "fields": ["leading", "leading_code", "leading_pct", "up_num", "down_num", "idx_type", "level"],
+    },
+    "098_dc_member.py": {
+        "table": 'TABLE         = "098_dc_member"',
+        "api": "pro.dc_member",
+        "pk": 'PK     = ["trade_date", "ts_code", "con_code"]',
+        "fields": ["trade_date", "ts_code", "con_code", "name"],
+    },
+    "099_dc_daily.py": {
+        "table": 'TABLE         = "099_dc_daily"',
+        "api": "pro.dc_daily",
+        "pk": 'PK     = ["ts_code", "trade_date"]',
+        "fields": ["change", "pct_change", "vol", "amount", "swing", "turnover_rate"],
+    },
+    "131_index_member_all.py": {
+        "table": 'TABLE  = "131_index_member_all"',
+        "api": "pro.index_member_all",
+        "pk": 'PK     = ["ts_code", "l3_code", "in_date"]',
+        "fields": ["index_classify", "l1_code", "l2_code", "l3_code", "out_date", "is_new"],
+        "requires_sync_start": False,
+    },
+    "132_sw_daily.py": {
+        "table": 'TABLE         = "132_sw_daily"',
+        "api": "pro.sw_daily",
+        "pk": 'PK     = ["ts_code", "trade_date"]',
+        "fields": ["pct_change", "float_mv", "total_mv"],
+    },
 }
 
 
@@ -89,7 +140,8 @@ def test_scripts_exist_and_match_metadata():
         assert spec["api"] in text, f"{script}: API call missing"
         assert spec["pk"] in text, f"{script}: PK mismatch"
         assert "check_or_create_table" in text, f"{script}: missing table check"
-        assert "get_sync_start" in text, f"{script}: missing sync start"
+        if spec.get("requires_sync_start", True):
+            assert "get_sync_start" in text, f"{script}: missing sync start"
         assert "mark_sync" in text, f"{script}: missing sync status update"
         for field in spec["fields"]:
             assert field in text, f"{script}: missing field {field}"

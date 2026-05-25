@@ -57,9 +57,17 @@ SCRIPT_TABLE_MAP = [
     ("089_top_inst.py", "089_top_inst", "trade_date"),
     ("091_limit_list_d.py", "091_limit_list_d", "trade_date"),
     ("092_limit_step.py", "092_limit_step", "trade_date"),
+    ("094_ths_index.py", "094_ths_index", None),
+    ("095_ths_daily.py", "095_ths_daily", "trade_date"),
+    ("096_ths_member.py", "096_ths_member", None),
+    ("097_dc_index.py", "097_dc_index", "trade_date"),
+    ("098_dc_member.py", "098_dc_member", "trade_date"),
+    ("099_dc_daily.py", "099_dc_daily", "trade_date"),
     ("121_index_basic.py", "121_index_basic", None),
     ("122_index_daily.py", "122_index_daily", "trade_date"),
     ("129_index_dailybasic.py", "129_index_dailybasic", "trade_date"),
+    ("131_index_member_all.py", "131_index_member_all", None),
+    ("132_sw_daily.py", "132_sw_daily", "trade_date"),
     ("134_ci_index_member.py", "134_ci_index_member", None),
     ("135_ci_daily.py", "135_ci_daily", "trade_date"),
     ("137_idx_factor_pro.py", "137_idx_factor_pro", "trade_date"),
@@ -111,4 +119,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -70,10 +70,18 @@
 | 089 | top_inst | 龙虎榜机构交易单 | 按日整日替换 | 无需迁移 |
 | 091 | limit_list_d | 涨跌停和炸板数据 | 按日增量 | 新脚本，目标表不存在，无需迁移 |
 | 092 | limit_step | 涨停股票连板天梯 | 按日增量 | 新脚本，目标表不存在，无需迁移 |
+| 094 | ths_index | 同花顺行业概念板块 | 静态全量 | 新脚本，目标表不存在，无需迁移 |
+| 095 | ths_daily | 同花顺概念和行业指数行情 | 按日增量 | 新脚本，目标表不存在，无需迁移 |
+| 096 | ths_member | 同花顺行业概念成分 | 静态全量分页 | 新脚本，目标表不存在，无需迁移 |
+| 097 | dc_index | 东方财富概念板块 | 按日增量 | 新脚本，目标表不存在，无需迁移 |
+| 098 | dc_member | 东方财富概念成分 | 按日分页增量 | 新脚本，目标表不存在，无需迁移 |
+| 099 | dc_daily | 东财概念和行业指数行情 | 按日增量 | 新脚本，目标表不存在，无需迁移 |
 | 121 | index_basic | 指数基本信息 | 全删全插 | 无需迁移 |
 | 122 | index_daily | 指数日线行情 | 按指数循环 | 无需迁移 |
 | 125 | index_weekly | 指数周线行情 | 按指数循环 | 无需迁移 |
 | 129 | index_dailybasic | 大盘指数每日指标 | 按日增量 | 无需迁移 |
+| 131 | index_member_all | 申万行业成分（分级） | 全删全插 | 新脚本，目标表不存在，无需迁移 |
+| 132 | sw_daily | 申万行业指数日行情 | 按日增量 | 新脚本，目标表不存在，无需迁移 |
 | 134 | ci_index_member | 中信行业成分 | 全删全插 | 无需迁移 |
 | 135 | ci_daily | 中信行业指数日行情 | 按日增量 | 无需迁移 |
 | 137 | idx_factor_pro | 指数技术面因子(专业版) | 按日增量 | 无需迁移（80+字段，耗时长） |
@@ -135,10 +143,18 @@ new/
 ├── 089_top_inst.py
 ├── 091_limit_list_d.py
 ├── 092_limit_step.py
+├── 094_ths_index.py
+├── 095_ths_daily.py
+├── 096_ths_member.py
+├── 097_dc_index.py
+├── 098_dc_member.py
+├── 099_dc_daily.py
 ├── 121_index_basic.py
 ├── 122_index_daily.py
 ├── 125_index_weekly.py
 ├── 129_index_dailybasic.py
+├── 131_index_member_all.py
+├── 132_sw_daily.py
 ├── 134_ci_index_member.py
 ├── 135_ci_daily.py
 ├── 137_idx_factor_pro.py

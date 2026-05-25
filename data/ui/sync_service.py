@@ -5,7 +5,7 @@ import subprocess
 import sys
 import threading
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,6 +16,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SYNC_DIR = PROJECT_ROOT / "data" / "手动执行" / "20260425"
 _IMPORT_LOCK = threading.Lock()
 SCHEMA = "tushare_v2"
+LIMITED_DAILY_WINDOWS = {
+    "078_slb_sec_detail.py": ("20190722", "20240710"),
+}
 SYNC_STATUS_SQL = f"""
 CREATE TABLE IF NOT EXISTS {SCHEMA}.sync_status (
     script_name  VARCHAR(64)  NOT NULL,
@@ -399,7 +402,8 @@ class SyncService:
                     })
                     continue
 
-                start_date = target_date if mode == "today" else self._effective_full_start(
+                check_end_date = self._effective_check_end_date(conn, module, spec, target_date)
+                start_date = check_end_date if mode == "today" else self._effective_full_start(
                     base_start,
                     script_defaults.get(script_name),
                 )
@@ -410,7 +414,7 @@ class SyncService:
                     all_tables=all_tables,
                     mode=mode,
                     start_date=start_date,
-                    end_date=target_date,
+                    end_date=check_end_date,
                     expected_dates_by_start=expected_dates_by_start,
                 )
                 if issue:
@@ -424,6 +428,14 @@ class SyncService:
             "unconfigured": unconfigured,
             "message": "发现 {} 个问题脚本，{} 个未配置脚本".format(len(issues), len(unconfigured)),
         }
+
+    def _effective_check_end_date(self, conn, module, spec, target_date):
+        if spec.script != "061_cyq_perf.py":
+            return target_date
+        if datetime.now().hour >= 19:
+            return target_date
+        previous_date = module.get_previous_trade_date(conn, SCHEMA, target_date)
+        return previous_date or target_date
 
     def _scan_smart_issue_for_spec(self, conn, module, spec, all_tables, mode, start_date, end_date, expected_dates_by_start):
         table_exists = spec.table in all_tables
@@ -459,17 +471,68 @@ class SyncService:
             return None
 
         if spec.category == "periodic":
-            return self._build_smart_issue(
+            if mode == "today":
+                return self._build_smart_issue(
+                    spec=spec,
+                    status="skipped_periodic",
+                    start_date=start_date,
+                    end_date=end_date,
+                    missing_dates=[],
+                    low_count_dates=[],
+                    today_count=None,
+                    previous_count=None,
+                    syncable=False,
+                    message="周/月频表不按今日逐日检查",
+                )
+            return self._scan_periodic_issue_for_spec(
+                conn=conn,
                 spec=spec,
-                status="skipped_periodic",
                 start_date=start_date,
                 end_date=end_date,
-                missing_dates=[],
-                low_count_dates=[],
-                today_count=None,
-                previous_count=None,
-                syncable=False,
-                message="周/月频表暂不做逐日智能增量检查",
+            )
+
+        if spec.category == "stopped":
+            window = LIMITED_DAILY_WINDOWS.get(spec.script)
+            if not window:
+                return self._build_smart_issue(
+                    spec=spec,
+                    status="skipped_stopped",
+                    start_date=start_date,
+                    end_date=end_date,
+                    missing_dates=[],
+                    low_count_dates=[],
+                    today_count=None,
+                    previous_count=None,
+                    syncable=False,
+                    message="接口已停止更新，缺少有效检查窗口配置",
+                )
+            window_start, window_end = window
+            if mode == "today":
+                return self._build_smart_issue(
+                    spec=spec,
+                    status="skipped_stopped",
+                    start_date=start_date,
+                    end_date=end_date,
+                    missing_dates=[],
+                    low_count_dates=[],
+                    today_count=None,
+                    previous_count=None,
+                    syncable=False,
+                    message="接口已停止更新，仅检查 {}~{} 历史窗口".format(window_start, window_end),
+                )
+            scan_start_date = max(start_date, window_start)
+            scan_end_date = min(end_date, window_end)
+            if scan_start_date > scan_end_date:
+                return None
+            return self._scan_required_daily_issue_for_spec(
+                conn=conn,
+                module=module,
+                spec=spec,
+                start_date=scan_start_date,
+                end_date=scan_end_date,
+                expected_dates_by_start=expected_dates_by_start,
+                message_prefix="接口有效历史窗口 {}~{}".format(window_start, window_end),
+                check_low_count=False,
             )
 
         if not spec.date_col:
@@ -506,6 +569,46 @@ class SyncService:
                     )
             return None
 
+        if spec.script == "062_cyq_chips.py":
+            return self._scan_cyq_chips_issue_for_spec(
+                conn=conn,
+                module=module,
+                spec=spec,
+                start_date=start_date,
+                end_date=end_date,
+                expected_dates_by_start=expected_dates_by_start,
+            )
+
+        if spec.script == "066_hk_hold.py":
+            return self._scan_hk_hold_issue_for_spec(
+                conn=conn,
+                module=module,
+                spec=spec,
+                start_date=start_date,
+                end_date=end_date,
+                expected_dates_by_start=expected_dates_by_start,
+            )
+
+        return self._scan_required_daily_issue_for_spec(
+            conn=conn,
+            module=module,
+            spec=spec,
+            start_date=start_date,
+            end_date=end_date,
+            expected_dates_by_start=expected_dates_by_start,
+        )
+
+    def _scan_required_daily_issue_for_spec(
+        self,
+        conn,
+        module,
+        spec,
+        start_date,
+        end_date,
+        expected_dates_by_start,
+        message_prefix=None,
+        check_low_count=True,
+    ):
         expected_dates = self._get_expected_trade_dates(conn, start_date, end_date, expected_dates_by_start)
         if not expected_dates:
             return self._build_smart_issue(
@@ -529,7 +632,7 @@ class SyncService:
             count = counts.get(trade_date, 0)
             if count == 0:
                 missing_dates.append(trade_date)
-            elif previous_count and count < previous_count * module.LOW_COUNT_RATIO:
+            elif check_low_count and previous_count and count < previous_count * module.LOW_COUNT_RATIO:
                 low_count_dates.append(trade_date)
             if count > 0:
                 previous_count = count
@@ -537,6 +640,8 @@ class SyncService:
         if missing_dates or low_count_dates:
             status = "missing" if missing_dates else "low_count"
             parts = []
+            if message_prefix:
+                parts.append(message_prefix)
             if missing_dates:
                 parts.append("缺失 {} 个交易日".format(len(missing_dates)))
             if low_count_dates:
@@ -553,7 +658,228 @@ class SyncService:
                 previous_count=previous_count,
                 syncable=True,
                 message="；".join(parts),
+                expected_dates=expected_dates,
             )
+        return None
+
+    def _scan_cyq_chips_issue_for_spec(self, conn, module, spec, start_date, end_date, expected_dates_by_start):
+        expected_dates = self._get_expected_trade_dates(conn, start_date, end_date, expected_dates_by_start)
+        if not expected_dates:
+            return self._build_smart_issue(
+                spec=spec,
+                status="no_trade_dates",
+                start_date=start_date,
+                end_date=end_date,
+                missing_dates=[],
+                low_count_dates=[],
+                today_count=None,
+                previous_count=None,
+                syncable=False,
+                message="扫描区间内没有 SSE 交易日",
+            )
+
+        row_counts = self._count_dates(conn, spec.table, spec.date_col, start_date, end_date)
+        stock_counts = self._count_distinct_by_date(
+            conn, spec.table, spec.date_col, "ts_code", start_date, end_date
+        )
+        missing_dates = []
+        low_count_dates = []
+        previous_positive = None
+
+        for index, trade_date in enumerate(expected_dates):
+            row_count = row_counts.get(trade_date, 0)
+            stock_count = stock_counts.get(trade_date, 0)
+            if row_count == 0:
+                missing_dates.append(trade_date)
+                continue
+
+            next_positive = None
+            for next_date in expected_dates[index + 1:]:
+                value = stock_counts.get(next_date, 0)
+                if value > 0:
+                    next_positive = value
+                    break
+
+            low_by_previous = previous_positive and stock_count < previous_positive * module.LOW_COUNT_RATIO
+            low_by_next = next_positive and stock_count < next_positive * module.LOW_COUNT_RATIO
+            if low_by_previous or low_by_next:
+                low_count_dates.append(trade_date)
+            if stock_count > 0:
+                previous_positive = stock_count
+
+        if missing_dates or low_count_dates:
+            status = "missing" if missing_dates else "low_count"
+            parts = []
+            if missing_dates:
+                parts.append("缺失 {} 个交易日".format(len(missing_dates)))
+            if low_count_dates:
+                parts.append("覆盖股票数可疑偏低 {} 个交易日".format(len(low_count_dates)))
+            return self._build_smart_issue(
+                spec=spec,
+                status=status,
+                start_date=start_date,
+                end_date=end_date,
+                missing_dates=missing_dates,
+                low_count_dates=low_count_dates,
+                today_count=row_counts.get(end_date),
+                previous_count=previous_positive,
+                syncable=True,
+                message="；".join(parts),
+                expected_dates=expected_dates,
+            )
+        return None
+
+    def _scan_hk_hold_issue_for_spec(self, conn, module, spec, start_date, end_date, expected_dates_by_start):
+        expected_dates = self._get_expected_trade_dates(conn, start_date, end_date, expected_dates_by_start)
+        if not expected_dates:
+            return self._build_smart_issue(
+                spec=spec,
+                status="no_trade_dates",
+                start_date=start_date,
+                end_date=end_date,
+                missing_dates=[],
+                low_count_dates=[],
+                today_count=None,
+                previous_count=None,
+                syncable=False,
+                message="扫描区间内没有 SSE 交易日",
+            )
+
+        row_counts = self._count_dates(conn, spec.table, spec.date_col, start_date, end_date)
+        exchanges_by_date = self._count_values_by_date(
+            conn, spec.table, spec.date_col, "exchange", start_date, end_date
+        )
+        exchange_counts = self._count_date_value_rows(
+            conn, spec.table, spec.date_col, "exchange", start_date, end_date
+        )
+        low_count_dates = []
+        previous_exchange_counts = {}
+
+        for trade_date in expected_dates:
+            count = row_counts.get(trade_date, 0)
+            # hk_hold 历史上存在真实空交易日，例如 20160701；不能按SSE交易日强制补齐。
+            if count == 0:
+                continue
+
+            exchanges = exchanges_by_date.get(trade_date, set())
+            if trade_date < "20161205":
+                required_exchanges = {"SH"}
+            elif trade_date <= "20240819":
+                required_exchanges = {"SH", "SZ"}
+            else:
+                # 2024-08-20起官方说明停止发布日度北向持股，实测接口仍返回HK南向持股。
+                required_exchanges = {"HK"}
+            if not required_exchanges.issubset(exchanges):
+                low_count_dates.append(trade_date)
+            else:
+                for exchange in required_exchanges:
+                    exchange_count = exchange_counts.get((trade_date, exchange), 0)
+                    previous_count = previous_exchange_counts.get(exchange)
+                    if previous_count and exchange_count < previous_count * module.LOW_COUNT_RATIO:
+                        low_count_dates.append(trade_date)
+                        break
+
+            for exchange in exchanges:
+                exchange_count = exchange_counts.get((trade_date, exchange), 0)
+                if exchange_count > 0:
+                    previous_exchange_counts[exchange] = exchange_count
+
+        if low_count_dates:
+            parts = []
+            parts.append("交易所覆盖或单市场行数可疑 {} 个交易日".format(len(set(low_count_dates))))
+            return self._build_smart_issue(
+                spec=spec,
+                status="low_count",
+                start_date=start_date,
+                end_date=end_date,
+                missing_dates=[],
+                low_count_dates=sorted(set(low_count_dates)),
+                today_count=row_counts.get(end_date),
+                previous_count=None,
+                syncable=True,
+                message="；".join(parts),
+                expected_dates=expected_dates,
+            )
+        return None
+
+    def _scan_periodic_issue_for_spec(self, conn, spec, start_date, end_date):
+        period_kind = self._period_kind_for_script(spec.script)
+        if period_kind is None:
+            return self._build_smart_issue(
+                spec=spec,
+                status="skipped_periodic",
+                start_date=start_date,
+                end_date=end_date,
+                missing_dates=[],
+                low_count_dates=[],
+                today_count=None,
+                previous_count=None,
+                syncable=False,
+                message="周/月频表未配置周期类型",
+            )
+
+        if period_kind in {"week", "month"}:
+            expected_dates = self._get_periodic_expected_dates(conn, start_date, end_date, period_kind)
+            if not expected_dates:
+                return None
+            counts = self._count_dates(conn, spec.table, spec.date_col, start_date, end_date)
+            missing_dates = [trade_date for trade_date in expected_dates if counts.get(trade_date, 0) == 0]
+            if not missing_dates:
+                return None
+            return self._build_smart_issue(
+                spec=spec,
+                status="missing",
+                start_date=start_date,
+                end_date=end_date,
+                missing_dates=missing_dates,
+                low_count_dates=[],
+                today_count=None,
+                previous_count=None,
+                syncable=True,
+                message="缺失 {} 个周期结束日".format(len(missing_dates)),
+                expected_dates=expected_dates,
+            )
+
+        if period_kind == "week_month_reference":
+            return None
+
+        week_dates = self._get_periodic_expected_dates(conn, start_date, end_date, "week")
+        month_dates = self._get_periodic_expected_dates(conn, start_date, end_date, "month")
+        if not week_dates and not month_dates:
+            return None
+        counts = self._count_date_freqs(conn, spec.table, spec.date_col, start_date, end_date)
+        missing_dates = []
+        expected_dates = sorted(set(week_dates + month_dates))
+        for trade_date in week_dates:
+            if counts.get((trade_date, "week"), 0) == 0:
+                missing_dates.append(trade_date)
+        for trade_date in month_dates:
+            if counts.get((trade_date, "month"), 0) == 0:
+                missing_dates.append(trade_date)
+        if not missing_dates:
+            return None
+        return self._build_smart_issue(
+            spec=spec,
+            status="missing",
+            start_date=start_date,
+            end_date=end_date,
+            missing_dates=missing_dates,
+            low_count_dates=[],
+            today_count=None,
+            previous_count=None,
+            syncable=True,
+            message="缺失 {} 个周/月周期".format(len(missing_dates)),
+            expected_dates=expected_dates,
+        )
+
+    @staticmethod
+    def _period_kind_for_script(script_name):
+        if script_name == "018_weekly.py":
+            return "week"
+        if script_name == "019_monthly.py":
+            return "month"
+        if script_name in {"021_stk_weekly_monthly.py", "022_stk_week_month_adj.py"}:
+            return "week_month_reference"
         return None
 
     def _get_expected_trade_dates(self, conn, start_date, end_date, cache):
@@ -572,6 +898,19 @@ class SyncService:
         cache[cache_key] = dates
         return dates
 
+    def _get_periodic_expected_dates(self, conn, start_date, end_date, period):
+        extended_end = (datetime.strptime(end_date, "%Y%m%d") + timedelta(days=40)).strftime("%Y%m%d")
+        rows = conn.execute(text(f"""
+            SELECT cal_date
+            FROM {SCHEMA}."003_trade_cal"
+            WHERE exchange='SSE'
+              AND is_open=1
+              AND cal_date BETWEEN :start_date AND :end_date
+            ORDER BY cal_date
+        """), {"start_date": start_date, "end_date": extended_end}).fetchall()
+        dates = [self._format_compact_date(row[0]) for row in rows if row and row[0]]
+        return self._select_period_end_dates(dates, end_date, period)
+
     def _count_dates(self, conn, table, date_col, start_date, end_date):
         rows = conn.execute(text(
             f"""
@@ -582,6 +921,63 @@ class SyncService:
             """
         ), {"start_date": start_date, "end_date": end_date}).fetchall()
         return {self._format_compact_date(row[0]): int(row[1]) for row in rows if row and row[0]}
+
+    def _count_distinct_by_date(self, conn, table, date_col, value_col, start_date, end_date):
+        rows = conn.execute(text(
+            f"""
+            SELECT "{date_col}", COUNT(DISTINCT "{value_col}")
+            FROM {SCHEMA}."{table}"
+            WHERE "{date_col}" BETWEEN :start_date AND :end_date
+            GROUP BY "{date_col}"
+            """
+        ), {"start_date": start_date, "end_date": end_date}).fetchall()
+        return {self._format_compact_date(row[0]): int(row[1]) for row in rows if row and row[0]}
+
+    def _count_date_value_rows(self, conn, table, date_col, value_col, start_date, end_date):
+        rows = conn.execute(text(
+            f"""
+            SELECT "{date_col}", "{value_col}", COUNT(*)
+            FROM {SCHEMA}."{table}"
+            WHERE "{date_col}" BETWEEN :start_date AND :end_date
+            GROUP BY "{date_col}", "{value_col}"
+            """
+        ), {"start_date": start_date, "end_date": end_date}).fetchall()
+        return {
+            (self._format_compact_date(row[0]), str(row[1])): int(row[2])
+            for row in rows
+            if row and row[0] and row[1] is not None
+        }
+
+    def _count_values_by_date(self, conn, table, date_col, value_col, start_date, end_date):
+        rows = conn.execute(text(
+            f"""
+            SELECT "{date_col}", "{value_col}"
+            FROM {SCHEMA}."{table}"
+            WHERE "{date_col}" BETWEEN :start_date AND :end_date
+            GROUP BY "{date_col}", "{value_col}"
+            """
+        ), {"start_date": start_date, "end_date": end_date}).fetchall()
+        values_by_date = {}
+        for row in rows:
+            if not row or not row[0] or row[1] is None:
+                continue
+            values_by_date.setdefault(self._format_compact_date(row[0]), set()).add(str(row[1]))
+        return values_by_date
+
+    def _count_date_freqs(self, conn, table, date_col, start_date, end_date):
+        rows = conn.execute(text(
+            f"""
+            SELECT "{date_col}", freq, COUNT(*)
+            FROM {SCHEMA}."{table}"
+            WHERE "{date_col}" BETWEEN :start_date AND :end_date
+            GROUP BY "{date_col}", freq
+            """
+        ), {"start_date": start_date, "end_date": end_date}).fetchall()
+        return {
+            (self._format_compact_date(row[0]), str(row[1])): int(row[2])
+            for row in rows
+            if row and row[0] and row[1]
+        }
 
     @staticmethod
     def _effective_full_start(base_start, script_default_start):
@@ -601,25 +997,32 @@ class SyncService:
         previous_count,
         syncable,
         message,
+        expected_dates=None,
     ):
         missing_dates = list(missing_dates or [])
         low_count_dates = list(low_count_dates or [])
         problem_dates = sorted(set(missing_dates + low_count_dates))
+        run_ranges = SyncService._build_problem_ranges(problem_dates, expected_dates)
         if problem_dates:
-            run_start = problem_dates[0]
-            run_end = end_date
-            date_range = "{} ~ {}".format(problem_dates[0], problem_dates[-1])
+            run_start = run_ranges[0]["start"]
+            run_end = run_ranges[-1]["end"]
+            date_range = "{} 个问题日期，{} 段".format(len(problem_dates), len(run_ranges))
         elif spec.date_col:
             run_start = start_date
             run_end = end_date
             date_range = "{} ~ {}".format(start_date, end_date)
+            run_ranges = [{"start": run_start, "end": run_end}]
         else:
             run_start = ""
             run_end = ""
             date_range = "-"
 
         if spec.date_col:
-            command = "python -X utf8 {} --start {} --end {}".format(spec.script, run_start, run_end)
+            commands = [
+                "python -X utf8 {} --start {} --end {}".format(spec.script, item["start"], item["end"])
+                for item in run_ranges
+            ]
+            command = "; ".join(commands)
         else:
             command = "python -X utf8 {}".format(spec.script)
 
@@ -633,7 +1036,9 @@ class SyncService:
             "end_date": end_date,
             "run_start": run_start,
             "run_end": run_end,
+            "run_ranges": run_ranges,
             "date_range": date_range,
+            "problem_date_summary": SyncService._format_range_summary(run_ranges),
             "missing_dates": missing_dates[:200],
             "low_count_dates": low_count_dates[:200],
             "missing_count": len(missing_dates),
@@ -644,6 +1049,68 @@ class SyncService:
             "command": command,
             "message": message,
         }
+
+    @staticmethod
+    def _build_problem_ranges(problem_dates, expected_dates=None):
+        dates = sorted(set(problem_dates or []))
+        if not dates:
+            return []
+
+        expected_order = {date: index for index, date in enumerate(expected_dates or [])}
+        ranges = []
+        current_start = dates[0]
+        current_end = dates[0]
+
+        for date in dates[1:]:
+            previous_index = expected_order.get(current_end)
+            current_index = expected_order.get(date)
+            if previous_index is not None and current_index == previous_index + 1:
+                current_end = date
+            else:
+                ranges.append({"start": current_start, "end": current_end})
+                current_start = date
+                current_end = date
+        ranges.append({"start": current_start, "end": current_end})
+        return ranges
+
+    @staticmethod
+    def _format_range_summary(ranges):
+        parts = []
+        for item in ranges or []:
+            start = item["start"]
+            end = item["end"]
+            parts.append(start if start == end else "{}~{}".format(start, end))
+        return ", ".join(parts)
+
+    @staticmethod
+    def _select_period_end_dates(trade_dates, end_date, period):
+        if period not in {"week", "month"}:
+            raise ValueError("period must be week or month")
+        end_date = str(end_date)
+        rows = []
+        for value in trade_dates or []:
+            compact = SyncService._format_compact_date(value)
+            if len(compact) != 8:
+                continue
+            dt = datetime.strptime(compact, "%Y%m%d")
+            if period == "week":
+                iso = dt.isocalendar()
+                key = (iso.year, iso.week)
+            else:
+                key = (dt.year, dt.month)
+            rows.append((compact, key))
+
+        max_by_period = {}
+        for compact, key in rows:
+            if key not in max_by_period or compact > max_by_period[key]:
+                max_by_period[key] = compact
+
+        selected = [
+            compact
+            for compact, key in rows
+            if compact <= end_date and max_by_period.get(key) == compact
+        ]
+        return sorted(set(selected))
 
     @staticmethod
     def _format_compact_date(value):
@@ -775,17 +1242,31 @@ class SyncService:
             if spec is None:
                 raise UnknownScriptError("{} 未配置智能增量检查规则".format(script_name))
             args = []
+            arg_sets = []
             run_start = str(item.get("run_start") or "").strip()
             run_end = str(item.get("run_end") or "").strip()
             if spec.date_col:
-                if not run_start or not run_end:
-                    raise InvalidSyncDateError("{} 缺少同步起止日期".format(script_name))
-                self.validate_sync_date(run_start)
-                self.validate_sync_date(run_end)
-                args = ["--start", run_start, "--end", run_end]
+                run_ranges = item.get("run_ranges") or []
+                if run_ranges:
+                    for run_range in run_ranges:
+                        range_start = str(run_range.get("start") or "").strip()
+                        range_end = str(run_range.get("end") or "").strip()
+                        if not range_start or not range_end:
+                            raise InvalidSyncDateError("{} 缺少同步起止日期".format(script_name))
+                        self.validate_sync_date(range_start)
+                        self.validate_sync_date(range_end)
+                        arg_sets.append(["--start", range_start, "--end", range_end])
+                else:
+                    if not run_start or not run_end:
+                        raise InvalidSyncDateError("{} 缺少同步起止日期".format(script_name))
+                    self.validate_sync_date(run_start)
+                    self.validate_sync_date(run_end)
+                    arg_sets.append(["--start", run_start, "--end", run_end])
+            else:
+                arg_sets.append([])
             normalized.append({
                 "script_name": script_name,
-                "args": args,
+                "arg_sets": arg_sets,
             })
             seen.add(script_name)
         if not normalized:
@@ -891,17 +1372,19 @@ class SyncService:
                 if self._is_script_stopped(task_id, script_name):
                     return
                 self._set_script_status(task_id, script_name, "running")
-                return_code = self._run_script(script_name, item.get("args") or [])
-                if self._is_script_stopped(task_id, script_name):
-                    return
-                if return_code == 0:
-                    self._set_script_status(task_id, script_name, "completed")
-                else:
-                    self._set_script_status(task_id, script_name, "failed")
-                    error = "{} exited with code {}".format(script_name, return_code)
-                    self._append_log("ERROR: {}".format(error))
-                    with result_lock:
-                        failures.append(error)
+                arg_sets = item.get("arg_sets") or [item.get("args") or []]
+                for args in arg_sets:
+                    return_code = self._run_script(script_name, args)
+                    if self._is_script_stopped(task_id, script_name):
+                        return
+                    if return_code != 0:
+                        self._set_script_status(task_id, script_name, "failed")
+                        error = "{} exited with code {}".format(script_name, return_code)
+                        self._append_log("ERROR: {}".format(error))
+                        with result_lock:
+                            failures.append(error)
+                        return
+                self._set_script_status(task_id, script_name, "completed")
             except Exception as exc:
                 error = "{} failed: {}".format(script_name, exc)
                 self._set_script_status(task_id, script_name, "failed")

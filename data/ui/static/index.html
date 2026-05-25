@@ -431,6 +431,26 @@
       padding-right: 4px;
     }
 
+    .smart-row-actions button.syncable {
+      border-color: #175cd3;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .smart-table tr.syncable td {
+      background: #f4f8ff;
+    }
+
+    .smart-table tr.selected.syncable td {
+      background: #e0edff;
+    }
+
+    .smart-table tr.not-syncable td {
+      color: var(--muted);
+      background: #fafbfc;
+    }
+
     .smart-row-actions button.stop {
       width: 48px;
       max-width: 48px;
@@ -1194,6 +1214,8 @@
         const syncable = Boolean(row.syncable) && !isScriptLocked(scriptName);
         const tr = document.createElement("tr");
         tr.classList.toggle("selected", state.smartSelected.has(key));
+        tr.classList.toggle("syncable", syncable);
+        tr.classList.toggle("not-syncable", !syncable);
 
         const selectCell = document.createElement("td");
         selectCell.className = "select-cell";
@@ -1216,7 +1238,7 @@
         tr.appendChild(cell(displayValue(row.category)));
         tr.appendChild(cell(displayValue(row.missing_count ?? 0)));
         tr.appendChild(cell(displayValue(row.low_count_count ?? 0)));
-        tr.appendChild(cell(displayValue(row.date_range)));
+        tr.appendChild(cell(displayValue(row.problem_date_summary || row.date_range)));
         tr.appendChild(cell(displayValue(row.status)));
         tr.appendChild(cell(displayValue(row.message)));
         const feedback = document.createElement("td");
@@ -1232,6 +1254,7 @@
         const sync = document.createElement("button");
         sync.type = "button";
         sync.textContent = "同步";
+        sync.className = syncable ? "syncable" : "";
         sync.title = row.command || "同步 " + scriptName;
         sync.disabled = !syncable;
         sync.addEventListener("click", () => syncOneSmartItem(row));
@@ -1256,7 +1279,8 @@
         .map((row) => ({
           script_name: row.script_name,
           run_start: row.run_start || "",
-          run_end: row.run_end || ""
+          run_end: row.run_end || "",
+          run_ranges: row.run_ranges || []
         }));
     }
 
@@ -1312,7 +1336,8 @@
             items: [{
               script_name: row.script_name,
               run_start: row.run_start || "",
-              run_end: row.run_end || ""
+              run_end: row.run_end || "",
+              run_ranges: row.run_ranges || []
             }]
           }
         });

@@ -51,11 +51,19 @@ SCRIPTS = [
     "089_top_inst.py",
     "091_limit_list_d.py",
     "092_limit_step.py",
+    "094_ths_index.py",
+    "095_ths_daily.py",
+    "096_ths_member.py",
+    "097_dc_index.py",
+    "098_dc_member.py",
+    "099_dc_daily.py",
 
     # -- 指数专题 --
     "121_index_basic.py",
     "122_index_daily.py",
     "129_index_dailybasic.py",
+    "131_index_member_all.py",
+    "132_sw_daily.py",
     "134_ci_index_member.py",
     "135_ci_daily.py",
     "137_idx_factor_pro.py",  # 80+字段，按日期循环，耗时长

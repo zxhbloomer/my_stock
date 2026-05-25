@@ -206,6 +206,42 @@ def get_trade_dates(pro, start: str, end: str, exchange: str = "SSE") -> list[st
     return sorted(cal["cal_date"].tolist())
 
 
+def get_period_end_dates(trade_dates: list[str], end: str, period: str) -> list[str]:
+    """Select completed week/month end trading dates from a lookahead trade-date list."""
+    if period not in {"week", "month"}:
+        raise ValueError("period must be week or month")
+    if not trade_dates:
+        return []
+
+    rows = []
+    for value in trade_dates:
+        dt = pd.Timestamp(value)
+        compact = dt.strftime("%Y%m%d")
+        if period == "week":
+            iso = dt.isocalendar()
+            key = (int(iso.year), int(iso.week))
+        else:
+            key = (dt.year, dt.month)
+        rows.append((compact, key))
+
+    max_by_period = {}
+    for compact, key in rows:
+        if key not in max_by_period or compact > max_by_period[key]:
+            max_by_period[key] = compact
+
+    return sorted({
+        compact
+        for compact, key in rows
+        if compact <= end and max_by_period.get(key) == compact
+    })
+
+
+def get_period_trade_dates(pro, start: str, end: str, period: str, exchange: str = "SSE") -> list[str]:
+    lookahead_end = (pd.Timestamp(end) + pd.Timedelta(days=40)).strftime("%Y%m%d")
+    trade_dates = get_trade_dates(pro, start, lookahead_end, exchange=exchange)
+    return get_period_end_dates(trade_dates, end, period)
+
+
 def get_max_date(engine, table: str, date_col: str = "trade_date") -> str | None:
     try:
         with engine.connect() as conn:

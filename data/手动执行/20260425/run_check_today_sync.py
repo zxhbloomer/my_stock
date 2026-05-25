@@ -32,6 +32,7 @@ REQUIRED_DAILY = "required_daily"
 SPARSE = "sparse"
 STATIC = "static"
 PERIODIC = "periodic"
+STOPPED = "stopped"
 
 LOW_COUNT_RATIO = 0.8
 
@@ -45,14 +46,14 @@ TABLE_SPECS = [
     TableSpec("014_daily.py", "014_daily", "trade_date", REQUIRED_DAILY),
     TableSpec("018_weekly.py", "018_weekly", "trade_date", PERIODIC),
     TableSpec("019_monthly.py", "019_monthly", "trade_date", PERIODIC),
-    TableSpec("021_stk_weekly_monthly.py", "021_stk_weekly_monthly", "trade_date", REQUIRED_DAILY),
-    TableSpec("022_stk_week_month_adj.py", "022_stk_week_month_adj", "trade_date", REQUIRED_DAILY),
+    TableSpec("021_stk_weekly_monthly.py", "021_stk_weekly_monthly", "trade_date", PERIODIC),
+    TableSpec("022_stk_week_month_adj.py", "022_stk_week_month_adj", "trade_date", PERIODIC),
     TableSpec("023_adj_factor.py", "023_adj_factor", "trade_date", REQUIRED_DAILY),
     TableSpec("027_daily_basic.py", "027_daily_basic", "trade_date", REQUIRED_DAILY),
     TableSpec("029_stk_limit.py", "029_stk_limit", "trade_date", REQUIRED_DAILY),
     TableSpec("030_suspend_d.py", "030_suspend_d", "trade_date", SPARSE),
-    TableSpec("031_hsgt_top10.py", "031_hsgt_top10", "trade_date", REQUIRED_DAILY),
-    TableSpec("032_ggt_top10.py", "032_ggt_top10", "trade_date", REQUIRED_DAILY),
+    TableSpec("031_hsgt_top10.py", "031_hsgt_top10", "trade_date", SPARSE),
+    TableSpec("032_ggt_top10.py", "032_ggt_top10", "trade_date", SPARSE),
     TableSpec("036_income.py", "036_income", "ann_date", SPARSE),
     TableSpec("037_balancesheet.py", "037_balancesheet", "ann_date", SPARSE),
     TableSpec("038_cashflow.py", "038_cashflow", "ann_date", SPARSE),
@@ -71,7 +72,7 @@ TABLE_SPECS = [
     TableSpec("075_margin_secs.py", "075_margin_secs", "trade_date", REQUIRED_DAILY),
     TableSpec("076_slb_sec.py", "076_slb_sec", "trade_date", REQUIRED_DAILY),
     TableSpec("077_slb_len.py", "077_slb_len", "trade_date", REQUIRED_DAILY),
-    TableSpec("078_slb_sec_detail.py", "078_slb_sec_detail", "trade_date", REQUIRED_DAILY),
+    TableSpec("078_slb_sec_detail.py", "078_slb_sec_detail", "trade_date", STOPPED),
     TableSpec("080_moneyflow.py", "080_moneyflow", "trade_date", REQUIRED_DAILY),
     TableSpec("081_moneyflow_ths.py", "081_moneyflow_ths", "trade_date", REQUIRED_DAILY),
     TableSpec("082_moneyflow_dc.py", "082_moneyflow_dc", "trade_date", REQUIRED_DAILY),
@@ -84,9 +85,17 @@ TABLE_SPECS = [
     TableSpec("089_top_inst.py", "089_top_inst", "trade_date", SPARSE),
     TableSpec("091_limit_list_d.py", "091_limit_list_d", "trade_date", SPARSE),
     TableSpec("092_limit_step.py", "092_limit_step", "trade_date", SPARSE),
+    TableSpec("094_ths_index.py", "094_ths_index", None, STATIC),
+    TableSpec("095_ths_daily.py", "095_ths_daily", "trade_date", REQUIRED_DAILY),
+    TableSpec("096_ths_member.py", "096_ths_member", None, STATIC),
+    TableSpec("097_dc_index.py", "097_dc_index", "trade_date", REQUIRED_DAILY),
+    TableSpec("098_dc_member.py", "098_dc_member", "trade_date", REQUIRED_DAILY),
+    TableSpec("099_dc_daily.py", "099_dc_daily", "trade_date", REQUIRED_DAILY),
     TableSpec("121_index_basic.py", "121_index_basic", None, STATIC),
     TableSpec("122_index_daily.py", "122_index_daily", "trade_date", REQUIRED_DAILY),
     TableSpec("129_index_dailybasic.py", "129_index_dailybasic", "trade_date", REQUIRED_DAILY),
+    TableSpec("131_index_member_all.py", "131_index_member_all", None, STATIC),
+    TableSpec("132_sw_daily.py", "132_sw_daily", "trade_date", REQUIRED_DAILY),
     TableSpec("134_ci_index_member.py", "134_ci_index_member", None, STATIC),
     TableSpec("135_ci_daily.py", "135_ci_daily", "trade_date", REQUIRED_DAILY),
     TableSpec("137_idx_factor_pro.py", "137_idx_factor_pro", "trade_date", REQUIRED_DAILY),

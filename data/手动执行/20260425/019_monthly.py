@@ -67,14 +67,10 @@ def main():
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
-    _cal_dates = get_trade_dates(pro, start, args.end)
-    if not _cal_dates:
+    dates = get_period_trade_dates(pro, start, args.end, "month")
+    if not dates:
         print("[已是最新] 无需同步")
         return
-    # 月线只在每月最后一个交易日有数据，按月分组取最大日期
-    cal = pd.DataFrame({"cal_date": pd.to_datetime(_cal_dates)})
-    cal["month"] = cal["cal_date"].dt.to_period("M")
-    dates = sorted(cal.groupby("month")["cal_date"].max().dt.strftime("%Y%m%d").tolist())
 
     total_rows, t0 = 0, datetime.now()
     for i, d in enumerate(dates, 1):

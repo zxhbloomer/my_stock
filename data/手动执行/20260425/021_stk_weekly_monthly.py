@@ -72,14 +72,24 @@ def main():
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
-    dates = get_trade_dates(pro, start, args.end)
+    week_dates = set(get_period_trade_dates(pro, start, args.end, "week"))
+    month_dates = set(get_period_trade_dates(pro, start, args.end, "month"))
+    dates = sorted(week_dates | month_dates)
+    if not dates:
+        print("[已是最新] 当前区间没有已完成的周/月周期结束日")
+        return
 
     total_rows, t0 = 0, datetime.now()
     for i, d in enumerate(dates, 1):
         mark_sync(engine, f"{TABLE}.py", TABLE, d, "ing")
         try:
             day_rows = 0
-            for freq in FREQS:
+            freqs = []
+            if d in week_dates:
+                freqs.append("week")
+            if d in month_dates:
+                freqs.append("month")
+            for freq in freqs:
                 df = pro.stk_weekly_monthly(trade_date=d, freq=freq, fields=FIELDS)
                 if df is not None and not df.empty:
                     for col in DATE_COLS:
@@ -105,4 +115,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

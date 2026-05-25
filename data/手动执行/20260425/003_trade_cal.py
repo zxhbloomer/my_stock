@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _common import *
 
 TABLE         = "003_trade_cal"
-DEFAULT_START = "20100729"
+DEFAULT_START = "20100101"
 DEFAULT_END   = "20301231"
 FIELDS = "exchange,cal_date,is_open,pretrade_date"
 COLS   = FIELDS.split(",")
@@ -46,14 +46,18 @@ def main():
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     all_dfs = []
+    years = range(pd.Timestamp(args.start).year, pd.Timestamp(args.end).year + 1)
     for exchange in ["SSE", "SZSE", "BSE"]:
-        try:
-            df = pro.trade_cal(exchange=exchange, start_date=args.start,
-                               end_date=args.end, fields=FIELDS)
-            if df is not None and not df.empty:
-                all_dfs.append(df)
-        except Exception:
-            raise
+        for year in years:
+            start_date = max(args.start, f"{year}0101")
+            end_date = min(args.end, f"{year}1231")
+            try:
+                df = pro.trade_cal(exchange=exchange, start_date=start_date,
+                                   end_date=end_date, fields=FIELDS)
+                if df is not None and not df.empty:
+                    all_dfs.append(df)
+            except Exception:
+                raise
         # time.sleep(0.3)
 
     if not all_dfs:

@@ -12,12 +12,12 @@
 输出字段：ts_code,trade_date,his_low,his_high,cost_5pct,cost_15pct,cost_50pct,
           cost_85pct,cost_95pct,weight_avg,winner_rate
 
-同步策略：按股票循环增量（ts_code+trade_date 为主键，upsert）
+同步策略：按交易日分页增量（ts_code+trade_date 为主键，upsert）
 表名：061_cyq_perf
 迁移说明：tushare.stock_chips 有数据，但字段不同（stock_chips是筹码分布，cyq_perf是胜率），无需迁移
 用法: python 061_cyq_perf.py [--start YYYYMMDD] [--end YYYYMMDD]
 """
-import argparse, sys, time
+import argparse, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _common import *
@@ -58,10 +58,42 @@ def get_start(engine):
     return start
 
 
+def normalize_df(df):
+    if df is None or df.empty:
+        return df
+    df["trade_date"] = pd.to_datetime(df["trade_date"], errors="coerce")
+    for col in FLOAT_COLS:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df.dropna(subset=PK).drop_duplicates(subset=PK)
+
+
+def fetch_trade_date_pages(pro, trade_date, page_size):
+    frames = []
+    offset = 0
+    while True:
+        df = pro.cyq_perf(
+            trade_date=trade_date,
+            fields=FIELDS,
+            limit=page_size,
+            offset=offset,
+        )
+        if df is None or df.empty:
+            break
+        frames.append(df)
+        if len(df) < page_size:
+            break
+        offset += page_size
+    if not frames:
+        return pd.DataFrame(columns=COLS)
+    return pd.concat(frames, ignore_index=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", default=None)
     parser.add_argument("--end",   default=TODAY)
+    parser.add_argument("--page-size", type=int, default=5000)
     args = parser.parse_args()
 
     pro    = init_tushare()
@@ -72,38 +104,25 @@ def main():
 
     start = args.start or get_start(engine)
 
-    # 获取股票列表
-    codes = []
-    for status in ["L", "D", "P"]:
-        s = pro.stock_basic(list_status=status, fields="ts_code")
-        if s is not None and not s.empty and "ts_code" in s.columns:
-            codes.extend(s["ts_code"].tolist())
-    if not codes:
-        raise RuntimeError("stock_basic 返回异常，未获取到任何股票代码")
+    dates = get_trade_dates(pro, start, args.end)
 
-    mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ing")
     total_rows, t0 = 0, datetime.now()
-    for i, code in enumerate(codes, 1):
+    for i, trade_date in enumerate(dates, 1):
+        mark_sync(engine, f"{TABLE}.py", TABLE, trade_date, "ing")
         try:
-            df = pro.cyq_perf(ts_code=code, start_date=start, end_date=args.end, fields=FIELDS)
+            df = fetch_trade_date_pages(pro, trade_date, args.page_size)
             if df is not None and not df.empty:
-                df["trade_date"] = pd.to_datetime(df["trade_date"], errors="coerce")
-                for col in FLOAT_COLS:
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col], errors="coerce")
-                df = df.dropna(subset=PK).drop_duplicates(subset=PK)
+                df = normalize_df(df)
                 rows = upsert_df(engine, df, TABLE, COLS, PK)
                 total_rows += rows
             else:
                 rows = 0
+            mark_sync(engine, f"{TABLE}.py", TABLE, trade_date, "ok")
         except Exception:
             raise
         elapsed = (datetime.now() - t0).seconds
-        if rows > 0 or i % 200 == 0:
-            print(f"  [{i:4d}/{len(codes)}] {code}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
-        # time.sleep(0.2)
+        print(f"  [{i:4d}/{len(dates)}] {trade_date}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
 
-    mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")
     print(f"\n[完成] upsert {total_rows:,} 条")
 
 

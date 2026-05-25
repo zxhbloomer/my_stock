@@ -45,6 +45,7 @@ class SmartIncrementalSyncItem(BaseModel):
     script_name: str
     run_start: str = ""
     run_end: str = ""
+    run_ranges: List[dict] = []
 
 
 class SmartIncrementalSyncRequest(BaseModel):
