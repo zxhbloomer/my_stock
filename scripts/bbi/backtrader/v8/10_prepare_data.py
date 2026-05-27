@@ -126,6 +126,15 @@ def format_compact_date(value):
     return pd.Timestamp(value).strftime("%Y%m%d")
 
 
+def resolve_completeness_end_date(end_date, now=None):
+    now = now or datetime.datetime.now()
+    today = now.date()
+    end_day = pd.Timestamp(end_date).date()
+    if end_day >= today and now.time() < datetime.time(21, 0):
+        return (today - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    return pd.Timestamp(end_date).strftime("%Y-%m-%d")
+
+
 def analyze_daily_count_completeness(expected_dates, counts_by_date, low_count_ratio=LOW_COUNT_RATIO, check_low_count=True):
     missing_dates = []
     low_count_dates = []
@@ -513,12 +522,17 @@ def main():
     start_date = args.start or START_DATE
     backtest_start = args.backtest_start or BACKTEST_START_DATE
     end_date = args.end or END_DATE or datetime.date.today().strftime("%Y-%m-%d")
+    completeness_end_date = resolve_completeness_end_date(end_date)
     requested_codes = {c.strip() for c in args.codes.split(",") if c.strip()}
 
     log_step(
         "start",
         total_start=total_start,
-        extra=f"date_range={start_date}~{end_date}, chunk_size={FETCH_CHUNK_SIZE}",
+        extra=(
+            f"date_range={start_date}~{end_date}, "
+            f"completeness_range={start_date}~{completeness_end_date}, "
+            f"chunk_size={FETCH_CHUNK_SIZE}"
+        ),
     )
     step_start = time.perf_counter()
     reset_output_dir()
@@ -530,7 +544,7 @@ def main():
 
     step_start = time.perf_counter()
     with engine.connect() as conn:
-        db_quality = validate_database_completeness(conn, start_date, end_date)
+        db_quality = validate_database_completeness(conn, start_date, completeness_end_date)
     log_step(
         "database completeness checked",
         step_start,
