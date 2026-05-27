@@ -14,7 +14,7 @@
 | 数据同步 | `data/手动执行/MINISHARE/` | Minishare API 增量/全量同步脚本 |
 | BBI 回测 | `scripts/bbi/backtrader/` | BBI 策略多版本回测框架 |
 | Qlib 工作流 | `scripts/` + `configs/` | LightGBM 因子模型训练与验证 |
-| 报表生成 | `scripts/bbi/backtrader/v5/30_generate_report.py` | HTML 交互式回测报表 |
+| 报表生成 | `scripts/bbi/backtrader/v8/30_generate_report.py` | HTML 交互式回测报表 |
 | 交易跟踪 | `scripts/bbi/backtrader/v4_plan_1/40_trading_server.py` | 操作计划保存与执行跟踪（端口 8086，待实现） |
 
 ---
@@ -104,14 +104,28 @@ BBI = (MA5 + MA10 + MA20 + MA60) / 4
 - 输出目录独立，不读取 `v5/output`
 - 2026-05-17 本地留档：2018-01-02 至 2026-05-14，最终净值 1,572,816，总收益 214.56%，年化收益 14.68%，最大回撤 -30.61%，交易记录 782 条
 
+### v7 — 防守增强版本
+- 独立 BBI 强势股轮动策略目录：`scripts/bbi/backtrader/v7/`
+- 在 v6 基础上继续强化弱市低波动动量过滤、熊市过滤、熊市小仓位试探和板块风险控制
+- 作为 v8 的直接基线版本，v8 不读取 v7 的输出文件
+
+### v8 — 当前主力版本
+- 独立 BBI 强势股轮动策略目录：`scripts/bbi/backtrader/v8/`
+- 沿用 v7 的弱市过滤、牛市提前买入、熊市过滤和熊市小仓位试探逻辑
+- 合入“纯牛市小额最后加仓”：单票 4 档后可在牛市额外第 5 档加仓 5 万元，牛市加仓浮盈阈值为 `(4.5%, 9%, 13.5%, 42%)`
+- 合入“长期低效持仓退出”：持仓满 231 个交易日、信号日浮盈不大于 0%、且跌出候选榜前 20 时，次日开盘卖出
+- 启用东方财富板块 overlay：2025-01-02 起使用 `099_dc_daily` 和滞后一交易日的 `098_dc_member` 过滤崩溃板块暴露
+- 数据准备前校验 `063_stk_factor_pro`、`029_stk_limit`、`137_idx_factor_pro` 的交易日完整性；21:00 前不会把今天作为必须同步日期
+- 报表新增月度市场状态、周度收益、周度市场状态和东方财富热点板块摘要
+
 ---
 
-## 快速运行 BBI v5 策略
+## 快速运行 BBI v8 策略
 
 ### 前置条件
 
 1. PostgreSQL 数据库已启动（Docker）
-2. `tushare_v2` schema 中有 `063_stk_factor_pro`、`061_cyq_perf`、`080_moneyflow` 等表
+2. `tushare_v2` schema 中有 `063_stk_factor_pro`、`029_stk_limit`、`137_idx_factor_pro`、`098_dc_member`、`099_dc_daily` 等表
 3. 已配置 `.env` 文件
 
 ```bash
@@ -123,7 +137,7 @@ TUSHARE_TOKEN=your_token_here
 ### 运行步骤
 
 ```bash
-cd scripts/bbi/backtrader/v5
+cd scripts/bbi/backtrader/v8
 
 # Step 1: 准备数据（从 PostgreSQL 生成 parquet）
 python -X utf8 10_prepare_data.py
@@ -131,7 +145,7 @@ python -X utf8 10_prepare_data.py
 # Step 2: 运行回测
 python -X utf8 20_run_backtest.py
 
-# Step 3: 生成 HTML 报表（自动打开浏览器，端口 8085）
+# Step 3: 生成 HTML 报表
 python -X utf8 30_generate_report.py
 ```
 
@@ -142,20 +156,23 @@ python -X utf8 30_generate_report.py
 | `START_DATE` | `2018-01-01` | 回测开始日期 |
 | `END_DATE` | `None`（今日） | 回测结束日期 |
 | `INIT_CASH` | `500,000` | 初始资金（元） |
-| `REAL_CASH` | `500,000` | 实盘可用资金（每次换仓后从券商 App 更新） |
-| `TOP_N` | `5` | 持仓股票数量 |
-| `COMM_BUY` | `0.0005` | 买入手续费率 |
-| `COMM_SELL` | `0.0015` | 卖出手续费率（含印花税） |
+| `COMMISSION_BUY` | `0.0005` | 买入手续费率 |
+| `COMMISSION_SELL` | `0.0015` | 卖出手续费率（含印花税） |
 | `FILTER_MIN_CIRC_MV` | `100亿` | 最小流通市值过滤 |
-| `FILTER_MIN_AMOUNT` | `5000万` | 最小日均成交额过滤 |
-| `LONG_POSITION_STEPS` | `(80000, 60000, 40000, 20000)` | 单票分批建仓金额 |
+| `FILTER_MIN_AMOUNT` | `3000万` | 最小日均成交额过滤 |
+| `LONG_POSITION_STEPS` | `(80000, 60000, 40000, 20000, 50000)` | 单票分批建仓金额 |
 | `LONG_MAX_HOLDINGS` | `5` | 长期策略最多持仓数量 |
 | `LONG_MAX_TOTAL_EXPOSURE` | `500,000` | 长期策略最大总投入 |
 | `LONG_STOP_LOSS_PCT` | `-5%` | 单票硬止损阈值 |
-| `REGIME_BULL_PULLBACK_THRESHOLD` | `-4%` | 牛市普通首买回撤阈值 |
+| `BULL_ADD_PROFIT_THRESHOLDS` | `(4.5%, 9%, 13.5%, 42%)` | 牛市分批加仓浮盈阈值 |
+| `RANK_STALE_EXIT_MIN_TRADING_DAYS` | `231` | 长期低效持仓退出的最小持仓交易日数 |
+| `RANK_STALE_EXIT_PROFIT_THRESHOLD_PCT` | `0%` | 长期低效持仓退出的浮盈阈值 |
+| `BULL_EARLY_ENTRY_PULLBACK_THRESHOLD` | `-2.5%` | 牛市普通首买回撤阈值 |
 | `REGIME_NEUTRAL_PULLBACK_THRESHOLD` | `-7%` | 震荡普通首买回撤阈值 |
 | `REGIME_STRONG_TREND_PULLBACK_THRESHOLD` | `-2.6%` | 强趋势首买回撤阈值 |
 | `REGIME_BEAR_EXIT_LOSS_THRESHOLD` | `0%` | 熊市浮亏卖出阈值 |
+| `DC_SEGMENT_CRASH_RET_20` | `-10%` | 东方财富板块 20 日跌幅崩溃阈值 |
+| `DC_SEGMENT_CRASH_DD_20` | `-15%` | 东方财富板块 20 日回撤崩溃阈值 |
 
 ---
 
@@ -167,10 +184,10 @@ Tushare Pro API
 PostgreSQL (my_stock DB, tushare_v2 schema)
       ↓  data/手动执行/MINISHARE/ 同步脚本
       ↓
-scripts/bbi/backtrader/v5/10_prepare_data.py
-      ↓  过滤 + BBI 计算 + shift(1) 防泄露
+scripts/bbi/backtrader/v8/10_prepare_data.py
+      ↓  数据完整性校验 + 过滤 + 特征生成
       ↓
-output/stock_data/*.parquet（每股一个文件）
+output/panel.parquet + output/market_index.parquet
       ↓
 20_run_backtest.py → output/{nav_series.csv, trade_records.csv, rebalance_log.csv, last_holdings.json}
       ↓

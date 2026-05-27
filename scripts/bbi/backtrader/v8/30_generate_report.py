@@ -11,15 +11,20 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.io as pio
+from sqlalchemy import create_engine, text
+from sqlalchemy.pool import NullPool
 
 from config import (
     BASE_POSITION_AMOUNT,
+    DB_URL,
     INIT_CASH,
     LAST_HOLDINGS_PATH,
     LONG_POSITION_STEPS,
     MAX_POSITION_AMOUNT,
     NAV_SERIES_PATH,
+    REBALANCE_LOG_PATH,
     REPORT_PATH,
+    SCHEMA,
     SCORES_PATH,
     SUMMARY_PATH,
     TRADE_RECORDS_PATH,
@@ -35,10 +40,11 @@ def load_strategy_outputs():
     nav = pd.read_csv(NAV_SERIES_PATH, parse_dates=["date"])
     trades = pd.read_csv(TRADE_RECORDS_PATH) if TRADE_RECORDS_PATH.exists() else pd.DataFrame()
     scores = pd.read_csv(SCORES_PATH) if SCORES_PATH.exists() else pd.DataFrame()
+    rebalance_log = pd.read_csv(REBALANCE_LOG_PATH) if REBALANCE_LOG_PATH.exists() else pd.DataFrame()
     holdings = {}
     if LAST_HOLDINGS_PATH.exists():
         holdings = json.loads(LAST_HOLDINGS_PATH.read_text(encoding="utf-8"))
-    return summary, prepare_nav(nav), trades, scores, holdings
+    return summary, prepare_nav(nav), trades, scores, rebalance_log, holdings
 
 
 def prepare_nav(nav):
@@ -160,7 +166,204 @@ def fmt_date(value):
     return text[:10]
 
 
-def build_monthly_return_data(nav):
+def build_monthly_market_regime_summary(rebalance_log):
+    if rebalance_log is None or rebalance_log.empty:
+        return {}
+    required_cols = {"date", "market_regime"}
+    if not required_cols.issubset(rebalance_log.columns):
+        return {}
+    data = rebalance_log[["date", "market_regime"]].copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data = data.dropna(subset=["date"])
+    if data.empty:
+        return {}
+    data["period_end"] = data["date"].dt.to_period("M").dt.to_timestamp("M")
+    data["market_regime"] = data["market_regime"].fillna("unknown").astype(str)
+
+    labels = [
+        ("bull", "牛市"),
+        ("neutral", "震荡"),
+        ("bear", "熊市"),
+    ]
+    summary = {}
+    for period_end, group in data.groupby("period_end"):
+        counts = group["market_regime"].value_counts()
+        parts = [f"{label}({int(counts.get(key, 0))})" for key, label in labels]
+        known_keys = {key for key, _ in labels}
+        unknown_count = int(counts[~counts.index.isin(known_keys)].sum())
+        if unknown_count:
+            parts.append(f"未知({unknown_count})")
+        summary[pd.Timestamp(period_end)] = " / ".join(parts)
+    return summary
+
+
+def week_number_in_month(date):
+    date = pd.Timestamp(date)
+    month_start = date.replace(day=1)
+    first_week_start = month_start - pd.Timedelta(days=month_start.weekday())
+    return int(((date - first_week_start).days // 7) + 1)
+
+
+def build_weekly_regime_summary(rebalance_log):
+    if rebalance_log is None or rebalance_log.empty:
+        return {}
+    required_cols = {"date", "market_regime"}
+    if not required_cols.issubset(rebalance_log.columns):
+        return {}
+    data = rebalance_log[["date", "market_regime"]].copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data = data.dropna(subset=["date"])
+    if data.empty:
+        return {}
+    data["month_key"] = data["date"].dt.strftime("%Y-%m")
+    data["week_no"] = data["date"].map(week_number_in_month)
+    data["market_regime"] = data["market_regime"].fillna("unknown").astype(str)
+    summary = {}
+    for key, group in data.groupby(["month_key", "week_no"]):
+        counts = group["market_regime"].value_counts()
+        summary[key] = (
+            f"牛({int(counts.get('bull', 0))})/"
+            f"震({int(counts.get('neutral', 0))})/"
+            f"熊({int(counts.get('bear', 0))})"
+        )
+    return summary
+
+
+def build_monthly_week_cells(nav, rebalance_log=None, weekly_hotspots=None):
+    weekly_hotspots = weekly_hotspots or {}
+    if nav is None or nav.empty or "date" not in nav.columns or "nav" not in nav.columns:
+        return {}
+    data = nav[["date", "nav"]].copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data["nav"] = pd.to_numeric(data["nav"], errors="coerce")
+    data = data.dropna(subset=["date", "nav"]).sort_values("date")
+    if data.empty:
+        return {}
+    data["period_end"] = data["date"].dt.to_period("M").dt.to_timestamp("M")
+    data["month_key"] = data["date"].dt.strftime("%Y-%m")
+    data["week_no"] = data["date"].map(week_number_in_month)
+    regime_summary = build_weekly_regime_summary(rebalance_log)
+    prev_nav = None
+    by_month = {}
+    for (period_end, month_key, week_no), group in data.groupby(["period_end", "month_key", "week_no"], sort=True):
+        if week_no < 1 or week_no > 5:
+            continue
+        end_nav = float(group["nav"].iloc[-1])
+        base_nav = float(group["nav"].iloc[0]) if prev_nav is None else prev_nav
+        week_ret = end_nav / base_nav - 1.0 if base_nav else float("nan")
+        prev_nav = end_nav
+        by_month.setdefault(pd.Timestamp(period_end), [None, None, None, None, None])
+        by_month[pd.Timestamp(period_end)][week_no - 1] = {
+            "hotspots": weekly_hotspots.get((month_key, int(week_no)), "-"),
+            "regime": regime_summary.get((month_key, int(week_no)), "牛(0)/震(0)/熊(0)"),
+            "return": fmt_arrow(week_ret, is_pct=True),
+            "class": signed_class(week_ret),
+        }
+    return by_month
+
+
+def zscore_by_date(frame, value_col, out_col):
+    values = pd.to_numeric(frame[value_col], errors="coerce")
+    means = values.groupby(frame["trade_date"]).transform("mean")
+    stds = values.groupby(frame["trade_date"]).transform(lambda s: s.std(ddof=0)).replace(0, np.nan)
+    frame[out_col] = ((values - means) / stds).fillna(0.0)
+    return frame
+
+
+def build_dc_segment_score_frame(dc_daily):
+    required = {"ts_code", "trade_date", "close", "amount"}
+    missing = required - set(dc_daily.columns)
+    if missing:
+        raise ValueError(f"dc_daily missing columns: {sorted(missing)}")
+    source_cols = list(required)
+    name_col = None
+    for candidate in ["name", "segment_name"]:
+        if candidate in dc_daily.columns:
+            name_col = candidate
+            source_cols.append(candidate)
+            break
+    data = dc_daily[source_cols].copy()
+    data = data.rename(columns={"ts_code": "segment_code"})
+    if name_col:
+        data = data.rename(columns={name_col: "segment_name"})
+        data["segment_name"] = data["segment_name"].fillna("").astype(str).str.strip()
+    data["trade_date"] = pd.to_datetime(data["trade_date"], errors="coerce")
+    data["close"] = pd.to_numeric(data["close"], errors="coerce")
+    data["amount"] = pd.to_numeric(data["amount"], errors="coerce")
+    data = data.dropna(subset=["segment_code", "trade_date", "close"]).sort_values(["segment_code", "trade_date"])
+    grouped = data.groupby("segment_code", sort=False)
+    data["seg_ret_20"] = grouped["close"].pct_change(20)
+    data["seg_ret_60"] = grouped["close"].pct_change(60)
+    data["seg_amount_rank_pct"] = data.groupby("trade_date")["amount"].rank(pct=True)
+    for col in ["seg_ret_20", "seg_ret_60", "seg_amount_rank_pct"]:
+        data[col] = data[col].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        data = zscore_by_date(data, col, f"{col}_z")
+    data["segment_score"] = (
+        0.45 * data["seg_ret_60_z"]
+        + 0.35 * data["seg_ret_20_z"]
+        + 0.20 * data["seg_amount_rank_pct_z"]
+    ).clip(-3.0, 3.0)
+    result_cols = ["trade_date", "segment_code", "segment_score"]
+    if "segment_name" in data.columns:
+        result_cols.append("segment_name")
+    return data[result_cols].copy()
+
+
+def build_weekly_hotspots_from_dc_daily(dc_daily, top_n=3):
+    if dc_daily is None or dc_daily.empty:
+        return {}
+    features = build_dc_segment_score_frame(dc_daily)
+    if features.empty:
+        return {}
+    features["month_key"] = features["trade_date"].dt.strftime("%Y-%m")
+    features["week_no"] = features["trade_date"].map(week_number_in_month)
+    hotspots = {}
+    for (month_key, week_no), group in features.groupby(["month_key", "week_no"], sort=True):
+        if week_no < 1 or week_no > 5:
+            continue
+        last_date = group["trade_date"].max()
+        last_day = group[group["trade_date"].eq(last_date)].copy()
+        last_day = last_day.sort_values("segment_score", ascending=False).head(top_n)
+        if "segment_name" in last_day.columns:
+            display = last_day["segment_name"].where(last_day["segment_name"].astype(str).str.len() > 0, last_day["segment_code"])
+        else:
+            display = last_day["segment_code"]
+        leaders = display.astype(str).tolist()
+        hotspots[(month_key, int(week_no))] = "、".join(leaders) if leaders else "-"
+    return hotspots
+
+
+def load_weekly_dc_segment_hotspots(nav):
+    if nav is None or nav.empty or "date" not in nav.columns:
+        return {}
+    start_date = pd.to_datetime(nav["date"], errors="coerce").min()
+    end_date = pd.to_datetime(nav["date"], errors="coerce").max()
+    if pd.isna(start_date) or pd.isna(end_date):
+        return {}
+    query_start = (start_date - pd.Timedelta(days=120)).strftime("%Y-%m-%d")
+    query_end = end_date.strftime("%Y-%m-%d")
+    try:
+        engine = create_engine(DB_URL, poolclass=NullPool)
+        with engine.connect() as conn:
+            dc_daily = pd.read_sql(text(f"""
+                SELECT d.ts_code, d.trade_date, d.close, d.amount, i.name
+                FROM {SCHEMA}."099_dc_daily" d
+                LEFT JOIN (
+                    SELECT DISTINCT ON (ts_code) ts_code, name
+                    FROM {SCHEMA}."097_dc_index"
+                    WHERE trade_date <= :end_date
+                    ORDER BY ts_code, trade_date DESC
+                ) i ON i.ts_code = d.ts_code
+                WHERE d.trade_date >= :start_date
+                  AND d.trade_date <= :end_date
+            """), conn, params={"start_date": query_start, "end_date": query_end})
+        return build_weekly_hotspots_from_dc_daily(dc_daily)
+    except Exception as exc:
+        print(f"[report] weekly DC segment hotspots unavailable: {exc}")
+        return {}
+
+
+def build_monthly_return_data(nav, rebalance_log=None):
     nav_indexed = nav.set_index("date")
     monthly_nav = nav_indexed["nav"].resample("ME").last()
     if "cash" in nav_indexed.columns:
@@ -205,6 +408,7 @@ def build_monthly_return_data(nav):
         "dates": dates,
         "year_labels": year_labels,
         "row_bg": row_bg,
+        "market_regime_summary": build_monthly_market_regime_summary(rebalance_log),
         "monthly_nav": monthly_nav,
         "monthly_stock_value": monthly_stock_value,
         "monthly_cash": monthly_cash,
@@ -235,10 +439,21 @@ def make_equity_figure(nav):
     return fig
 
 
-def make_monthly_return_table_html(nav):
-    data = build_monthly_return_data(nav)
+def make_week_cell_html(cell):
+    if not cell:
+        return "-"
+    return (
+        f'<div class="week-line">热点板块：{escape(str(cell.get("hotspots", "-")))}</div>'
+        f'<div class="week-line">{escape(str(cell.get("regime", "-")))}</div>'
+        f'<div class="week-line">收益：{escape(str(cell.get("return", "-")))}</div>'
+    )
+
+
+def make_monthly_return_table_html(nav, rebalance_log=None, weekly_hotspots=None):
+    data = build_monthly_return_data(nav, rebalance_log=rebalance_log)
+    week_cells = build_monthly_week_cells(nav, rebalance_log=rebalance_log, weekly_hotspots=weekly_hotspots)
     headers = [
-        "年份", "月份", "月末总资产", "股票市值", "现金余额", "股票仓位", "现金占比",
+        "年份", "月份", "市场状态", "月末总资产", "股票市值", "现金余额", "股票仓位", "现金占比",
         "当月盈亏(元)", "当月收益率", "总收益率", "年内收益率", "年收益率",
     ]
     year_groups = {}
@@ -247,15 +462,20 @@ def make_monthly_return_table_html(nav):
     html = ['<div class="monthly-table-wrap"><table class="monthly-return-table">']
     html.append(
         "<colgroup>"
-        "<col class=\"year-col\"><col class=\"month-col\"><col class=\"asset-col\"><col class=\"asset-col\"><col class=\"asset-col\">"
+        "<col class=\"year-col\"><col class=\"month-col\"><col class=\"regime-col\"><col class=\"asset-col\"><col class=\"asset-col\"><col class=\"asset-col\">"
         "<col class=\"rate-col\"><col class=\"rate-col\">"
         "<col class=\"pnl-col\"><col class=\"rate-col\"><col class=\"rate-col\">"
         "<col class=\"rate-col\"><col class=\"rate-col\">"
+        "<col class=\"week-col\"><col class=\"week-col\"><col class=\"week-col\"><col class=\"week-col\"><col class=\"week-col\">"
         "</colgroup>"
     )
     html.append("<thead><tr>")
     for header in headers:
-        html.append(f"<th>{escape(header)}</th>")
+        html.append(f'<th rowspan="2">{escape(header)}</th>')
+    html.append('<th colspan="5">周</th>')
+    html.append("</tr><tr>")
+    for header in ["一周", "二周", "三周", "四周", "五周"]:
+        html.append(f"<th>{header}</th>")
     html.append("</tr></thead><tbody>")
     for i, d in enumerate(data["dates"]):
         year_indexes = year_groups[d.year]
@@ -264,6 +484,7 @@ def make_monthly_return_table_html(nav):
         row_bg = data["row_bg"][i]
         row = [
             (d.strftime("%m月"), "neutral"),
+            (data["market_regime_summary"].get(pd.Timestamp(d), "-"), "neutral"),
             (f"{data['monthly_nav'].iloc[i]:,.0f}", "neutral"),
             (fmt_int(data["monthly_stock_value"].iloc[i]), "neutral"),
             (fmt_int(data["monthly_cash"].iloc[i]), "neutral"),
@@ -281,7 +502,7 @@ def make_monthly_return_table_html(nav):
                 f"{d.year}</td>"
             )
         for col_idx, (text, klass) in enumerate(row):
-            align = "right" if col_idx >= 1 else "center"
+            align = "right" if col_idx >= 2 else "center"
             html.append(f'<td class="{klass}" style="text-align:{align}">{escape(str(text))}</td>')
         if is_year_first_row:
             annual_text = data["annual_col"][annual_index]
@@ -290,6 +511,9 @@ def make_monthly_return_table_html(nav):
                 f'<td class="{annual_class} merged-cell" rowspan="{len(year_indexes)}" style="text-align:right">'
                 f"{escape(str(annual_text))}</td>"
             )
+        for cell in week_cells.get(pd.Timestamp(d), [None, None, None, None, None]):
+            klass = cell.get("class", "neutral") if cell else "neutral"
+            html.append(f'<td class="{klass} week-cell" style="text-align:left">{make_week_cell_html(cell)}</td>')
         html.append("</tr>")
     html.append("</tbody></table></div>")
     return "".join(html)
@@ -524,6 +748,7 @@ def make_trade_table_html(trades):
         "long_limit_down_exit": "长期策略跌停硬止损",
         "long_bearish_volume_exit": "长期策略放量大阴线卖出",
         "long_regime_bear_exit": "熊市确认后浮亏卖出",
+        "long_rank_stale_exit": "长期低效持仓卖出",
         "bear_probe_initial_buy": "熊市小仓位试探买入",
         "market_bearish_volume": "大盘放量阴线风控",
         "market_regime_bear": "熊市确认后不开仓",
@@ -581,10 +806,11 @@ def make_trade_table_html(trades):
     return html_table(ordered_cols, rows, row_classes, cell_classes, table_class="report-table trades-table")
 
 
-def make_html(summary, nav, trades, scores, holdings):
+def make_html(summary, nav, trades, scores, rebalance_log, holdings):
     start_date = str(nav["date"].iloc[0])[:10]
     end_date = str(nav["date"].iloc[-1])[:10]
     metrics = calc_metrics(nav, summary)
+    weekly_hotspots = load_weekly_dc_segment_hotspots(nav)
     figs = [
         (make_net_value_figure(nav, metrics, start_date, end_date), "净值曲线"),
         (make_equity_figure(nav), "资金曲线"),
@@ -599,7 +825,7 @@ def make_html(summary, nav, trades, scores, holdings):
                 '<div class="section wide-section"><div class="section-title">资金曲线 & 月度收益明细</div>'
                 '<div class="equity-grid">'
                 f'<div class="equity-chart">{div}</div>'
-                f'<div class="equity-table">{make_monthly_return_table_html(nav)}</div>'
+                f'<div class="equity-table">{make_monthly_return_table_html(nav, rebalance_log=rebalance_log, weekly_hotspots=weekly_hotspots)}</div>'
                 '</div></div>\n'
             )
         else:
@@ -630,18 +856,22 @@ def make_html(summary, nav, trades, scores, holdings):
   .equity-grid {{ display: grid; grid-template-columns: 760px 1160px; gap: 16px; align-items: start; min-width: 1936px; }}
   .equity-chart, .equity-table {{ min-width: 0; }}
   .monthly-table-wrap {{ height: 600px; overflow: auto; border: 1px solid #d0d7de; }}
-  .monthly-return-table {{ border-collapse: separate; border-spacing: 0; table-layout: fixed; width: 1140px; font-size: 12px; }}
+  .monthly-return-table {{ border-collapse: separate; border-spacing: 0; table-layout: fixed; width: 2520px; font-size: 12px; }}
   .monthly-return-table .year-col {{ width: 52px; }}
   .monthly-return-table .month-col {{ width: 48px; }}
+  .monthly-return-table .regime-col {{ width: 180px; }}
   .monthly-return-table .asset-col {{ width: 105px; }}
   .monthly-return-table .pnl-col {{ width: 110px; }}
   .monthly-return-table .rate-col {{ width: 86px; }}
+  .monthly-return-table .week-col {{ width: 240px; }}
   .monthly-return-table th {{ position: sticky; top: 0; z-index: 2; background: #2c3e50; color: white; padding: 7px 6px; border-right: 1px solid #d0d7de; border-bottom: 1px solid #d0d7de; text-align: center; }}
   .monthly-return-table td {{ padding: 5px 6px; border-right: 1px solid #d0d7de; border-bottom: 1px solid #d0d7de; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
   .monthly-return-table .merged-cell {{ vertical-align: middle; font-weight: 600; }}
   .monthly-return-table .pos {{ color: #dc2626; }}
   .monthly-return-table .neg {{ color: #16a34a; }}
   .monthly-return-table .neutral {{ color: #333333; }}
+  .monthly-return-table .week-cell {{ font-size: 11px; line-height: 1.45; white-space: normal; overflow: visible; text-overflow: clip; vertical-align: top; }}
+  .monthly-return-table .week-line {{ display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
   .html-table-wrap {{ max-height: 620px; overflow: auto; border: 1px solid #d0d7de; }}
   .report-table {{ border-collapse: separate; border-spacing: 0; width: 100%; min-width: 980px; font-size: 12px; }}
   .report-table th {{ position: sticky; top: 0; z-index: 2; background: #34495e; color: white; padding: 7px 8px; border-right: 1px solid #d0d7de; border-bottom: 1px solid #d0d7de; text-align: center; white-space: nowrap; }}
@@ -663,7 +893,7 @@ def make_html(summary, nav, trades, scores, holdings):
 <div class="header">
   <h2>v8 BBI月度强弱轮动策略报表</h2>
   <p>回测区间：{start_date} ~ {end_date} &nbsp;|&nbsp; 初始资金：{INIT_CASH:,.0f}元 &nbsp;|&nbsp; 单票目标：约{BASE_POSITION_AMOUNT:,.0f}元起，常规4档封顶{MAX_POSITION_AMOUNT:,.0f}元；牛市额外第5档后单票最高约{V8_MAX_POSITION_AMOUNT:,.0f}元</p>
-  <p>策略口径：每月第一个实际交易日开盘调仓，使用上一交易日收盘后的 BBI 强弱排名；若上证指数短期大跌或市场状态为熊市，则本次不新开仓。已合入“牛市提前买入”和“纯牛市小额最后加仓”：牛市首买回撤阈值提前到 -2.5%（强趋势 -1.2%）；仅在信号日为牛市、已有持仓第 4 档后且浮盈达到 50% 时，允许第 5 档 5 万元额外加仓；震荡/熊市不触发额外加仓，止损、熊市过滤、熊市小仓位试探不变。</p>
+  <p>策略口径：每月第一个实际交易日开盘调仓，使用上一交易日收盘后的 BBI 强弱排名；若上证指数短期大跌或市场状态为熊市，则本次不新开仓。已合入“牛市提前买入”“纯牛市小额最后加仓”和“长期低效持仓退出”：牛市首买回撤阈值提前到 -2.5%（强趋势 -1.2%）；仅在信号日为牛市、已有持仓第 4 档后且浮盈达到 50% 时，允许第 5 档 5 万元额外加仓；持仓满 231 个交易日、信号日浮盈不大于 0%、且跌出候选榜前 20 时，次日开盘卖出；震荡/熊市不触发额外加仓，止损、熊市过滤、熊市小仓位试探不变。</p>
   <p>候选过滤：价格达到近 21 日最高价 95% 以上不买；近 20 个交易日出现过收盘跌停不买；游资风险命中 2 项及以上不买；加速失速/下跌风险不买（保留早期弱势下降趋势过滤，并额外排除上涨加速后失速、熊市式下跌加速风险）。</p>
   <p>板块风控：2025-01-02 起启用东方财富板块 overlay；使用 099_dc_daily 的信号日收盘板块行情，以及 098_dc_member 滞后一交易日的成分关系。若候选股暴露在 20 日跌幅或 20 日回撤触发的崩溃板块中，则不新买入。</p>
 </div>
@@ -703,8 +933,8 @@ def open_report():
 
 
 def main():
-    summary, nav, trades, scores, holdings = load_strategy_outputs()
-    make_html(summary, nav, trades, scores, holdings)
+    summary, nav, trades, scores, rebalance_log, holdings = load_strategy_outputs()
+    make_html(summary, nav, trades, scores, rebalance_log, holdings)
     print(f"Report saved: {REPORT_PATH}")
     open_report()
 

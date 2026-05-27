@@ -16,6 +16,7 @@ from config import (
     BEAR_PROBE_POSITION_FRACTION,
     BULL_EARLY_ENTRY_PULLBACK_THRESHOLD,
     BULL_EARLY_ENTRY_STRONG_PULLBACK_THRESHOLD,
+    BULL_ADD_PROFIT_THRESHOLDS,
     COMMISSION_BUY,
     COMMISSION_SELL,
     DB_URL,
@@ -61,6 +62,9 @@ from config import (
     MIN_RET_63,
     PURE_BULL_EXTRA_NAV_RATIO,
     PURE_BULL_EXTRA_TOTAL_CAP,
+    RANK_STALE_EXIT_ENABLED,
+    RANK_STALE_EXIT_MIN_TRADING_DAYS,
+    RANK_STALE_EXIT_PROFIT_THRESHOLD_PCT,
     STRONG_TREND_ABOVE_RATIO_126,
     STRONG_TREND_ABOVE_RATIO_63,
     STRONG_TREND_RET_63,
@@ -704,17 +708,24 @@ def next_position_step(pos):
     return float(LONG_POSITION_STEPS[step_index])
 
 
-def can_add_position(code, pos, signal_panel):
+def add_profit_thresholds_for_regime(market_regime_name):
+    if market_regime_name == "bull":
+        return BULL_ADD_PROFIT_THRESHOLDS
+    return LONG_ADD_PROFIT_THRESHOLDS
+
+
+def can_add_position(code, pos, signal_panel, market_regime_name=None):
     step_index = int(pos.get("step_index", 0))
     if step_index <= 0 or step_index >= len(LONG_POSITION_STEPS):
         return False
     profit_pct = calc_position_profit_pct(code, pos, signal_panel)
     if profit_pct is None:
         return False
+    thresholds = add_profit_thresholds_for_regime(market_regime_name)
     threshold_index = step_index - 1
-    if threshold_index >= len(LONG_ADD_PROFIT_THRESHOLDS):
+    if threshold_index >= len(thresholds):
         return False
-    return profit_pct >= LONG_ADD_PROFIT_THRESHOLDS[threshold_index]
+    return profit_pct >= thresholds[threshold_index]
 
 
 def has_limit_down_signal(code, pos, signal_panel):
@@ -731,6 +742,21 @@ def has_limit_down_signal(code, pos, signal_panel):
 def has_stop_loss_signal(code, pos, signal_panel):
     profit_pct = calc_position_profit_pct(code, pos, signal_panel)
     return profit_pct is not None and profit_pct <= LONG_STOP_LOSS_PCT
+
+
+def should_rank_stale_exit(pos, profit_pct, candidate_by_code, code):
+    if not RANK_STALE_EXIT_ENABLED:
+        return False
+    try:
+        profit = float(profit_pct)
+    except (TypeError, ValueError):
+        return False
+    holding_days = int(pos.get("holding_trading_days", 0) or 0)
+    return (
+        holding_days >= int(RANK_STALE_EXIT_MIN_TRADING_DAYS)
+        and profit <= float(RANK_STALE_EXIT_PROFIT_THRESHOLD_PCT)
+        and code not in candidate_by_code.index
+    )
 
 
 def has_bearish_volume_signal(code, pos, signal_panel):
@@ -948,6 +974,11 @@ def run_backtest(panel, market, start_date, end_date):
         "dc_segment_member_lag_days": int(DC_SEGMENT_MEMBER_LAG_DAYS),
         "dc_segment_signal_days": 0,
         "dc_segment_candidate_blocks": 0,
+        "rank_stale_exit_enabled": bool(RANK_STALE_EXIT_ENABLED),
+        "rank_stale_exit_min_days": int(RANK_STALE_EXIT_MIN_TRADING_DAYS),
+        "rank_stale_exit_profit_threshold_pct": float(RANK_STALE_EXIT_PROFIT_THRESHOLD_PCT),
+        "rank_stale_exit_signals": 0,
+        "rank_stale_exit_fills": 0,
     }
     # Bear confirmed loss exit: no-entry uses signal_date, while loss exits use
     # the previously confirmed bear state validated by the tmp experiment.
@@ -979,6 +1010,7 @@ def run_backtest(panel, market, start_date, end_date):
                 pos = holdings[code]
                 if pos.get("pending_sell"):
                     continue
+                pos["holding_trading_days"] = int(pos.get("holding_trading_days", 0) or 0) + 1
                 profit_pct = calc_position_profit_pct(code, pos, signal_panel)
                 if (
                     MARKET_REGIME_FILTER_ENABLED
@@ -1094,12 +1126,32 @@ def run_backtest(panel, market, start_date, end_date):
                 score_rows.extend(candidates[score_cols].head(100).to_dict("records"))
                 bought_count = 0
                 candidate_by_code = candidates.set_index("ts_code", drop=False)
+                rank_stale_exit_reasons = {}
+                for code in list(holdings):
+                    if code in risk_exit_codes or code not in day_panel.index:
+                        continue
+                    pos = holdings[code]
+                    if pos.get("pending_sell"):
+                        continue
+                    profit_pct = calc_position_profit_pct(code, pos, signal_panel)
+                    if should_rank_stale_exit(pos, profit_pct, candidate_by_code, code):
+                        rank_stale_exit_reasons[code] = "long_rank_stale_exit"
+                        stats["rank_stale_exit_signals"] += 1
+                for code, exit_reason in rank_stale_exit_reasons.items():
+                    cash, sold, reason = execute_sell(date, code, holdings[code], day_panel, cash, trades, exit_reason)
+                    if sold:
+                        del holdings[code]
+                        risk_exit_codes.add(code)
+                        stats["sell_fills"] += 1
+                        stats["rank_stale_exit_fills"] += 1
+                    else:
+                        stats["sell_delays"] += 1
                 if not probe_open:
                     for code in list(holdings):
                         if code in risk_exit_codes or code not in candidate_by_code.index or code not in day_panel.index:
                             continue
                         pos = holdings[code]
-                        if pos.get("pending_sell") or not can_add_position(code, pos, signal_panel):
+                        if pos.get("pending_sell") or not can_add_position(code, pos, signal_panel, market_regime_name):
                             continue
                         step_index_before_add = int(pos.get("step_index", 0))
                         target_amount = next_position_step(pos)
