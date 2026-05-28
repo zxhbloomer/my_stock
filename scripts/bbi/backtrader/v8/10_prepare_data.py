@@ -13,6 +13,8 @@ from sqlalchemy.pool import NullPool
 from config import (
     BACKTEST_START_DATE,
     DB_URL,
+    DC_SEGMENT_OVERLAY_ACTIVE_FROM,
+    DC_SEGMENT_OVERLAY_ENABLED,
     DOWNTREND_MA_WINDOW,
     DOWNTREND_RET_WINDOW,
     DOWNTREND_SLOPE_WINDOW,
@@ -72,6 +74,22 @@ DB_COMPLETENESS_TABLES = (
         "date_col": "trade_date",
         "where": "ts_code = '000001.SH'",
         "check_low_count": False,
+    },
+    {
+        "table": "098_dc_member",
+        "date_col": "trade_date",
+        "where": "",
+        "check_low_count": False,
+        "start_date": DC_SEGMENT_OVERLAY_ACTIVE_FROM,
+        "enabled": DC_SEGMENT_OVERLAY_ENABLED,
+    },
+    {
+        "table": "099_dc_daily",
+        "date_col": "trade_date",
+        "where": "",
+        "check_low_count": True,
+        "start_date": DC_SEGMENT_OVERLAY_ACTIVE_FROM,
+        "enabled": DC_SEGMENT_OVERLAY_ENABLED,
     },
 )
 
@@ -228,21 +246,29 @@ def validate_database_completeness(conn, start_date, end_date):
         )
     results = []
     for spec in DB_COMPLETENESS_TABLES:
+        if not bool(spec.get("enabled", True)):
+            continue
+        spec_start_date = max(pd.Timestamp(start_date), pd.Timestamp(spec.get("start_date", start_date)))
+        if spec_start_date > pd.Timestamp(end_date):
+            continue
+        spec_start_date_text = spec_start_date.strftime("%Y-%m-%d")
+        expected_dates_for_spec = fetch_sse_trade_dates(conn, spec_start_date_text, end_date)
         counts = fetch_daily_counts(
             conn,
             spec["table"],
             spec["date_col"],
-            start_date,
+            spec_start_date_text,
             end_date,
             spec.get("where", ""),
         )
         result = analyze_daily_count_completeness(
-            expected_dates,
+            expected_dates_for_spec,
             counts,
             LOW_COUNT_RATIO,
             bool(spec.get("check_low_count", True)),
         )
         result["table"] = spec["table"]
+        result["start_date"] = spec_start_date_text
         results.append(result)
     failures = [
         result for result in results

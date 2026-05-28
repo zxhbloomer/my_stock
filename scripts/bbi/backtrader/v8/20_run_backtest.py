@@ -25,6 +25,7 @@ from config import (
     DC_SEGMENT_MEMBER_LAG_DAYS,
     DC_SEGMENT_OVERLAY_ACTIVE_FROM,
     DC_SEGMENT_OVERLAY_ENABLED,
+    DC_SEGMENT_SCORE_WEIGHT,
     DOWNTREND_BUY_FILTER_ENABLED,
     DOWNTREND_FILTER_NAME,
     INIT_CASH,
@@ -282,7 +283,10 @@ def load_dc_segment_overlay(start_date, end_date):
             raise RuntimeError(
                 "DC segment overlay completeness failed: "
                 f"098_dc_member missing={missing_members[:10]}, "
-                f"099_dc_daily missing={missing_daily[:10]}"
+                f"099_dc_daily missing={missing_daily[:10]}. "
+                "请先补齐这些 DC 赛道数据后再运行正式 v8 回测；"
+                "如果只是想临时忽略 DC overlay，请在 config.py 中显式设置 "
+                "DC_SEGMENT_OVERLAY_ENABLED = False。"
             )
         dc_daily = pd.read_sql(text(f"""
             SELECT ts_code, trade_date, close, amount
@@ -318,6 +322,52 @@ def apply_dc_segment_crash_filter(candidates, signal_date, members, segment_feat
         if blocked_count:
             diagnostics["dc_segment_signal_days"] = diagnostics.get("dc_segment_signal_days", 0) + 1
     return out[~blocked].drop(columns=["has_segment_crash"], errors="ignore").copy().reset_index(drop=True)
+
+
+def apply_dc_segment_score_boost(
+    candidates,
+    signal_date,
+    members,
+    segment_features,
+    weight=DC_SEGMENT_SCORE_WEIGHT,
+):
+    if candidates.empty or not DC_SEGMENT_OVERLAY_ENABLED:
+        return candidates.copy()
+    if pd.Timestamp(signal_date) < pd.Timestamp(DC_SEGMENT_OVERLAY_ACTIVE_FROM):
+        return candidates.copy()
+    if members is None or members.empty or segment_features is None or segment_features.empty:
+        return candidates.copy()
+
+    member_date = member_date_for_signal(signal_date, members)
+    if member_date is None:
+        return candidates.copy()
+
+    day_members = members[members["trade_date"].eq(member_date)][["con_code", "ts_code"]].copy()
+    if day_members.empty:
+        return candidates.copy()
+    day_members = day_members.rename(columns={"con_code": "ts_code", "ts_code": "segment_code"})
+
+    day_features = segment_features[segment_features["trade_date"].eq(pd.Timestamp(signal_date))][
+        ["segment_code", "segment_score"]
+    ].copy()
+    if day_features.empty:
+        return candidates.copy()
+
+    exposure = day_members.merge(day_features, on="segment_code", how="left")
+    if exposure.empty:
+        return candidates.copy()
+    exposure["segment_score"] = pd.to_numeric(exposure["segment_score"], errors="coerce").fillna(0.0)
+    exposure = exposure.groupby("ts_code", as_index=False).agg(best_segment_score=("segment_score", "max"))
+
+    out = candidates.reset_index(drop=True).drop(columns=["best_segment_score", "segment_adjustment"], errors="ignore")
+    out = out.merge(exposure, on="ts_code", how="left")
+    out["best_segment_score"] = pd.to_numeric(out["best_segment_score"], errors="coerce").fillna(0.0)
+    out["segment_adjustment"] = out["best_segment_score"].clip(-2.0, 2.0) * float(weight)
+    out["score"] = pd.to_numeric(out["score"], errors="coerce").fillna(0.0) + out["segment_adjustment"]
+    return out.sort_values(
+        ["score", "above_ratio_63", "ret_63", "amount_ma20", "best_segment_score"],
+        ascending=[False, False, False, False, False],
+    ).reset_index(drop=True)
 
 
 def apply_downtrend_buy_filter(candidates, diagnostics=None):
@@ -1097,6 +1147,12 @@ def run_backtest(panel, market, start_date, end_date):
                     dc_segment_members,
                     dc_segment_features,
                     diagnostics=stats,
+                ).reset_index(drop=True)
+                candidates = apply_dc_segment_score_boost(
+                    candidates,
+                    signal_date,
+                    dc_segment_members,
+                    dc_segment_features,
                 ).reset_index(drop=True)
                 candidates = apply_weak_lowvol_mom_filter(
                     candidates,

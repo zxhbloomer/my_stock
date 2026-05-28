@@ -16,7 +16,7 @@
           例如 600000.SH 在 2022-01-01~2022-04-29 超过6000行，不分页会静默截断。
 表名：062_cyq_chips
 迁移说明：tushare.stock_chips 字段不同（缺少price/percent，有cost_*字段），无法直接迁移
-用法: python 062_cyq_chips.py [--start YYYYMMDD] [--end YYYYMMDD] [--window-days 20] [--page-size 6000]
+用法: python 062_cyq_chips.py [--start YYYYMMDD] [--end YYYYMMDD] [--window-days 50] [--page-size 6000]
 """
 import argparse, sys
 from pathlib import Path
@@ -98,7 +98,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", default=None)
     parser.add_argument("--end",   default=TODAY)
-    parser.add_argument("--window-days", type=int, default=20)
+    parser.add_argument("--window-days", type=int, default=50)
     parser.add_argument("--page-size", type=int, default=6000)
     args = parser.parse_args()
 
