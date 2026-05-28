@@ -1165,6 +1165,7 @@ def run_backtest(panel, market, start_date, end_date):
                 candidates["rebalance_date"] = str(date)[:10]
                 score_cols = [
                     "signal_date", "rebalance_date", "rank", "ts_code", "name", "score",
+                    "close",
                     "above_ratio_21", "above_ratio_63", "above_ratio_126",
                     "avg_distance_63", "high_pos_21", "high_pos_63", "range_pos_63",
                     "recent_limit_down_20", "recent_limit_up_20", "recent_limit_up_63",

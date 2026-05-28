@@ -22,6 +22,7 @@ from config import (
     LONG_POSITION_STEPS,
     MAX_POSITION_AMOUNT,
     NAV_SERIES_PATH,
+    PANEL_PATH,
     REBALANCE_LOG_PATH,
     REPORT_PATH,
     SCHEMA,
@@ -806,6 +807,115 @@ def make_trade_table_html(trades):
     return html_table(ordered_cols, rows, row_classes, cell_classes, table_class="report-table trades-table")
 
 
+TRADE_REASON_MAP = {
+    "monthly_strength_rebalance": "月度强弱调仓买入",
+    "rank_drop_exit": "排名跌出卖出",
+    "pending_sell": "延迟卖出成功",
+    "limit_down_exit": "跌停风控卖出",
+    "long_initial_buy": "长期策略首笔买入",
+    "long_add_buy": "长期策略盈利加仓",
+    "pure_bull_extra_add": "纯牛市小额最后加仓",
+    "long_stop_loss": "长期策略-5%止损",
+    "long_limit_down_exit": "长期策略跌停硬止损",
+    "long_bearish_volume_exit": "长期策略放量大阴线卖出",
+    "long_regime_bear_exit": "熊市确认后浮亏卖出",
+    "long_rank_stale_exit": "长期低效持仓卖出",
+    "bear_probe_initial_buy": "熊市小仓位试探买入",
+    "market_bearish_volume": "大盘放量阴线风控",
+    "market_regime_bear": "熊市确认后不开仓",
+    "market_5d_not_weak": "大盘未弱不触发",
+    "not_bearish_candle": "大盘非阴线不触发",
+    "drop_too_small": "大盘跌幅不足不触发",
+    "volume_not_expanded": "大盘未放量不触发",
+}
+
+
+def line_join(values):
+    cleaned = [str(v) for v in values if str(v) and str(v) != "-"]
+    return "\n".join(cleaned) if cleaned else "-"
+
+
+def enrich_scores_with_panel_price(scores):
+    if scores is None or scores.empty or "close" in scores.columns or not PANEL_PATH.exists():
+        return scores
+    try:
+        panel = pd.read_parquet(PANEL_PATH, columns=["trade_date", "ts_code", "close"])
+    except Exception:
+        return scores
+    if panel.empty or not {"signal_date", "ts_code"}.issubset(scores.columns):
+        return scores
+    data = scores.copy()
+    data["signal_date"] = pd.to_datetime(data["signal_date"], errors="coerce")
+    panel["trade_date"] = pd.to_datetime(panel["trade_date"], errors="coerce")
+    price_map = panel.rename(columns={"trade_date": "signal_date"})[["signal_date", "ts_code", "close"]]
+    return data.merge(price_map, on=["signal_date", "ts_code"], how="left")
+
+
+def build_latest_candidate_rows(scores, holdings, trades, max_rows=30):
+    if scores is None or scores.empty:
+        return []
+    data = enrich_scores_with_panel_price(scores).copy()
+    if "rank" not in data.columns or "ts_code" not in data.columns:
+        return []
+    date_col = "rebalance_date" if "rebalance_date" in data.columns else "signal_date"
+    if date_col in data.columns:
+        latest_date = pd.to_datetime(data[date_col], errors="coerce").max()
+        data = data[pd.to_datetime(data[date_col], errors="coerce").eq(latest_date)].copy()
+    data["rank"] = pd.to_numeric(data["rank"], errors="coerce")
+    data = data[data["rank"].le(max_rows)].sort_values("rank").head(max_rows)
+
+    trade_groups = {}
+    if trades is not None and not trades.empty and {"ts_code", "action", "date"}.issubset(trades.columns):
+        trade_data = trades.copy()
+        trade_data["date"] = trade_data["date"].apply(fmt_date)
+        for code, group in trade_data.sort_values("date").groupby("ts_code", sort=False):
+            buy_rows = group[group["action"].eq("buy")]
+            sell_rows = group[group["action"].eq("sell")]
+            reasons = group.get("reason", pd.Series(dtype=object)).fillna("-").replace(TRADE_REASON_MAP).tolist()
+            trade_groups[code] = {
+                "buy_dates": buy_rows["date"].tolist(),
+                "sell_dates": sell_rows["date"].tolist(),
+                "reasons": reasons,
+            }
+
+    rows = []
+    holdings = holdings or {}
+    for _, row in data.iterrows():
+        code = row.get("ts_code", "-")
+        pos = holdings.get(code, {})
+        shares = float(pos.get("shares", 0) or 0)
+        invested = float(pos.get("invested_amount", 0) or 0)
+        price = row.get("close", np.nan)
+        if pd.isna(price):
+            price = pos.get("last_price", np.nan)
+        group = trade_groups.get(code, {})
+        rows.append({
+            "排名": fmt_int(row.get("rank")),
+            "股票代码": code,
+            "股票名称": row.get("name", code),
+            "价格": fmt_num(price, digits=2),
+            "仓位": fmt_num(shares, digits=2, thousands=True) if shares > 0 else "-",
+            "仓位金额": fmt_num(invested, digits=2, thousands=True) if invested > 0 else "-",
+            "建仓日期": line_join(group.get("buy_dates", [])),
+            "卖出日期": line_join(group.get("sell_dates", [])),
+            "原因": line_join(group.get("reasons", [])),
+        })
+    return rows
+
+
+def make_latest_candidates_table_html(scores, holdings, trades):
+    rows_dicts = build_latest_candidate_rows(scores, holdings, trades, max_rows=30)
+    headers = ["排名", "股票代码", "股票名称", "价格", "仓位", "仓位金额", "建仓日期", "卖出日期", "原因"]
+    rows = [[row.get(header, "-") for header in headers] for row in rows_dicts]
+    cell_classes = [[
+        "num-cell", "text-cell", "text-cell", "num-cell", "num-cell", "num-cell",
+        "multiline-cell date-cell buy-date-cell",
+        "multiline-cell date-cell sell-date-cell",
+        "multiline-cell text-cell",
+    ] for _ in rows]
+    return html_table(headers, rows, cell_classes=cell_classes, table_class="report-table latest-candidates-table")
+
+
 def make_html(summary, nav, trades, scores, rebalance_log, holdings):
     start_date = str(nav["date"].iloc[0])[:10]
     end_date = str(nav["date"].iloc[-1])[:10]
@@ -837,6 +947,10 @@ def make_html(summary, nav, trades, scores, rebalance_log, holdings):
     sections_html += (
         f'<div class="section"><div class="section-title">历史交易明细（共{len(trades)}笔）</div>'
         f'{make_trade_table_html(trades)}</div>\n'
+    )
+    sections_html += (
+        '<div class="section"><div class="section-title">最新候选股票 Top 30</div>'
+        f'{make_latest_candidates_table_html(scores, holdings, trades)}</div>\n'
     )
 
     html = f"""<!DOCTYPE html>
@@ -887,6 +1001,10 @@ def make_html(summary, nav, trades, scores, rebalance_log, holdings):
   .trades-table .sell-row {{ background: #e8f5e9; }}
   .trades-table .buy-action-cell {{ color: #dc2626; font-weight: 600; }}
   .trades-table .sell-action-cell {{ color: #16a34a; font-weight: 600; }}
+  .latest-candidates-table {{ min-width: 1320px; }}
+  .latest-candidates-table .multiline-cell {{ white-space: pre-line; line-height: 1.45; vertical-align: top; }}
+  .latest-candidates-table .buy-date-cell {{ color: #dc2626; font-weight: 600; }}
+  .latest-candidates-table .sell-date-cell {{ color: #16a34a; font-weight: 600; }}
 </style>
 </head>
 <body>
