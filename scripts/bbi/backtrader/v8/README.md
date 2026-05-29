@@ -44,19 +44,19 @@ python -X utf8 30_generate_report.py
 
 | 指标 | 数值 |
 |------|------|
-| 回测周期 | 2018-01-02 ~ 2026-05-27 |
+| 回测周期 | 2018-01-02 ~ 2026-05-28 |
 | 初始资金 | 500,000 |
-| 最终净值 | 1,952,840.03 |
-| 总收益率 | 290.568% |
-| 年化收益 | 17.6027% |
+| 最终净值 | 1,961,566.03 |
+| 总收益率 | 292.3132% |
+| 年化收益 | 17.6588% |
 | 最大回撤 | -29.8042% |
-| Calmar | 0.5906 |
+| Calmar | 0.5925 |
 | 交易记录数 | 683 |
 | 纯牛市第 5 档实际加仓 | 4 |
 | 长期低效持仓退出成交 | 1 |
-| DC 赛道过滤候选拦截 | 2,187 |
+| DC 赛道过滤候选拦截 | 2,199 |
 
-`30_generate_report.py` 生成的 HTML 报告包含最新候选股票 Top 30，展示排名、股票代码、名称、价格、当前仓位、建仓日期、卖出日期和交易原因，便于核对最新候选池与持仓状态。
+`30_generate_report.py` 生成的 HTML 报告包含最新候选股票 Top 30，展示排名、股票代码、名称、价格、当前仓位、建仓日期、卖出日期和交易原因；月度收益表的周内信息使用候选股真实所属 DC 赛道热点，便于核对最新候选池、持仓状态和赛道暴露。
 
 ## 验证
 
@@ -76,7 +76,7 @@ Get-Content scripts\bbi\backtrader\v8\output\summary.json |
   Select-String "total_return_pct|max_drawdown_pct|trade_records|pure_bull_extra_add_fills|rank_stale_exit_fills|dc_segment_candidate_blocks"
 ```
 
-当前目标口径以后续最新 v8 回测输出为准；重点核对 `total_return_pct` 是否接近 `290.57%`、`max_drawdown_pct` 是否仍接近 `-29.80%`，以及 `pure_bull_extra_add_fills`、`rank_stale_exit_fills` 是否符合预期。
+当前目标口径以后续最新 v8 回测输出为准；重点核对 `total_return_pct` 是否接近 `292.31%`、`max_drawdown_pct` 是否仍接近 `-29.80%`，以及 `pure_bull_extra_add_fills`、`rank_stale_exit_fills` 是否符合预期。
 
 ## 后续演化原则
 

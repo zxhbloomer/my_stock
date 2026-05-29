@@ -17,6 +17,10 @@ from sqlalchemy.pool import NullPool
 from config import (
     BASE_POSITION_AMOUNT,
     DB_URL,
+    DC_SEGMENT_CRASH_DD_20,
+    DC_SEGMENT_CRASH_RET_20,
+    DC_SEGMENT_MEMBER_LAG_DAYS,
+    DC_SEGMENT_OVERLAY_ACTIVE_FROM,
     INIT_CASH,
     LAST_HOLDINGS_PATH,
     LONG_POSITION_STEPS,
@@ -304,9 +308,16 @@ def build_dc_segment_score_frame(dc_daily):
         + 0.35 * data["seg_ret_20_z"]
         + 0.20 * data["seg_amount_rank_pct_z"]
     ).clip(-3.0, 3.0)
+    rolling_high = grouped["close"].transform(lambda s: s.rolling(20, min_periods=5).max())
+    data["seg_dd_20"] = data["close"] / rolling_high - 1.0
+    data["segment_crash"] = (
+        (data["seg_ret_20"].fillna(0.0) <= DC_SEGMENT_CRASH_RET_20)
+        | (data["seg_dd_20"].fillna(0.0) <= DC_SEGMENT_CRASH_DD_20)
+    )
     result_cols = ["trade_date", "segment_code", "segment_score"]
     if "segment_name" in data.columns:
         result_cols.append("segment_name")
+    result_cols.append("segment_crash")
     return data[result_cols].copy()
 
 
@@ -332,6 +343,131 @@ def build_weekly_hotspots_from_dc_daily(dc_daily, top_n=3):
         leaders = display.astype(str).tolist()
         hotspots[(month_key, int(week_no))] = "、".join(leaders) if leaders else "-"
     return hotspots
+
+
+def member_date_for_signal_report(signal_date, members, member_lag_days=DC_SEGMENT_MEMBER_LAG_DAYS):
+    signal_date = pd.Timestamp(signal_date)
+    member_dates = sorted(pd.to_datetime(members["trade_date"].dropna().unique()))
+    available_dates = [d for d in member_dates if d <= signal_date]
+    if len(available_dates) <= int(member_lag_days):
+        return None
+    return available_dates[-1 - int(member_lag_days)]
+
+
+def build_weekly_candidate_dc_segment_hotspots(
+    scores,
+    members,
+    dc_daily,
+    top_candidate_n=20,
+    top_segment_n=3,
+):
+    if scores is None or scores.empty or members is None or members.empty or dc_daily is None or dc_daily.empty:
+        return {}
+    required_score_cols = {"signal_date", "rank", "ts_code"}
+    required_member_cols = {"trade_date", "ts_code", "con_code"}
+    if required_score_cols - set(scores.columns) or required_member_cols - set(members.columns):
+        return {}
+    active_start = pd.Timestamp(DC_SEGMENT_OVERLAY_ACTIVE_FROM)
+    score_data = scores[list(required_score_cols)].copy()
+    score_data["signal_date"] = pd.to_datetime(score_data["signal_date"], errors="coerce")
+    score_data["rank"] = pd.to_numeric(score_data["rank"], errors="coerce")
+    score_data = score_data.dropna(subset=["signal_date", "rank", "ts_code"])
+    score_data = score_data[
+        score_data["rank"].le(int(top_candidate_n))
+        & score_data["signal_date"].ge(active_start)
+    ].copy()
+    if score_data.empty:
+        return {}
+
+    member_data = members[["trade_date", "ts_code", "con_code"]].copy()
+    member_data["trade_date"] = pd.to_datetime(member_data["trade_date"], errors="coerce")
+    member_data = member_data.dropna(subset=["trade_date", "ts_code", "con_code"])
+    features = build_dc_segment_score_frame(dc_daily)
+    if member_data.empty or features.empty:
+        return {}
+    member_dates = sorted(pd.to_datetime(member_data["trade_date"].dropna().unique()))
+    members_by_date = {pd.Timestamp(k): v for k, v in member_data.groupby("trade_date", sort=False)}
+    features_by_date = {pd.Timestamp(k): v for k, v in features.groupby("trade_date", sort=False)}
+
+    hotspots = {}
+    for signal_date, group in score_data.groupby("signal_date", sort=True):
+        available_dates = [d for d in member_dates if d <= signal_date]
+        if len(available_dates) <= int(DC_SEGMENT_MEMBER_LAG_DAYS):
+            continue
+        member_date = pd.Timestamp(available_dates[-1 - int(DC_SEGMENT_MEMBER_LAG_DAYS)])
+        day_members = members_by_date.get(member_date, pd.DataFrame())[["con_code", "ts_code"]].copy()
+        if day_members.empty:
+            continue
+        day_members = day_members.rename(columns={"con_code": "ts_code", "ts_code": "segment_code"})
+        day_features = features_by_date.get(pd.Timestamp(signal_date), pd.DataFrame()).copy()
+        if day_features.empty:
+            continue
+        exposure = group[["ts_code"]].merge(day_members, on="ts_code", how="inner")
+        exposure = exposure.merge(day_features, on="segment_code", how="left")
+        crash = exposure["segment_crash"].where(exposure["segment_crash"].notna(), False).astype(bool)
+        exposure = exposure[~crash].copy()
+        if exposure.empty:
+            continue
+        exposure["segment_score"] = pd.to_numeric(exposure["segment_score"], errors="coerce").fillna(0.0)
+        name_col = "segment_name" if "segment_name" in exposure.columns else "segment_code"
+        leaders = (
+            exposure.groupby(["segment_code", name_col], dropna=False)
+            .agg(
+                stock_count=("ts_code", "nunique"),
+                segment_score=("segment_score", "max"),
+            )
+            .reset_index()
+            .sort_values(["segment_score", "stock_count"], ascending=[False, False])
+            .head(int(top_segment_n))
+        )
+        values = []
+        for _, row in leaders.iterrows():
+            name = str(row.get(name_col) or row["segment_code"]).strip() or str(row["segment_code"])
+            values.append(f"{name}({int(row['stock_count'])})")
+        if not values:
+            continue
+        month_key = signal_date.strftime("%Y-%m")
+        week_no = week_number_in_month(signal_date)
+        if 1 <= week_no <= 5:
+            hotspots[(month_key, int(week_no))] = "、".join(values)
+    return hotspots
+
+
+def load_weekly_candidate_dc_segment_hotspots(scores, nav):
+    if scores is None or scores.empty or nav is None or nav.empty or "date" not in nav.columns:
+        return {}
+    start_date = max(
+        pd.Timestamp(DC_SEGMENT_OVERLAY_ACTIVE_FROM) - pd.Timedelta(days=120),
+        pd.to_datetime(nav["date"], errors="coerce").min() - pd.Timedelta(days=120),
+    )
+    end_date = pd.to_datetime(nav["date"], errors="coerce").max()
+    if pd.isna(start_date) or pd.isna(end_date):
+        return {}
+    try:
+        engine = create_engine(DB_URL, poolclass=NullPool)
+        with engine.connect() as conn:
+            dc_daily = pd.read_sql(text(f"""
+                SELECT d.ts_code, d.trade_date, d.close, d.amount, i.name
+                FROM {SCHEMA}."099_dc_daily" d
+                LEFT JOIN (
+                    SELECT DISTINCT ON (ts_code) ts_code, name
+                    FROM {SCHEMA}."097_dc_index"
+                    WHERE trade_date <= :end_date
+                    ORDER BY ts_code, trade_date DESC
+                ) i ON i.ts_code = d.ts_code
+                WHERE d.trade_date >= :start_date
+                  AND d.trade_date <= :end_date
+            """), conn, params={"start_date": start_date.strftime("%Y-%m-%d"), "end_date": end_date.strftime("%Y-%m-%d")})
+            members = pd.read_sql(text(f"""
+                SELECT trade_date, ts_code, con_code
+                FROM {SCHEMA}."098_dc_member"
+                WHERE trade_date >= :active_start
+                  AND trade_date <= :end_date
+            """), conn, params={"active_start": DC_SEGMENT_OVERLAY_ACTIVE_FROM, "end_date": end_date.strftime("%Y-%m-%d")})
+        return build_weekly_candidate_dc_segment_hotspots(scores, members, dc_daily)
+    except Exception as exc:
+        print(f"[report] weekly candidate DC segment hotspots unavailable: {exc}")
+        return {}
 
 
 def load_weekly_dc_segment_hotspots(nav):
@@ -443,10 +579,14 @@ def make_equity_figure(nav):
 def make_week_cell_html(cell):
     if not cell:
         return "-"
+    def week_line(text):
+        value = str(text)
+        escaped = escape(value)
+        return f'<div class="week-line" title="{escape(value, quote=True)}">{escaped}</div>'
     return (
-        f'<div class="week-line">热点板块：{escape(str(cell.get("hotspots", "-")))}</div>'
-        f'<div class="week-line">{escape(str(cell.get("regime", "-")))}</div>'
-        f'<div class="week-line">收益：{escape(str(cell.get("return", "-")))}</div>'
+        week_line(f'1、板块：{cell.get("hotspots", "-")}')
+        + week_line(f'2、{cell.get("regime", "-")}')
+        + week_line(f'3、收益：{cell.get("return", "-")}')
     )
 
 
@@ -920,7 +1060,7 @@ def make_html(summary, nav, trades, scores, rebalance_log, holdings):
     start_date = str(nav["date"].iloc[0])[:10]
     end_date = str(nav["date"].iloc[-1])[:10]
     metrics = calc_metrics(nav, summary)
-    weekly_hotspots = load_weekly_dc_segment_hotspots(nav)
+    weekly_hotspots = load_weekly_candidate_dc_segment_hotspots(scores, nav)
     figs = [
         (make_net_value_figure(nav, metrics, start_date, end_date), "净值曲线"),
         (make_equity_figure(nav), "资金曲线"),
@@ -985,7 +1125,7 @@ def make_html(summary, nav, trades, scores, rebalance_log, holdings):
   .monthly-return-table .neg {{ color: #16a34a; }}
   .monthly-return-table .neutral {{ color: #333333; }}
   .monthly-return-table .week-cell {{ font-size: 11px; line-height: 1.45; white-space: normal; overflow: visible; text-overflow: clip; vertical-align: top; }}
-  .monthly-return-table .week-line {{ display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  .monthly-return-table .week-line {{ display: block; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; word-break: break-word; }}
   .html-table-wrap {{ max-height: 620px; overflow: auto; border: 1px solid #d0d7de; }}
   .report-table {{ border-collapse: separate; border-spacing: 0; width: 100%; min-width: 980px; font-size: 12px; }}
   .report-table th {{ position: sticky; top: 0; z-index: 2; background: #34495e; color: white; padding: 7px 8px; border-right: 1px solid #d0d7de; border-bottom: 1px solid #d0d7de; text-align: center; white-space: nowrap; }}
