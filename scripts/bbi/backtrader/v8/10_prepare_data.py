@@ -51,6 +51,8 @@ from config import (
     RECENT_LIMIT_DOWN_LOOKBACK,
     SCHEMA,
     START_DATE,
+    STAR_MARKET_ALLOW_FROM,
+    STAR_MARKET_PREFIXES,
     STOCK_LIST_PATH,
 )
 
@@ -290,8 +292,12 @@ def filter_point_in_time_universe(stocks, start_date, end_date, requested_codes)
         & (stocks["list_date"] <= end_ts)
         & (stocks["delist_date"].isna() | (stocks["delist_date"] >= start_ts))
     ]
+    ts_code = stocks["ts_code"].astype(str)
     for prefix in EXCLUDE_CODE_PREFIXES:
-        stocks = stocks[~stocks["ts_code"].str.startswith(prefix)]
+        stocks = stocks[~ts_code.str.startswith(prefix)]
+        ts_code = stocks["ts_code"].astype(str)
+    if end_ts < pd.Timestamp(STAR_MARKET_ALLOW_FROM):
+        stocks = stocks[~ts_code.str.startswith(STAR_MARKET_PREFIXES)]
     if requested_codes:
         stocks = stocks[stocks["ts_code"].isin(requested_codes)]
     return stocks.reset_index(drop=True)
@@ -303,8 +309,13 @@ def compute_point_in_time_eligibility(panel):
         & (panel["trade_date"] >= panel["list_date"])
         & (panel["delist_date"].isna() | (panel["trade_date"] <= panel["delist_date"]))
     )
+    star_market_allowed = (
+        ~panel["ts_code"].astype(str).str.startswith(STAR_MARKET_PREFIXES)
+        | (panel["trade_date"] >= pd.Timestamp(STAR_MARKET_ALLOW_FROM))
+    )
     return (
         listed_on_trade_date
+        & star_market_allowed
         & panel["is_listed_long_enough"]
         & panel["is_liquid"]
         & ~panel["is_st"]

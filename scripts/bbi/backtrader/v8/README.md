@@ -27,6 +27,8 @@ v8 是 v7 的独立复制版本，已合入 `tmp` 中验证过的“纯牛市小
 - 隔离要求：v8 不 import v7，不读取 v7 的输出文件。
 - 输出目录：所有 v8 产物只写入 `scripts/bbi/backtrader/v8/output`。
 - 数据目录：`config.py` 使用 `Path(__file__).parent / "output"`，因此运行在 v8 时只使用 v8 本地 output。
+- 科创板口径：`688` 只从 `2025-01-01` 起允许进入候选资格；2025 年以前逐日资格为 False。`8` 前缀仍全程排除。该规则是 v8 回测假设，不代表真实账户权限判断。
+- 科创板风险预算：`688` 初始买入和加仓目标金额均为普通股票的 `65%`，同时最多持有 3 只 `688`；止损仍沿用全局 `-5%`，不单独放宽。合入依据：`tmp_v8_star_market_risk_output` 的邻域测试中，`65% + max 3` 总收益最高且优于 `65% + max 4` 的交易简洁性。
 - 数据库完整性：`10_prepare_data.py` 开始拉取数据前会校验 `063_stk_factor_pro`、`029_stk_limit`、`137_idx_factor_pro`，并在 DC overlay 启用时从 `2025-01-02` 起校验 `098_dc_member`、`099_dc_daily`；失败会停止 prepare。`20_run_backtest.py` 仍保留 DC overlay 运行前校验，作为第二道防线。
 
 ## 运行
@@ -46,15 +48,15 @@ python -X utf8 30_generate_report.py
 |------|------|
 | 回测周期 | 2018-01-02 ~ 2026-05-28 |
 | 初始资金 | 500,000 |
-| 最终净值 | 1,961,566.03 |
-| 总收益率 | 292.3132% |
-| 年化收益 | 17.6588% |
+| 最终净值 | 2,373,548.78 |
+| 总收益率 | 374.7098% |
+| 年化收益 | 20.2064% |
 | 最大回撤 | -29.8042% |
-| Calmar | 0.5925 |
-| 交易记录数 | 683 |
-| 纯牛市第 5 档实际加仓 | 4 |
+| Calmar | 0.6780 |
+| 交易记录数 | 693 |
+| 纯牛市第 5 档实际加仓 | 6 |
 | 长期低效持仓退出成交 | 1 |
-| DC 赛道过滤候选拦截 | 2,199 |
+| DC 赛道过滤候选拦截 | 3,341 |
 
 `30_generate_report.py` 生成的 HTML 报告包含最新候选股票 Top 30，展示排名、股票代码、名称、价格、当前仓位、建仓日期、卖出日期和交易原因；月度收益表的周内信息使用候选股真实所属 DC 赛道热点，便于核对最新候选池、持仓状态和赛道暴露。
 
@@ -76,7 +78,7 @@ Get-Content scripts\bbi\backtrader\v8\output\summary.json |
   Select-String "total_return_pct|max_drawdown_pct|trade_records|pure_bull_extra_add_fills|rank_stale_exit_fills|dc_segment_candidate_blocks"
 ```
 
-当前目标口径以后续最新 v8 回测输出为准；重点核对 `total_return_pct` 是否接近 `292.31%`、`max_drawdown_pct` 是否仍接近 `-29.80%`，以及 `pure_bull_extra_add_fills`、`rank_stale_exit_fills` 是否符合预期。
+当前目标口径以后续最新 v8 回测输出为准；重点核对 `total_return_pct` 是否接近 `374.71%`、`max_drawdown_pct` 是否仍接近 `-29.80%`，以及 `pure_bull_extra_add_fills`、`rank_stale_exit_fills` 是否符合预期。
 
 ## 后续演化原则
 

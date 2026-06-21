@@ -78,6 +78,10 @@ from config import (
     SCORES_PATH,
     SCHEMA,
     SUMMARY_PATH,
+    STAR_MARKET_ADD_SCALE,
+    STAR_MARKET_MAX_HOLDINGS,
+    STAR_MARKET_POSITION_SCALE,
+    STAR_MARKET_PREFIXES,
     TRADE_RECORDS_PATH,
 )
 
@@ -751,6 +755,25 @@ def calc_bear_probe_target_amount(normal_first_step, cash, current_probe_exposur
     return max(0.0, min(target, cash, remaining_probe))
 
 
+def is_star_market_code(code):
+    return isinstance(code, str) and code.startswith(STAR_MARKET_PREFIXES)
+
+
+def calc_star_market_target_amount(code, target_amount, reason):
+    if not is_star_market_code(code):
+        return float(target_amount)
+    if reason in {"long_initial_buy", "bear_probe_initial_buy"}:
+        return float(target_amount) * float(STAR_MARKET_POSITION_SCALE)
+    return float(target_amount) * float(STAR_MARKET_ADD_SCALE)
+
+
+def can_open_star_market_position(code, holdings):
+    if not is_star_market_code(code) or code in holdings:
+        return True
+    star_count = sum(1 for held_code in holdings if is_star_market_code(held_code))
+    return star_count < int(STAR_MARKET_MAX_HOLDINGS)
+
+
 def next_position_step(pos):
     step_index = int(pos.get("step_index", 0))
     if step_index >= len(LONG_POSITION_STEPS):
@@ -892,6 +915,10 @@ def execute_buy(date, row, target_amount, cash, holdings, trades, reason):
     ok, skip_reason = can_buy(row)
     if not ok:
         return cash, False, skip_reason
+    code = row["ts_code"]
+    if not can_open_star_market_position(code, holdings):
+        return cash, False, "star_market_max_holdings"
+    target_amount = calc_star_market_target_amount(code, target_amount, reason)
     price = get_open_price(row)
     shares = int(target_amount / price / 100) * 100
     if shares < 100:
@@ -905,7 +932,6 @@ def execute_buy(date, row, target_amount, cash, holdings, trades, reason):
     if shares < 100 or amount + comm > cash:
         return cash, False, "insufficient_cash"
     cash -= amount + comm
-    code = row["ts_code"]
     if code in holdings:
         pos = holdings[code]
         old_shares = pos["shares"]
