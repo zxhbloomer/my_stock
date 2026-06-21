@@ -33,6 +33,8 @@ SPARSE = "sparse"
 STATIC = "static"
 PERIODIC = "periodic"
 STOPPED = "stopped"
+REPORT_PERIOD_SPARSE = "report_period_sparse"
+HOLIDAY_REFRESH = "holiday_refresh"
 
 LOW_COUNT_RATIO = 0.8
 
@@ -61,7 +63,12 @@ TABLE_SPECS = [
     TableSpec("040_express.py", "040_express", "ann_date", SPARSE),
     TableSpec("041_dividend.py", "041_dividend", "ann_date", SPARSE),
     TableSpec("042_fina_indicator.py", "042_fina_indicator", "ann_date", SPARSE),
-    TableSpec("043_fina_audit.py", "043_fina_audit", "ann_date", SPARSE),
+    TableSpec("043_fina_audit.py", "043_fina_audit", "ann_date", HOLIDAY_REFRESH),
+    TableSpec("049_top10_holders.py", "049_top10_holders", "end_date", REPORT_PERIOD_SPARSE),
+    TableSpec("050_top10_floatholders.py", "050_top10_floatholders", "end_date", REPORT_PERIOD_SPARSE),
+    TableSpec("051_pledge_stat.py", "051_pledge_stat", "end_date", SPARSE),
+    TableSpec("058_stk_holdernumber.py", "058_stk_holdernumber", "ann_date", SPARSE),
+    TableSpec("060_report_rc.py", "060_report_rc", "report_date", SPARSE),
     TableSpec("061_cyq_perf.py", "061_cyq_perf", "trade_date", REQUIRED_DAILY),
     TableSpec("062_cyq_chips.py", "062_cyq_chips", "trade_date", REQUIRED_DAILY),
     TableSpec("063_stk_factor_pro.py", "063_stk_factor_pro", "trade_date", REQUIRED_DAILY),
@@ -105,6 +112,8 @@ TABLE_SPECS = [
 
 
 def build_command(script: str, target_date: str, date_col: Optional[str]) -> str:
+    if script == "043_fina_audit.py":
+        return "python -X utf8 {}".format(script)
     if date_col is None:
         return "python -X utf8 {}".format(script)
     return "python -X utf8 {} --start {} --end {}".format(script, target_date, target_date)
@@ -136,6 +145,19 @@ def evaluate_table(
 
     if spec.category == PERIODIC:
         return CheckResult(spec, "skipped_periodic", today_count, previous_count, None, "周/月频表不按今日检查")
+
+    if spec.category == REPORT_PERIOD_SPARSE:
+        return CheckResult(
+            spec,
+            "skipped_report_period",
+            today_count,
+            previous_count,
+            None,
+            "报告期滚动刷新表不按今日逐日检查",
+        )
+
+    if spec.category == HOLIDAY_REFRESH:
+        return CheckResult(spec, "holiday_refresh", today_count, previous_count, build_command(spec.script, target_date, spec.date_col), "非交易日低频刷新表，脚本内部判断是否执行")
 
     if spec.category == SPARSE:
         if today_count == 0:

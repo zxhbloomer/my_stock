@@ -45,6 +45,11 @@
 | 043 | fina_audit | 财务审计意见 | 按股票循环 | 无需迁移 |
 | 044 | fina_mainbz | 主营业务构成 | 按股票循环 | 无需迁移 |
 | 045 | disclosure_date | 财报披露日期 | 按报告期 | 无需迁移 |
+| 049 | top10_holders | 前十大股东 | 按股票循环 | 新脚本，目标表不存在，无需迁移 |
+| 050 | top10_floatholders | 前十大流通股东 | 按股票循环 | 新脚本，目标表不存在，无需迁移 |
+| 051 | pledge_stat | 股权质押统计数据 | 按股票循环 | 新脚本，目标表不存在，无需迁移 |
+| 058 | stk_holdernumber | 股东人数 | 按股票循环 | 新脚本，目标表不存在，无需迁移 |
+| 060 | report_rc | 券商盈利预测数据 | 按报告日分页整日替换 | 新脚本，目标表不存在，无需迁移 |
 | 061 | cyq_perf | 每日筹码及胜率 | 按日增量 | ✅ 可迁移（tushare.stock_chips 字段匹配） |
 | 062 | cyq_chips | 每日筹码分布 | 按股票+50交易日窗口分页增量 | 无需迁移 |
 | 063 | stk_factor_pro | 股票技术面因子(专业版) | 按日增量 | 无需迁移（200+字段，耗时长） |
@@ -118,6 +123,11 @@ new/
 ├── 043_fina_audit.py
 ├── 044_fina_mainbz.py
 ├── 045_disclosure_date.py
+├── 049_top10_holders.py
+├── 050_top10_floatholders.py
+├── 051_pledge_stat.py
+├── 058_stk_holdernumber.py
+├── 060_report_rc.py
 ├── 061_cyq_perf.py
 ├── 062_cyq_chips.py
 ├── 063_stk_factor_pro.py

@@ -14,6 +14,8 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+from _common import ensure_sync_status_table, get_engine, record_script_runtime_finish, record_script_runtime_start
 
 SCRIPTS = [
     # -- 基础数据：先获取股票代码，再同步交易日等基础表 --
@@ -56,10 +58,15 @@ def run_script(script: str) -> bool:
     print(f"\n{'='*60}")
     print(f"[RUN] {script}  {datetime.now().strftime('%H:%M:%S')}")
     print(f"{'='*60}")
+    started_at = datetime.now()
+    engine = get_engine()
+    ensure_sync_status_table(engine)
+    record_script_runtime_start(engine, script, started_at)
     result = subprocess.run(
-        [sys.executable, str(HERE / script)],
+        [sys.executable, "-X", "utf8", str(HERE / script)],
         cwd=str(HERE),
     )
+    record_script_runtime_finish(engine, script, started_at, datetime.now())
     if result.returncode != 0:
         print(f"[ERROR] {script} 退出码={result.returncode}")
         return False

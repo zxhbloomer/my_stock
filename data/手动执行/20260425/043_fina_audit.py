@@ -11,10 +11,10 @@
           period(str,N,报告期)
 输出字段：ts_code,ann_date,end_date,audit_result,audit_fees,audit_agency,audit_sign
 
-同步策略：按股票循环增量（ts_code+ann_date+end_date 为主键，upsert）
+同步策略：低频慢表。默认交易日跳过，非交易日按股票循环刷新近期公告窗口
 表名：043_fina_audit
 迁移说明：tushare schema 中无此表，无需迁移
-用法: python 043_fina_audit.py [--start YYYYMMDD] [--end YYYYMMDD]
+用法: python 043_fina_audit.py [--start YYYYMMDD] [--end YYYYMMDD] [--force] [--include-inactive]
 """
 import argparse, sys, time
 from pathlib import Path
@@ -46,6 +46,32 @@ DATE_COLS  = ["ann_date", "end_date"]
 FLOAT_COLS = ["audit_fees"]
 
 
+def is_report_season(value: str) -> bool:
+    dt = pd.Timestamp(value)
+    mmdd = dt.month * 100 + dt.day
+    return 301 <= mmdd <= 430 or 701 <= mmdd <= 831 or 1001 <= mmdd <= 1031
+
+
+def auto_start(end: str) -> str:
+    days = 120 if is_report_season(end) else 60
+    return (pd.Timestamp(end) - pd.Timedelta(days=days)).strftime("%Y%m%d")
+
+
+def is_open_trade_date(engine, target_date: str) -> bool:
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(f"""
+                SELECT is_open
+                FROM {SCHEMA}."003_trade_cal"
+                WHERE exchange='SSE' AND cal_date=:d
+            """), {"d": target_date}).fetchone()
+        if row is not None:
+            return bool(row[0] == 1)
+    except Exception as e:
+        print(f"[WARN] 查询 003_trade_cal 失败，使用 weekday 兜底: {e}")
+    return pd.Timestamp(target_date).weekday() < 5
+
+
 def get_start(engine):
     start = get_sync_start(engine, f"{TABLE}.py", DEFAULT_START)
     print(f"[增量] {TABLE} 从 {start} 开始")
@@ -57,6 +83,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", default=None)
     parser.add_argument("--end",   default=TODAY)
+    parser.add_argument("--force", action="store_true", help="交易日也强制执行")
+    parser.add_argument("--full", action="store_true", help="从 DEFAULT_START 开始刷新")
+    parser.add_argument("--include-inactive", action="store_true", help="同时刷新 D/P 股票")
     args = parser.parse_args()
 
     pro    = init_tushare()
@@ -65,15 +94,27 @@ def main():
     ensure_sync_status_table(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
-    start = args.start or get_start(engine)
+    if is_open_trade_date(engine, args.end) and not args.force:
+        print(f"[跳过] {args.end} 是交易日，{TABLE} 为低频慢表，仅非交易日自动刷新。需要强制执行请加 --force")
+        return
+
+    if args.start:
+        start = args.start
+    elif args.full:
+        start = DEFAULT_START
+    else:
+        start = auto_start(args.end)
+    print(f"[窗口] {TABLE} {start} ~ {args.end}")
 
     codes = []
-    for status in ["L", "D", "P"]:
+    statuses = ["L", "D", "P"] if args.include_inactive else ["L"]
+    for status in statuses:
         s = pro.stock_basic(list_status=status, fields="ts_code")
         if s is not None and not s.empty and "ts_code" in s.columns:
             codes.extend(s["ts_code"].tolist())
     if not codes:
         raise RuntimeError("stock_basic 返回异常，未获取到任何股票代码")
+    print(f"[股票池] list_status={','.join(statuses)} 共 {len(codes)} 只")
 
     mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ing")
     total_rows, t0 = 0, datetime.now()

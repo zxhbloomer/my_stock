@@ -538,6 +538,37 @@ class SyncService:
         if not spec.date_col:
             return None
 
+        if spec.category == "report_period_sparse":
+            period_start, period_end = self._recent_report_period_window(end_date)
+            return self._build_smart_issue(
+                spec=spec,
+                status="report_period_refresh",
+                start_date=period_start,
+                end_date=period_end,
+                missing_dates=[],
+                low_count_dates=[],
+                today_count=None,
+                previous_count=None,
+                syncable=True,
+                message="报告期滚动刷新",
+            )
+
+        if spec.category == "holiday_refresh":
+            if module.is_open_trade_date(conn, SCHEMA, end_date):
+                return None
+            return self._build_smart_issue(
+                spec=spec,
+                status="holiday_refresh",
+                start_date=end_date,
+                end_date=end_date,
+                missing_dates=[],
+                low_count_dates=[],
+                today_count=None,
+                previous_count=None,
+                syncable=True,
+                message="非交易日建议刷新，脚本内部自动选择公告窗口",
+            )
+
         if spec.category == "sparse":
             if mode == "all":
                 return self._build_smart_issue(
@@ -986,6 +1017,43 @@ class SyncService:
         return max(base_start, script_default_start)
 
     @staticmethod
+    def _recent_report_period_window(end_date, quarters=6):
+        current = datetime.strptime(str(end_date), "%Y%m%d")
+        quarter_month = ((current.month - 1) // 3) * 3 + 3
+        quarter_end = datetime(current.year, quarter_month, 1)
+        if quarter_month == 3:
+            quarter_end = datetime(current.year, 3, 31)
+        elif quarter_month == 6:
+            quarter_end = datetime(current.year, 6, 30)
+        elif quarter_month == 9:
+            quarter_end = datetime(current.year, 9, 30)
+        else:
+            quarter_end = datetime(current.year, 12, 31)
+
+        if current < quarter_end:
+            if quarter_month == 3:
+                quarter_end = datetime(current.year - 1, 12, 31)
+            elif quarter_month == 6:
+                quarter_end = datetime(current.year, 3, 31)
+            elif quarter_month == 9:
+                quarter_end = datetime(current.year, 6, 30)
+            else:
+                quarter_end = datetime(current.year, 9, 30)
+
+        periods = []
+        year = quarter_end.year
+        month = quarter_end.month
+        for _ in range(max(1, quarters)):
+            day = 31 if month in {3, 12} else 30
+            periods.append(datetime(year, month, day))
+            month -= 3
+            if month <= 0:
+                month += 12
+                year -= 1
+
+        return periods[-1].strftime("%Y%m%d"), periods[0].strftime("%Y%m%d")
+
+    @staticmethod
     def _build_smart_issue(
         spec,
         status,
@@ -1017,7 +1085,9 @@ class SyncService:
             run_end = ""
             date_range = "-"
 
-        if spec.date_col:
+        if spec.script == "043_fina_audit.py":
+            command = "python -X utf8 {}".format(spec.script)
+        elif spec.date_col:
             commands = [
                 "python -X utf8 {} --start {} --end {}".format(spec.script, item["start"], item["end"])
                 for item in run_ranges
@@ -1245,7 +1315,9 @@ class SyncService:
             arg_sets = []
             run_start = str(item.get("run_start") or "").strip()
             run_end = str(item.get("run_end") or "").strip()
-            if spec.date_col:
+            if spec.script == "043_fina_audit.py":
+                arg_sets.append([])
+            elif spec.date_col:
                 run_ranges = item.get("run_ranges") or []
                 if run_ranges:
                     for run_range in run_ranges:
