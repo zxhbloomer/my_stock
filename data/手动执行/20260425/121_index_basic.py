@@ -8,8 +8,8 @@
 输入参数：ts_code(str,N,指数代码), name(str,N,指数简称),
           market(str,N,交易所或服务商默认SSE), publisher(str,N,发布商),
           category(str,N,指数类别)
-输出字段：ts_code,name,market,publisher,category,base_date,base_point,list_date
-          （fullname,index_type,weight_rule,desc,exp_date 文档有但API实际不返回，数据库列保留）
+输出字段：ts_code,name,fullname,market,publisher,index_type,category,
+          base_date,base_point,list_date,weight_rule,desc,exp_date
 
 同步策略：全量删除重新插入（无日期维度，参考数据）
           market 包括：MSCI/CSI/SSE/SZSE/CICC/SW/OTH
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _common import *
 
 TABLE  = "121_index_basic"
-FIELDS = "ts_code,name,market,publisher,category,base_date,base_point,list_date"
+FIELDS = "ts_code,name,fullname,market,publisher,index_type,category,base_date,base_point,list_date,weight_rule,desc,exp_date"
 COLS   = FIELDS.split(",")
 PK     = ["ts_code"]
 
@@ -58,8 +58,10 @@ def main():
     pro    = init_tushare()
     engine = get_engine()
     ensure_schema(engine)
+    ensure_sync_status_table(engine)
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
+    mark_sync(engine, f"{TABLE}.py", TABLE, TODAY, "ing")
     all_dfs = []
     for market in MARKETS:
         try:
@@ -71,6 +73,7 @@ def main():
             raise
 
     if not all_dfs:
+        mark_sync(engine, f"{TABLE}.py", TABLE, TODAY, "ok")
         print("[完成] 无数据")
         return
 
@@ -80,6 +83,7 @@ def main():
     df_all = df_all.drop_duplicates(subset=PK)
 
     rows = truncate_and_insert(engine, df_all, TABLE, COLS)
+    mark_sync(engine, f"{TABLE}.py", TABLE, TODAY, "ok")
     print(f"\n[完成] 全量插入 {rows:,} 条")
 
 

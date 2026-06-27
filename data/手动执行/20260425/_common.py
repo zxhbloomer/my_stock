@@ -112,6 +112,8 @@ CREATE TABLE IF NOT EXISTS {SCHEMA}.sync_status (
 def ensure_sync_status_table(engine):
     with engine.begin() as conn:
         conn.execute(text(SYNC_STATUS_SQL))
+        conn.execute(text(f"ALTER TABLE {SCHEMA}.sync_status ADD COLUMN IF NOT EXISTS last_start_at TIMESTAMP"))
+        conn.execute(text(f"ALTER TABLE {SCHEMA}.sync_status ADD COLUMN IF NOT EXISTS last_end_at TIMESTAMP"))
 
 
 def get_sync_start(engine, script_name: str, default_start: str) -> str:
@@ -156,6 +158,32 @@ def mark_sync(engine, script_name: str, table_name: str, date, status: str):
                 status     = EXCLUDED.status,
                 updated_at = CURRENT_TIMESTAMP
         """), {"s": script_name, "t": table_name, "d": date.date() if hasattr(date, 'date') else date, "st": status})
+
+
+def record_script_runtime_start(engine, script_name: str, started_at):
+    """记录脚本本次运行开始时间。只更新已有 sync_status 行，不创建同步状态。"""
+    with engine.begin() as conn:
+        conn.execute(text(f"""
+            UPDATE {SCHEMA}.sync_status
+            SET last_start_at = :started_at,
+                last_end_at = NULL
+            WHERE script_name = :script_name
+        """), {"script_name": script_name, "started_at": started_at})
+
+
+def record_script_runtime_finish(engine, script_name: str, started_at, ended_at):
+    """记录脚本本次运行结束时间。只更新已有 sync_status 行，不创建同步状态。"""
+    with engine.begin() as conn:
+        conn.execute(text(f"""
+            UPDATE {SCHEMA}.sync_status
+            SET last_start_at = :started_at,
+                last_end_at = :ended_at
+            WHERE script_name = :script_name
+        """), {
+            "script_name": script_name,
+            "started_at": started_at,
+            "ended_at": ended_at,
+        })
 
 
 

@@ -74,10 +74,15 @@ from config import (
     NAV_SERIES_PATH,
     OUTPUT_DIR,
     PANEL_PATH,
+    POSITION_DAILY_PATH,
     REBALANCE_LOG_PATH,
     SCORES_PATH,
     SCHEMA,
     SUMMARY_PATH,
+    STAR_MARKET_ADD_SCALE,
+    STAR_MARKET_MAX_HOLDINGS,
+    STAR_MARKET_POSITION_SCALE,
+    STAR_MARKET_PREFIXES,
     TRADE_RECORDS_PATH,
 )
 
@@ -751,6 +756,25 @@ def calc_bear_probe_target_amount(normal_first_step, cash, current_probe_exposur
     return max(0.0, min(target, cash, remaining_probe))
 
 
+def is_star_market_code(code):
+    return isinstance(code, str) and code.startswith(STAR_MARKET_PREFIXES)
+
+
+def calc_star_market_target_amount(code, target_amount, reason):
+    if not is_star_market_code(code):
+        return float(target_amount)
+    if reason in {"long_initial_buy", "bear_probe_initial_buy"}:
+        return float(target_amount) * float(STAR_MARKET_POSITION_SCALE)
+    return float(target_amount) * float(STAR_MARKET_ADD_SCALE)
+
+
+def can_open_star_market_position(code, holdings):
+    if not is_star_market_code(code) or code in holdings:
+        return True
+    star_count = sum(1 for held_code in holdings if is_star_market_code(held_code))
+    return star_count < int(STAR_MARKET_MAX_HOLDINGS)
+
+
 def next_position_step(pos):
     step_index = int(pos.get("step_index", 0))
     if step_index >= len(LONG_POSITION_STEPS):
@@ -892,6 +916,10 @@ def execute_buy(date, row, target_amount, cash, holdings, trades, reason):
     ok, skip_reason = can_buy(row)
     if not ok:
         return cash, False, skip_reason
+    code = row["ts_code"]
+    if not can_open_star_market_position(code, holdings):
+        return cash, False, "star_market_max_holdings"
+    target_amount = calc_star_market_target_amount(code, target_amount, reason)
     price = get_open_price(row)
     shares = int(target_amount / price / 100) * 100
     if shares < 100:
@@ -905,7 +933,6 @@ def execute_buy(date, row, target_amount, cash, holdings, trades, reason):
     if shares < 100 or amount + comm > cash:
         return cash, False, "insufficient_cash"
     cash -= amount + comm
-    code = row["ts_code"]
     if code in holdings:
         pos = holdings[code]
         old_shares = pos["shares"]
@@ -953,6 +980,26 @@ def calc_max_drawdown(nav_df):
     return float(dd.min() * 100.0)
 
 
+def build_position_daily_rows(date, holdings):
+    rows = []
+    for code, pos in sorted(holdings.items()):
+        shares = float(pos.get("shares", 0.0))
+        price = float(pos.get("last_price", pos.get("cost_price", 0.0)))
+        rows.append({
+            "date": str(date)[:10],
+            "ts_code": code,
+            "name": pos.get("name", code),
+            "shares": round(shares, 4),
+            "close": round(price, 4),
+            "market_value": round(shares * price, 2),
+            "cost_price": round(float(pos.get("cost_price", 0.0)), 4),
+            "invested_amount": round(float(pos.get("invested_amount", 0.0)), 2),
+            "buy_comm": round(float(pos.get("buy_comm", 0.0)), 2),
+            "step_index": int(pos.get("step_index", 0)),
+        })
+    return rows
+
+
 def build_panel_by_date(panel):
     return {
         date: group_index.to_numpy()
@@ -988,6 +1035,7 @@ def run_backtest(panel, market, start_date, end_date):
     rebalance_log = []
     score_rows = []
     nav_rows = []
+    position_rows = []
     stats = {
         "signal_days": 0,
         "market_block_days": 0,
@@ -1313,6 +1361,7 @@ def run_backtest(panel, market, start_date, end_date):
 
         nav = cash + sum(mark_position(c, p, day_panel) for c, p in holdings.items())
         nav_rows.append({"date": str(date)[:10], "nav": round(nav, 2), "cash": round(cash, 2), "holdings": len(holdings)})
+        position_rows.extend(build_position_daily_rows(date, holdings))
 
     nav_df = pd.DataFrame(nav_rows)
     total_ret = nav_df["nav"].iloc[-1] / INIT_CASH - 1.0
@@ -1330,7 +1379,7 @@ def run_backtest(panel, market, start_date, end_date):
         "calmar_ratio": round((annual_ret * 100.0) / abs(max_dd), 4) if max_dd < 0 else 0.0,
         "trade_records": len(trades),
     })
-    return nav_df, pd.DataFrame(trades), pd.DataFrame(rebalance_log), pd.DataFrame(score_rows), holdings, stats
+    return nav_df, pd.DataFrame(trades), pd.DataFrame(rebalance_log), pd.DataFrame(score_rows), pd.DataFrame(position_rows), holdings, stats
 
 
 def write_last_holdings(holdings):
@@ -1368,10 +1417,11 @@ def main():
         ) from exc
     panel["trade_date"] = pd.to_datetime(panel["trade_date"])
     market = load_market_index()
-    nav_df, trades_df, rebalance_df, scores_df, holdings, stats = run_backtest(panel, market, args.start, args.end)
+    nav_df, trades_df, rebalance_df, scores_df, position_df, holdings, stats = run_backtest(panel, market, args.start, args.end)
 
     nav_df.to_csv(NAV_SERIES_PATH, index=False)
     trades_df.to_csv(TRADE_RECORDS_PATH, index=False, quoting=csv.QUOTE_MINIMAL)
+    position_df.to_csv(POSITION_DAILY_PATH, index=False)
     rebalance_df.to_csv(REBALANCE_LOG_PATH, index=False)
     scores_df.to_csv(SCORES_PATH, index=False)
     write_last_holdings(holdings)

@@ -31,10 +31,10 @@
           ocf_to_netdebt,ebit_to_interest,longdebt_to_workingcapital,ebitda_to_debt,
           turn_days,roa_yearly,roa_dp,fixed_assets,profit_prefin_exp
 
-同步策略：按股票循环增量（ts_code+ann_date+end_date 为主键，upsert）
+同步策略：使用 fina_indicator_vip 按公告日分页增量
 表名：042_fina_indicator
 迁移说明：tushare.fina_indicator 有数据，字段完全一致，可直接迁移
-用法: python 042_fina_indicator.py [--start YYYYMMDD] [--end YYYYMMDD]
+用法: python 042_fina_indicator.py [--start YYYYMMDD] [--end YYYYMMDD] [--page-size 6000]
 """
 import argparse, sys, time
 from pathlib import Path
@@ -140,12 +140,63 @@ def get_start(engine):
     return start
 
 
+def normalize_df(df):
+    if df is None or df.empty:
+        return pd.DataFrame(columns=COLS)
+    df = df.copy()
+    for col in COLS:
+        if col not in df.columns:
+            df[col] = pd.NA
+    for col in DATE_COLS:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors="coerce")
+    for col in FLOAT_COLS:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df.dropna(subset=PK).drop_duplicates(subset=PK, keep="last")
+
+
+def fetch_vip_pages(pro, start_date, end_date, fields, page_size):
+    if page_size <= 0:
+        raise ValueError("page_size must be > 0")
+    offset = 0
+    while True:
+        df = pro.fina_indicator_vip(
+            start_date=start_date,
+            end_date=end_date,
+            fields=fields,
+            limit=page_size,
+            offset=offset,
+        )
+        if df is None or df.empty:
+            break
+        yield df
+        if len(df) < page_size:
+            break
+        offset += page_size
+
+
+def sync_by_vip(pro, engine, start, end, page_size):
+    print(f"[模式] fina_indicator_vip 按公告日分页同步 start_date={start}, end_date={end}, page_size={page_size}")
+    total_rows, t0 = 0, datetime.now()
+    for page_no, df in enumerate(fetch_vip_pages(pro, start, end, FIELDS, page_size), 1):
+        df = normalize_df(df)
+        rows = upsert_df(engine, df, TABLE, COLS, PK)
+        total_rows += rows
+        elapsed = (datetime.now() - t0).seconds
+        print(f"  [VIP第{page_no:03d}页] {rows}条  累计{total_rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
+    return total_rows
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", default=None)
     parser.add_argument("--end",   default=TODAY)
+    parser.add_argument("--page-size", type=int, default=6000,
+                        help="fina_indicator_vip 分页大小")
     args = parser.parse_args()
+    if args.page_size <= 0:
+        parser.error("--page-size 必须大于 0")
 
     pro    = init_tushare()
     engine = get_engine()
@@ -155,37 +206,8 @@ def main():
 
     start = args.start or get_start(engine)
 
-    codes = []
-    for status in ["L", "D", "P"]:
-        s = pro.stock_basic(list_status=status, fields="ts_code")
-        if s is not None and not s.empty and "ts_code" in s.columns:
-            codes.extend(s["ts_code"].tolist())
-    if not codes:
-        raise RuntimeError("stock_basic 返回异常，未获取到任何股票代码")
-
     mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ing")
-    total_rows, t0 = 0, datetime.now()
-    for i, code in enumerate(codes, 1):
-        try:
-            df = pro.fina_indicator(ts_code=code, start_date=start, end_date=args.end, fields=FIELDS)
-            if df is not None and not df.empty:
-                for col in DATE_COLS:
-                    if col in df.columns:
-                        df[col] = pd.to_datetime(df[col], errors="coerce")
-                for col in FLOAT_COLS:
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col], errors="coerce")
-                df = df.dropna(subset=PK).drop_duplicates(subset=PK)
-                rows = upsert_df(engine, df, TABLE, COLS, PK)
-                total_rows += rows
-            else:
-                rows = 0
-        except Exception:
-            raise
-        elapsed = (datetime.now() - t0).seconds
-        if rows > 0 or i % 200 == 0:
-            print(f"  [{i:4d}/{len(codes)}] {code}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
-        # time.sleep(0.2)
+    total_rows = sync_by_vip(pro, engine, start, args.end, args.page_size)
 
     mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")
     print(f"\n[完成] upsert {total_rows:,} 条")

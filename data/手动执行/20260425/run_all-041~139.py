@@ -14,14 +14,22 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+from _common import ensure_sync_status_table, get_engine, record_script_runtime_finish, record_script_runtime_start
 
 SCRIPTS = [
     # -- 财务数据后段（按股票循环，耗时长）--
     "041_dividend.py",
     "042_fina_indicator.py",
-    "043_fina_audit.py",
+
+    # -- 参考数据（按股票循环，耗时长）--
+    "049_top10_holders.py",
+    "050_top10_floatholders.py",
+    "051_pledge_stat.py",
+    "058_stk_holdernumber.py",
 
     # -- 特色数据 --
+    "060_report_rc.py",
     "061_cyq_perf.py",
     "062_cyq_chips.py",
     "063_stk_factor_pro.py",  # 200+字段，按日期循环，耗时长
@@ -69,6 +77,9 @@ SCRIPTS = [
     "137_idx_factor_pro.py",  # 80+字段，按日期循环，耗时长
     "138_daily_info.py",
     "139_sz_daily_info.py",
+
+    # -- 低频慢表：放最后，脚本内部交易日自动跳过 --
+    "043_fina_audit.py",
 ]
 
 HERE = Path(__file__).parent
@@ -78,10 +89,15 @@ def run_script(script: str) -> bool:
     print(f"\n{'='*60}")
     print(f"[RUN] {script}  {datetime.now().strftime('%H:%M:%S')}")
     print(f"{'='*60}")
+    started_at = datetime.now()
+    engine = get_engine()
+    ensure_sync_status_table(engine)
+    record_script_runtime_start(engine, script, started_at)
     result = subprocess.run(
-        [sys.executable, str(HERE / script)],
+        [sys.executable, "-X", "utf8", str(HERE / script)],
         cwd=str(HERE),
     )
+    record_script_runtime_finish(engine, script, started_at, datetime.now())
     if result.returncode != 0:
         print(f"[ERROR] {script} 退出码={result.returncode}")
         return False

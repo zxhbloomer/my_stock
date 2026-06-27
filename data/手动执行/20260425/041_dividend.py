@@ -6,17 +6,17 @@
 接口文档: https://tushare.pro/document/2?doc_id=103
 本地文档: docs/tushare/tushare.pro/document/2668c.html
 
-输入参数：ts_code(str,Y,股票代码), ann_date(str,N,公告日期),
+输入参数：ts_code(str,N,股票代码), ann_date(str,N,公告日期),
           record_date(str,N,股权登记日), ex_date(str,N,除权除息日),
           imp_ann_date(str,N,实施公告日)
 输出字段：ts_code,end_date,ann_date,div_proc,stk_div,stk_bo_rate,stk_co_rate,
           cash_div,cash_div_tax,record_date,ex_date,pay_date,div_listdate,
           imp_ann_date,base_date,base_share
 
-同步策略：按股票循环增量（ts_code+end_date+ann_date 为主键，upsert）
+同步策略：按公告日分页增量（ts_code+end_date+ann_date 为主键，upsert）
 表名：041_dividend
 迁移说明：tushare.tushare_stock_dividend 有少量数据（385行），建议重新从API拉取
-用法: python 041_dividend.py [--start YYYYMMDD] [--end YYYYMMDD]
+用法: python 041_dividend.py [--start YYYYMMDD] [--end YYYYMMDD] [--page-size 3000]
 """
 import argparse, sys, time
 from pathlib import Path
@@ -64,11 +64,44 @@ def get_start(engine):
     return start
 
 
+def fetch_ann_date_pages(pro, ann_date: str, page_size: int) -> pd.DataFrame:
+    frames = []
+    offset = 0
+    while True:
+        df = pro.dividend(
+            ann_date=ann_date,
+            fields=FIELDS,
+            limit=page_size,
+            offset=offset,
+        )
+        if df is None or df.empty:
+            break
+        frames.append(df)
+        if len(df) < page_size:
+            break
+        offset += page_size
+    if not frames:
+        return pd.DataFrame(columns=COLS)
+    return pd.concat(frames, ignore_index=True)
+
+
+def normalize_df(df):
+    if df is None or df.empty:
+        return df
+    for col in DATE_COLS:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors="coerce")
+    for col in FLOAT_COLS:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df.dropna(subset=PK).drop_duplicates(subset=PK)
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", default=None)
     parser.add_argument("--end",   default=TODAY)
+    parser.add_argument("--page-size", type=int, default=3000)
     args = parser.parse_args()
 
     pro    = init_tushare()
@@ -78,28 +111,15 @@ def main():
     check_or_create_table(engine, TABLE, CREATE_SQL, COLS)
 
     start = args.start or get_start(engine)
-
-    codes = []
-    for status in ["L", "D", "P"]:
-        s = pro.stock_basic(list_status=status, fields="ts_code")
-        if s is not None and not s.empty and "ts_code" in s.columns:
-            codes.extend(s["ts_code"].tolist())
-    if not codes:
-        raise RuntimeError("stock_basic 返回异常，未获取到任何股票代码")
+    dates = pd.date_range(pd.to_datetime(start), pd.to_datetime(args.end), freq="D").strftime("%Y%m%d").tolist()
 
     mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ing")
     total_rows, t0 = 0, datetime.now()
-    for i, code in enumerate(codes, 1):
+    for i, ann_date in enumerate(dates, 1):
         try:
-            df = pro.dividend(ts_code=code, ann_date=None, start_date=start, end_date=args.end, fields=FIELDS)
+            df = fetch_ann_date_pages(pro, ann_date, args.page_size)
             if df is not None and not df.empty:
-                for col in DATE_COLS:
-                    if col in df.columns:
-                        df[col] = pd.to_datetime(df[col], errors="coerce")
-                for col in FLOAT_COLS:
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col], errors="coerce")
-                df = df.dropna(subset=PK).drop_duplicates(subset=PK)
+                df = normalize_df(df)
                 rows = upsert_df(engine, df, TABLE, COLS, PK)
                 total_rows += rows
             else:
@@ -107,9 +127,8 @@ def main():
         except Exception:
             raise
         elapsed = (datetime.now() - t0).seconds
-        if rows > 0 or i % 200 == 0:
-            print(f"  [{i:4d}/{len(codes)}] {code}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
-        # time.sleep(0.2)
+        if rows > 0 or i % 50 == 0:
+            print(f"  [{i:4d}/{len(dates)}] ann_date={ann_date}  {rows}条  {elapsed//60}分{elapsed%60}秒", flush=True)
 
     mark_sync(engine, f"{TABLE}.py", TABLE, args.end, "ok")
     print(f"\n[完成] upsert {total_rows:,} 条")

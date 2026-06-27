@@ -51,11 +51,12 @@ class SmartIncrementalTests(unittest.TestCase):
             previous_count=None,
             syncable=True,
             message="缺失 3 个交易日",
+            expected_dates=["20260519", "20260520", "20260521"],
         )
 
         self.assertEqual(issue["script_name"], "014_daily.py")
         self.assertEqual(issue["missing_count"], 3)
-        self.assertEqual(issue["date_range"], "20260519 ~ 20260521")
+        self.assertEqual(issue["problem_date_summary"], "20260519~20260521")
         self.assertEqual(issue["run_start"], "20260519")
         self.assertEqual(issue["run_end"], "20260521")
         self.assertEqual(issue["command"], "python -X utf8 014_daily.py --start 20260519 --end 20260521")
@@ -80,6 +81,63 @@ class SmartIncrementalTests(unittest.TestCase):
         self.assertEqual(issue["run_start"], "")
         self.assertEqual(issue["run_end"], "")
         self.assertEqual(issue["command"], "python -X utf8 001_stock_basic.py")
+
+    def test_report_period_issue_builds_rolling_period_command(self):
+        spec = Spec("049_top10_holders.py", "049_top10_holders", "end_date", "report_period_sparse")
+
+        issue = SyncService._build_smart_issue(
+            spec=spec,
+            status="report_period_refresh",
+            start_date="20240331",
+            end_date="20260630",
+            missing_dates=[],
+            low_count_dates=[],
+            today_count=None,
+            previous_count=None,
+            syncable=True,
+            message="报告期滚动刷新",
+        )
+
+        self.assertEqual(issue["date_range"], "20240331 ~ 20260630")
+        self.assertEqual(issue["run_start"], "20240331")
+        self.assertEqual(issue["run_end"], "20260630")
+        self.assertEqual(
+            issue["command"],
+            "python -X utf8 049_top10_holders.py --start 20240331 --end 20260630",
+        )
+
+    def test_float_holder_report_period_issue_builds_rolling_period_command(self):
+        spec = Spec("050_top10_floatholders.py", "050_top10_floatholders", "end_date", "report_period_sparse")
+
+        issue = SyncService._build_smart_issue(
+            spec=spec,
+            status="report_period_refresh",
+            start_date="20240331",
+            end_date="20260630",
+            missing_dates=[],
+            low_count_dates=[],
+            today_count=None,
+            previous_count=None,
+            syncable=True,
+            message="报告期滚动刷新",
+        )
+
+        self.assertEqual(issue["run_start"], "20240331")
+        self.assertEqual(issue["run_end"], "20260630")
+        self.assertEqual(
+            issue["command"],
+            "python -X utf8 050_top10_floatholders.py --start 20240331 --end 20260630",
+        )
+
+    def test_recent_report_period_window_uses_quarter_ends(self):
+        self.assertEqual(
+            SyncService._recent_report_period_window("20260609", quarters=6),
+            ("20241231", "20260331"),
+        )
+        self.assertEqual(
+            SyncService._recent_report_period_window("20260105", quarters=6),
+            ("20240930", "20251231"),
+        )
 
 
 if __name__ == "__main__":

@@ -65,6 +65,38 @@ class TodaySyncCheckTests(unittest.TestCase):
         self.assertIsNone(static_result.command)
         self.assertIsNone(sparse_result.command)
 
+    def test_report_period_sparse_does_not_generate_today_command(self):
+        mod = load_module()
+
+        for script, table in [
+            ("049_top10_holders.py", "049_top10_holders"),
+            ("050_top10_floatholders.py", "050_top10_floatholders"),
+        ]:
+            result = mod.evaluate_table(
+                spec=mod.TableSpec(
+                    script,
+                    table,
+                    "end_date",
+                    mod.REPORT_PERIOD_SPARSE,
+                ),
+                target_date="20260512",
+                today_count=0,
+                previous_count=0,
+                table_exists=True,
+            )
+
+            self.assertEqual(result.status, "skipped_report_period")
+            self.assertIsNone(result.command)
+
+    def test_top10_holder_specs_are_report_period_sparse(self):
+        mod = load_module()
+
+        specs = {spec.script: spec for spec in mod.TABLE_SPECS}
+
+        for script in ["049_top10_holders.py", "050_top10_floatholders.py"]:
+            self.assertEqual(specs[script].date_col, "end_date")
+            self.assertEqual(specs[script].category, mod.REPORT_PERIOD_SPARSE)
+
     def test_margin_detail_allows_documented_name_column_in_database(self):
         script = (SYNC_DIR / "074_margin_detail.py").read_text(encoding="utf-8")
 

@@ -17,6 +17,7 @@
 表名：062_cyq_chips
 迁移说明：tushare.stock_chips 字段不同（缺少price/percent，有cost_*字段），无法直接迁移
 用法: python 062_cyq_chips.py [--start YYYYMMDD] [--end YYYYMMDD] [--window-days 50] [--page-size 6000]
+      [--start-code 300070.SZ] [--end-code 300999.SZ]
 """
 import argparse, sys
 from pathlib import Path
@@ -94,12 +95,39 @@ def normalize_df(df):
     return df.dropna(subset=PK).drop_duplicates(subset=PK)
 
 
+def filter_codes(codes: list[str], start_code: str | None, end_code: str | None) -> list[str]:
+    if start_code:
+        codes = [code for code in codes if code >= start_code]
+    if end_code:
+        codes = [code for code in codes if code <= end_code]
+    return codes
+
+
+def upsert_with_reconnect(engine, df, max_attempts: int = 3):
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return upsert_df(engine, df, TABLE, COLS, PK)
+        except Exception as exc:
+            last_error = exc
+            print(f"  [WARN] 数据库写入失败，尝试 {attempt}/{max_attempts}: {exc}", flush=True)
+            try:
+                engine.dispose()
+            except Exception:
+                pass
+            if attempt == max_attempts:
+                raise
+    raise last_error
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", default=None)
     parser.add_argument("--end",   default=TODAY)
     parser.add_argument("--window-days", type=int, default=50)
     parser.add_argument("--page-size", type=int, default=6000)
+    parser.add_argument("--start-code", default=None, help="从指定股票代码开始续跑，例如 300070.SZ")
+    parser.add_argument("--end-code", default=None, help="跑到指定股票代码结束")
     args = parser.parse_args()
 
     pro    = init_tushare()
@@ -119,10 +147,13 @@ def main():
         if s is not None and not s.empty and "ts_code" in s.columns:
             codes.extend(s["ts_code"].tolist())
     codes = sorted(set(codes))
+    codes = filter_codes(codes, args.start_code, args.end_code)
     if not codes:
         raise RuntimeError("stock_basic 返回异常，未获取到任何股票代码")
 
     print(f"共 {len(codes)} 只股票，{len(segments)} 个交易日窗口")
+    if args.start_code or args.end_code:
+        print(f"[续跑] 股票范围 {args.start_code or '-'} ~ {args.end_code or '-'}")
     if not segments:
         print("\n[完成] 扫描区间内没有 SSE 交易日")
         return
@@ -136,7 +167,7 @@ def main():
         for seg_start, seg_end in segments:
             df = normalize_df(fetch_segment_pages(pro, code, seg_start, seg_end, args.page_size))
             if df is not None and not df.empty:
-                rows = upsert_df(engine, df, TABLE, COLS, PK)
+                rows = upsert_with_reconnect(engine, df)
                 code_rows += rows
                 total_rows += rows
 
