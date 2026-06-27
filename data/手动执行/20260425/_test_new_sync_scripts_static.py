@@ -158,6 +158,12 @@ EXPECTED = {
         "fields": ["fullname", "index_type", "weight_rule", "desc", "exp_date"],
         "requires_sync_start": False,
     },
+    "122_index_daily.py": {
+        "table": 'TABLE         = "122_index_daily"',
+        "api": "pro.index_daily",
+        "pk": 'PK     = ["ts_code", "trade_date"]',
+        "fields": ["active-window-days", "lookback-days", "full-scan", "fetch_recent_active_codes", "fetch_new_candidate_codes"],
+    },
     "131_index_member_all.py": {
         "table": 'TABLE  = "131_index_member_all"',
         "api": "pro.index_member_all",

@@ -24,9 +24,12 @@ from config import (
     INIT_CASH,
     LAST_HOLDINGS_PATH,
     LONG_POSITION_STEPS,
+    MARKET_INDEX_NAME,
+    MARKET_INDEX_PATH,
     MAX_POSITION_AMOUNT,
     NAV_SERIES_PATH,
     PANEL_PATH,
+    POSITION_DAILY_PATH,
     REBALANCE_LOG_PATH,
     REPORT_PATH,
     SCHEMA,
@@ -169,6 +172,1040 @@ def fmt_date(value):
         return "-"
     text = str(value)
     return text[:10]
+
+
+def normalize_numeric(value):
+    if value is None or pd.isna(value):
+        return None
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def round_money(value):
+    if value is None or pd.isna(value):
+        return 0.0
+    return round(float(value), 2)
+
+
+def period_range_label(start_date, end_date):
+    start_text = pd.Timestamp(start_date).strftime("%Y-%m-%d")
+    end_text = pd.Timestamp(end_date).strftime("%Y-%m-%d")
+    if start_text == end_text:
+        return start_text
+    return f"{start_text} ~ {end_text}"
+
+
+def load_market_index_for_report():
+    if not MARKET_INDEX_PATH.exists():
+        return None
+    try:
+        market = pd.read_parquet(MARKET_INDEX_PATH)
+    except Exception:
+        return None
+    if market is None or market.empty or "trade_date" not in market.columns or "close" not in market.columns:
+        return None
+    market = market[["trade_date", "close"]].copy()
+    market["trade_date"] = pd.to_datetime(market["trade_date"], errors="coerce")
+    market["close"] = pd.to_numeric(market["close"], errors="coerce")
+    market = market.dropna(subset=["trade_date", "close"]).sort_values("trade_date")
+    return market if not market.empty else None
+
+
+def load_stock_price_panel_for_report():
+    if not PANEL_PATH.exists():
+        return None
+    try:
+        panel = pd.read_parquet(PANEL_PATH, columns=["trade_date", "ts_code", "name", "close", "adj_factor"])
+    except Exception:
+        return None
+    required = {"trade_date", "ts_code", "close"}
+    if panel is None or panel.empty or not required.issubset(panel.columns):
+        return None
+    data = panel[["trade_date", "ts_code", "name", "close", "adj_factor"]].copy()
+    data["trade_date"] = pd.to_datetime(data["trade_date"], errors="coerce")
+    data["close"] = pd.to_numeric(data["close"], errors="coerce")
+    data["adj_factor"] = pd.to_numeric(data["adj_factor"], errors="coerce")
+    data = data.dropna(subset=["trade_date", "ts_code", "close"]).sort_values(["ts_code", "trade_date"])
+    return data if not data.empty else None
+
+
+def load_position_daily_for_report():
+    if not POSITION_DAILY_PATH.exists():
+        return None
+    try:
+        data = pd.read_csv(POSITION_DAILY_PATH)
+    except Exception:
+        return None
+    required = {"date", "ts_code", "shares", "close", "market_value"}
+    if data is None or data.empty or not required.issubset(data.columns):
+        return None
+    return data
+
+
+def calc_index_return(market_index, start_date, end_date):
+    if market_index is None or market_index.empty:
+        return None
+    data = market_index.copy()
+    if "trade_date" not in data.columns or "close" not in data.columns:
+        return None
+    data["trade_date"] = pd.to_datetime(data["trade_date"], errors="coerce")
+    data["close"] = pd.to_numeric(data["close"], errors="coerce")
+    data = data.dropna(subset=["trade_date", "close"]).sort_values("trade_date")
+    if data.empty:
+        return None
+    start = pd.Timestamp(start_date)
+    end = pd.Timestamp(end_date)
+    window = data[data["trade_date"].between(start, end)]
+    if window.empty:
+        return None
+    first = float(window["close"].iloc[0])
+    last = float(window["close"].iloc[-1])
+    if first == 0:
+        return None
+    return last / first - 1.0
+
+
+def scale_intensity(values, value):
+    valid = [abs(float(v)) for v in values if pd.notna(v) and float(v) != 0]
+    if not valid or pd.isna(value) or float(value) == 0:
+        return 0.0
+    return round(min(abs(float(value)) / max(valid), 1.0), 4)
+
+
+def make_calendar_row(kind, key, label, start_date, end_date, pnl, ret, nav_value, index_ret, all_values):
+    pnl_value = round_money(pnl)
+    ret_value = None if ret is None or pd.isna(ret) else round(float(ret), 6)
+    return {
+        "kind": kind,
+        "key": key,
+        "label": label,
+        "start": pd.Timestamp(start_date).strftime("%Y-%m-%d"),
+        "end": pd.Timestamp(end_date).strftime("%Y-%m-%d"),
+        "range_label": period_range_label(start_date, end_date),
+        "pnl": pnl_value,
+        "ret": ret_value,
+        "nav": round_money(nav_value),
+        "index_ret": None if index_ret is None or pd.isna(index_ret) else round(float(index_ret), 6),
+        "pnl_class": signed_class(pnl_value),
+        "intensity": scale_intensity(all_values, pnl_value),
+    }
+
+
+def build_profit_calendar_payload(nav, trades=None, market_index=None, price_panel=None, positions=None):
+    if nav is None or nav.empty or not {"date", "nav"}.issubset(nav.columns):
+        return {
+            "days": [],
+            "months": [],
+            "years": [],
+            "trade_details": [],
+            "heat_items": [],
+            "stock_details": [],
+            "default_year": None,
+            "default_month": None,
+            "index_name": MARKET_INDEX_NAME,
+        }
+
+    data = nav[["date", "nav"] + [c for c in ["cash", "holdings"] if c in nav.columns]].copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data["nav"] = pd.to_numeric(data["nav"], errors="coerce")
+    data = data.dropna(subset=["date", "nav"]).sort_values("date").reset_index(drop=True)
+    if data.empty:
+        return {
+            "days": [],
+            "months": [],
+            "years": [],
+            "trade_details": [],
+            "heat_items": [],
+            "stock_details": [],
+            "default_year": None,
+            "default_month": None,
+            "index_name": MARKET_INDEX_NAME,
+        }
+
+    data["prev_nav"] = data["nav"].shift(1)
+    data.loc[data.index[0], "prev_nav"] = INIT_CASH
+    data["pnl"] = data["nav"] - data["prev_nav"]
+    data["ret"] = np.where(data["prev_nav"].ne(0), data["nav"] / data["prev_nav"] - 1.0, np.nan)
+    day_values = data["pnl"].tolist()
+    days = [
+        make_calendar_row(
+            "day",
+            row.date.strftime("%Y-%m-%d"),
+            row.date.strftime("%d"),
+            row.date,
+            row.date,
+            row.pnl,
+            row.ret,
+            row.nav,
+            calc_index_return(market_index, row.date, row.date),
+            day_values,
+        ) | {"date": row.date.strftime("%Y-%m-%d"), "year": int(row.date.year), "month": int(row.date.month)}
+        for row in data.itertuples()
+    ]
+
+    month_rows = []
+    month_pnls = []
+    for period, group in data.groupby(data["date"].dt.to_period("M"), sort=True):
+        prev_nav = float(group["prev_nav"].iloc[0])
+        end_nav = float(group["nav"].iloc[-1])
+        pnl = end_nav - prev_nav
+        month_pnls.append(pnl)
+        month_rows.append((period, group, prev_nav, end_nav, pnl))
+    months = [
+        make_calendar_row(
+            "month",
+            str(period),
+            f"{int(period.month)}月",
+            group["date"].iloc[0],
+            group["date"].iloc[-1],
+            pnl,
+            end_nav / prev_nav - 1.0 if prev_nav else np.nan,
+            end_nav,
+            calc_index_return(market_index, group["date"].iloc[0], group["date"].iloc[-1]),
+            month_pnls,
+        ) | {"period": str(period), "year": int(period.year), "month": int(period.month)}
+        for period, group, prev_nav, end_nav, pnl in month_rows
+    ]
+
+    year_rows = []
+    year_pnls = []
+    for year, group in data.groupby(data["date"].dt.year, sort=True):
+        prev_nav = float(group["prev_nav"].iloc[0])
+        end_nav = float(group["nav"].iloc[-1])
+        pnl = end_nav - prev_nav
+        year_pnls.append(pnl)
+        year_rows.append((year, group, prev_nav, end_nav, pnl))
+    years = [
+        make_calendar_row(
+            "year",
+            str(int(year)),
+            str(int(year)),
+            group["date"].iloc[0],
+            group["date"].iloc[-1],
+            pnl,
+            end_nav / prev_nav - 1.0 if prev_nav else np.nan,
+            end_nav,
+            calc_index_return(market_index, group["date"].iloc[0], group["date"].iloc[-1]),
+            year_pnls,
+        ) | {"year": int(year)}
+        for year, group, prev_nav, end_nav, pnl in year_rows
+    ]
+
+    trade_details = build_profit_calendar_trade_details(trades)
+    heat_items = build_profit_calendar_heat_items(trades)
+    stock_details = build_profit_calendar_stock_details(trades, price_panel, data["date"], positions)
+    latest_date = data["date"].iloc[-1]
+    return {
+        "days": days,
+        "months": months,
+        "years": years,
+        "trade_details": trade_details,
+        "heat_items": heat_items,
+        "stock_details": stock_details,
+        "default_year": int(latest_date.year),
+        "default_month": latest_date.strftime("%Y-%m"),
+        "index_name": MARKET_INDEX_NAME,
+    }
+
+
+def build_profit_calendar_trade_details(trades):
+    if trades is None or trades.empty or "date" not in trades.columns:
+        return []
+    data = trades.copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data = data.dropna(subset=["date"]).sort_values("date")
+    details = []
+    for date, group in data.groupby(data["date"].dt.strftime("%Y-%m-%d"), sort=True):
+        rows = []
+        for _, row in group.iterrows():
+            rows.append({
+                "date": date,
+                "code": str(row.get("ts_code", "-")),
+                "name": str(row.get("name", row.get("ts_code", "-"))),
+                "action": str(row.get("action", "-")),
+                "action_label": "买入" if row.get("action") == "buy" else ("卖出" if row.get("action") == "sell" else str(row.get("action", "-"))),
+                "shares": normalize_numeric(row.get("shares")),
+                "amount": normalize_numeric(row.get("amount")),
+                "commission": normalize_numeric(row.get("commission")),
+                "pnl": normalize_numeric(row.get("pnl")),
+                "pnl_pct": normalize_numeric(row.get("pnl_pct")),
+                "reason": TRADE_REASON_MAP.get(str(row.get("reason", "")), str(row.get("reason", "-"))),
+            })
+        details.append({"date": date, "trades": rows})
+    return details
+
+
+def build_profit_calendar_heat_items(trades):
+    if trades is None or trades.empty or not {"ts_code", "date"}.issubset(trades.columns):
+        return []
+    data = trades.copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    if "amount" not in data.columns:
+        data["amount"] = 0.0
+    if "pnl" not in data.columns:
+        data["pnl"] = 0.0
+    data["amount"] = pd.to_numeric(data["amount"], errors="coerce")
+    data["pnl"] = pd.to_numeric(data["pnl"], errors="coerce").fillna(0.0)
+    data = data.dropna(subset=["date"])
+    if data.empty:
+        return []
+    if "name" not in data.columns:
+        data["name"] = data["ts_code"]
+    items = []
+    grouped = data.groupby("ts_code", sort=False)
+    max_abs = float(grouped["pnl"].sum().abs().max()) if len(grouped) else 0.0
+    for code, group in grouped:
+        pnl = float(group["pnl"].sum())
+        amount = float(group["amount"].fillna(0.0).sum())
+        items.append({
+            "code": str(code),
+            "name": str(group["name"].dropna().iloc[-1]) if not group["name"].dropna().empty else str(code),
+            "start": group["date"].min().strftime("%Y-%m-%d"),
+            "end": group["date"].max().strftime("%Y-%m-%d"),
+            "pnl": round_money(pnl),
+            "amount": round_money(amount),
+            "trade_count": int(len(group)),
+            "pnl_class": signed_class(pnl),
+            "intensity": 0.0 if max_abs <= 0 else round(min(abs(pnl) / max_abs, 1.0), 4),
+        })
+    return sorted(items, key=lambda item: item["pnl"], reverse=True)
+
+
+def prepare_profit_calendar_trades(trades):
+    if trades is None or trades.empty or not {"date", "ts_code", "action"}.issubset(trades.columns):
+        return pd.DataFrame()
+    data = trades.copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data = data.dropna(subset=["date", "ts_code", "action"]).sort_values(["date", "ts_code"])
+    if data.empty:
+        return data
+    for col in ["price", "shares", "amount", "commission"]:
+        if col not in data.columns:
+            data[col] = 0.0
+        data[col] = pd.to_numeric(data[col], errors="coerce").fillna(0.0)
+    if "name" not in data.columns:
+        data["name"] = data["ts_code"]
+    return data
+
+
+def prepare_profit_calendar_prices(price_panel):
+    if price_panel is None or price_panel.empty or not {"trade_date", "ts_code", "close"}.issubset(price_panel.columns):
+        return pd.DataFrame()
+    data = price_panel.copy()
+    data["trade_date"] = pd.to_datetime(data["trade_date"], errors="coerce")
+    data["close"] = pd.to_numeric(data["close"], errors="coerce")
+    data = data.dropna(subset=["trade_date", "ts_code", "close"]).sort_values(["ts_code", "trade_date"])
+    if "name" not in data.columns:
+        data["name"] = data["ts_code"]
+    return data
+
+
+def prepare_profit_calendar_positions(positions):
+    if positions is None or positions.empty or not {"date", "ts_code", "shares", "close", "market_value"}.issubset(positions.columns):
+        return pd.DataFrame()
+    data = positions.copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data["shares"] = pd.to_numeric(data["shares"], errors="coerce").fillna(0.0)
+    data["close"] = pd.to_numeric(data["close"], errors="coerce")
+    data["market_value"] = pd.to_numeric(data["market_value"], errors="coerce")
+    data = data.dropna(subset=["date", "ts_code"]).sort_values(["date", "ts_code"])
+    if "name" not in data.columns:
+        data["name"] = data["ts_code"]
+    return data
+
+
+def build_profit_calendar_stock_details_from_positions(trades, positions, calendar_dates):
+    position_data = prepare_profit_calendar_positions(positions)
+    if position_data.empty:
+        return []
+    trade_data = prepare_profit_calendar_trades(trades)
+    if calendar_dates is None:
+        calendar = pd.Series(sorted(position_data["date"].dt.normalize().unique()))
+    else:
+        calendar = pd.to_datetime(pd.Series(calendar_dates), errors="coerce").dropna().dt.normalize().drop_duplicates().sort_values()
+    if calendar.empty:
+        return []
+    position_data["date_key"] = position_data["date"].dt.normalize()
+    if not trade_data.empty:
+        trade_data["date_key"] = trade_data["date"].dt.normalize()
+    pos_by_date = {date: group for date, group in position_data.groupby("date_key", sort=True)}
+    trade_by_date = {date: group for date, group in trade_data.groupby("date_key", sort=True)} if not trade_data.empty else {}
+    previous_positions = {}
+    previous_prices = {}
+    details = []
+    for date in pd.DatetimeIndex(calendar):
+        current_positions = {}
+        if date in pos_by_date:
+            for _, row in pos_by_date[date].iterrows():
+                code = str(row["ts_code"])
+                shares = max(float(row.get("shares", 0.0)), 0.0)
+                close = normalize_numeric(row.get("close"))
+                market_value = normalize_numeric(row.get("market_value"))
+                current_positions[code] = {
+                    "name": str(row.get("name", code)),
+                    "shares": shares,
+                    "close": close,
+                    "market_value": 0.0 if market_value is None else max(float(market_value), 0.0),
+                }
+        day_trades = trade_by_date.get(date, pd.DataFrame(columns=trade_data.columns if not trade_data.empty else []))
+        candidate_codes = set(previous_positions) | set(current_positions)
+        if not day_trades.empty:
+            candidate_codes.update(day_trades["ts_code"].astype(str))
+        for code in sorted(candidate_codes):
+            prev = previous_positions.get(code, {})
+            curr = current_positions.get(code, {})
+            code_trades = day_trades[day_trades["ts_code"].astype(str) == code] if not day_trades.empty else day_trades
+            buy_rows = code_trades[code_trades["action"].eq("buy")]
+            sell_rows = code_trades[code_trades["action"].eq("sell")]
+            buy_amount = float(buy_rows["amount"].sum()) if not buy_rows.empty else 0.0
+            sell_amount = float(sell_rows["amount"].sum()) if not sell_rows.empty else 0.0
+            buy_shares = float(buy_rows["shares"].sum()) if not buy_rows.empty else 0.0
+            sell_shares = float(sell_rows["shares"].sum()) if not sell_rows.empty else 0.0
+            commission = float(code_trades["commission"].sum()) if not code_trades.empty else 0.0
+            begin_shares = max(float(prev.get("shares", 0.0)), 0.0)
+            end_shares = max(float(curr.get("shares", 0.0)), 0.0)
+            begin_price = prev.get("close")
+            end_price = curr.get("close", previous_prices.get(code, begin_price))
+            begin_market_value = max(float(prev.get("market_value", 0.0)), 0.0)
+            end_market_value = max(float(curr.get("market_value", 0.0)), 0.0)
+            pnl = end_market_value - begin_market_value + sell_amount - buy_amount - commission
+            denominator = begin_market_value + buy_amount + commission
+            name = curr.get("name") or prev.get("name") or code
+            details.append({
+                "date": date.strftime("%Y-%m-%d"),
+                "start": date.strftime("%Y-%m-%d"),
+                "end": date.strftime("%Y-%m-%d"),
+                "code": code,
+                "name": name,
+                "begin_shares": round(begin_shares, 4),
+                "end_shares": round(end_shares, 4),
+                "buy_amount": round_money(buy_amount),
+                "sell_amount": round_money(sell_amount),
+                "buy_shares": round(float(buy_shares), 4),
+                "sell_shares": round(float(sell_shares), 4),
+                "buy_avg_price": round(float(buy_amount / buy_shares), 4) if buy_shares else None,
+                "sell_avg_price": round(float(sell_amount / sell_shares), 4) if sell_shares else None,
+                "begin_price": round(float(begin_price), 4) if begin_price is not None else None,
+                "end_price": round(float(end_price), 4) if end_price is not None else None,
+                "period_return": None if begin_price in (None, 0) or end_price is None else round(float(end_price / begin_price - 1.0), 6),
+                "pnl": round_money(pnl),
+                "return_pct": None if denominator <= 0 else round(float(pnl / denominator), 6),
+                "pnl_class": signed_class(pnl),
+            })
+        previous_positions = current_positions
+        for code, item in current_positions.items():
+            if item.get("close") is not None:
+                previous_prices[code] = item.get("close")
+    return sorted(details, key=lambda item: (item["date"], item["pnl"]), reverse=True)
+
+
+def price_at_or_before(price_group, date):
+    if price_group is None or price_group.empty:
+        return None
+    rows = price_group[price_group["trade_date"] <= pd.Timestamp(date)]
+    if rows.empty:
+        return None
+    return float(rows["close"].iloc[-1])
+
+
+def price_in_range(price_group, start_date, end_date, first=True):
+    if price_group is None or price_group.empty:
+        return None
+    rows = price_group[price_group["trade_date"].between(pd.Timestamp(start_date), pd.Timestamp(end_date))]
+    if rows.empty:
+        return None
+    return float(rows["close"].iloc[0 if first else -1])
+
+
+def build_profit_calendar_stock_details(trades, price_panel, calendar_dates=None, positions=None):
+    position_details = build_profit_calendar_stock_details_from_positions(trades, positions, calendar_dates)
+    if position_details:
+        return position_details
+    data = prepare_profit_calendar_trades(trades)
+    if data.empty:
+        return []
+    if calendar_dates is None:
+        calendar = pd.Series(sorted(data["date"].dt.normalize().unique()))
+    else:
+        calendar = pd.to_datetime(pd.Series(calendar_dates), errors="coerce").dropna().dt.normalize().drop_duplicates().sort_values()
+    if calendar.empty:
+        return []
+    calendar_index = pd.DatetimeIndex(calendar)
+
+    prices = prepare_profit_calendar_prices(price_panel)
+    codes = set(data["ts_code"].astype(str))
+    if not prices.empty:
+        prices = prices[prices["ts_code"].astype(str).isin(codes)]
+    price_lookup = {}
+    adj_lookup = {}
+    latest_names = {}
+    if not prices.empty:
+        for code, group in prices.groupby("ts_code", sort=False):
+            code = str(code)
+            group = group.sort_values("trade_date")
+            price_series = group.set_index(group["trade_date"].dt.normalize())["close"]
+            price_lookup[code] = price_series.reindex(calendar_index).ffill()
+            if "adj_factor" in group.columns:
+                adj_series = group.set_index(group["trade_date"].dt.normalize())["adj_factor"]
+                adj_lookup[code] = adj_series.reindex(calendar_index).ffill()
+            names = group["name"].dropna()
+            if not names.empty:
+                latest_names[code] = str(names.iloc[-1])
+    for code, group in data.groupby("ts_code", sort=False):
+        names = group["name"].dropna()
+        if not names.empty:
+            latest_names.setdefault(str(code), str(names.iloc[-1]))
+
+    details = []
+    position_shares = {}
+    position_cost = {}
+    position_adj = {}
+    data["date_key"] = data["date"].dt.normalize()
+    trades_by_date = {date: group for date, group in data.groupby("date_key", sort=True)}
+    previous_prices = {}
+    for date in calendar_index:
+        date_text = date.strftime("%Y-%m-%d")
+        within = trades_by_date.get(date, pd.DataFrame(columns=data.columns))
+        candidate_codes = {code for code, shares in position_shares.items() if abs(float(shares)) > 1e-9}
+        if not within.empty:
+            candidate_codes.update(within["ts_code"].astype(str))
+        for code in list(candidate_codes):
+            adj_series = adj_lookup.get(code)
+            if adj_series is None or date not in adj_series.index or pd.isna(adj_series.loc[date]):
+                continue
+            current_adj = float(adj_series.loc[date])
+            previous_adj = position_adj.get(code)
+            if previous_adj is None or previous_adj <= 0:
+                position_adj[code] = current_adj
+                continue
+            if current_adj > 0 and abs(current_adj - previous_adj) >= 1e-12:
+                ratio = current_adj / previous_adj
+                position_shares[code] = float(position_shares.get(code, 0.0)) * ratio
+                if code in position_cost and ratio:
+                    position_cost[code] = float(position_cost[code]) / ratio
+                position_adj[code] = current_adj
+        for code in sorted(candidate_codes):
+            code_trades = within[within["ts_code"].astype(str) == code] if not within.empty else within
+            begin_shares = float(position_shares.get(code, 0.0))
+            delta_shares = calc_trade_position_shares(code_trades)
+            end_shares = begin_shares + delta_shares
+            price_series = price_lookup.get(code)
+            end_price = None
+            if price_series is not None and date in price_series.index and pd.notna(price_series.loc[date]):
+                end_price = float(price_series.loc[date])
+            begin_price = previous_prices.get(code)
+            if begin_price is None:
+                begin_price = end_price
+            if end_price is None:
+                end_price = begin_price
+            buy_rows = code_trades[code_trades["action"].eq("buy")]
+            sell_rows = code_trades[code_trades["action"].eq("sell")]
+            buy_amount = float(buy_rows["amount"].sum())
+            sell_amount = float(sell_rows["amount"].sum())
+            buy_shares = float(buy_rows["shares"].sum())
+            sell_shares = float(sell_rows["shares"].sum())
+            commission = float(code_trades["commission"].sum())
+            begin_market_value = begin_shares * (begin_price or 0.0)
+            end_market_value = end_shares * (end_price or 0.0)
+            pnl = end_market_value - begin_market_value + sell_amount - buy_amount - commission
+            denominator = max(begin_market_value + buy_amount + commission, 1.0)
+            name = latest_names.get(code, code)
+            details.append({
+                "date": date_text,
+                "start": date_text,
+                "end": date_text,
+                "code": code,
+                "name": name,
+                "begin_shares": round(float(begin_shares), 4),
+                "end_shares": round(float(end_shares), 4),
+                "buy_amount": round_money(buy_amount),
+                "sell_amount": round_money(sell_amount),
+                "buy_shares": round(float(buy_shares), 4),
+                "sell_shares": round(float(sell_shares), 4),
+                "buy_avg_price": round(float(buy_amount / buy_shares), 4) if buy_shares else None,
+                "sell_avg_price": round(float(sell_amount / sell_shares), 4) if sell_shares else None,
+                "begin_price": round(float(begin_price), 4) if begin_price is not None else None,
+                "end_price": round(float(end_price), 4) if end_price is not None else None,
+                "period_return": None if begin_price in (None, 0) or end_price is None else round(float(end_price / begin_price - 1.0), 6),
+                "pnl": round_money(pnl),
+                "return_pct": round(float(pnl / denominator), 6),
+                "pnl_class": signed_class(pnl),
+            })
+        if not within.empty:
+            for code, group in within.groupby("ts_code", sort=False):
+                code = str(code)
+                for _, trade in group.iterrows():
+                    shares = float(trade.get("shares", 0.0))
+                    price = float(trade.get("price", 0.0))
+                    if trade.get("action") == "buy":
+                        old_shares = float(position_shares.get(code, 0.0))
+                        new_shares = old_shares + shares
+                        if new_shares > 0:
+                            old_cost_value = float(position_cost.get(code, price)) * old_shares
+                            position_cost[code] = (old_cost_value + price * shares) / new_shares
+                        position_shares[code] = new_shares
+                    elif trade.get("action") == "sell":
+                        position_shares[code] = max(float(position_shares.get(code, 0.0)) - shares, 0.0)
+                        if position_shares[code] <= 1e-9:
+                            position_shares[code] = 0.0
+                    adj_series = adj_lookup.get(code)
+                    if adj_series is not None and date in adj_series.index and pd.notna(adj_series.loc[date]):
+                        position_adj[code] = float(adj_series.loc[date])
+        for code, series in price_lookup.items():
+            if date in series.index and pd.notna(series.loc[date]):
+                previous_prices[code] = float(series.loc[date])
+    return sorted(details, key=lambda item: (item["date"], item["pnl"]), reverse=True)
+
+
+def calc_trade_position_shares(trade_group):
+    if trade_group is None or trade_group.empty:
+        return 0.0
+    buys = trade_group.loc[trade_group["action"].eq("buy"), "shares"].sum()
+    sells = trade_group.loc[trade_group["action"].eq("sell"), "shares"].sum()
+    return float(buys - sells)
+
+
+def make_profit_calendar_html(payload):
+    payload_json = json.dumps(payload, ensure_ascii=False, allow_nan=False)
+    return f"""
+<div class="profit-calendar" id="profit-calendar-root">
+  <div class="profit-calendar-head">
+    <div>
+      <div class="profit-calendar-title">盈亏日历</div>
+      <div class="profit-calendar-subtitle">按账户净值复盘日/月/年收益，点击卡片可选中，再次点击反选。</div>
+    </div>
+  </div>
+  <div class="profit-calendar-layout">
+    <div class="profit-calendar-phone">
+      <div class="profit-calendar-phone-bar"></div>
+      <div class="profit-calendar-tabs" role="tablist" aria-label="盈亏日历维度">
+        <button type="button" class="profit-calendar-tab" data-mode="year">年收益</button>
+        <button type="button" class="profit-calendar-tab" data-mode="month">月收益</button>
+        <button type="button" class="profit-calendar-tab active" data-mode="day">日收益</button>
+      </div>
+      <div class="profit-calendar-toolbar">
+        <button type="button" class="profit-calendar-nav" data-dir="-1" aria-label="上一期">‹</button>
+        <button type="button" class="profit-calendar-period" aria-live="polite"></button>
+        <button type="button" class="profit-calendar-nav" data-dir="1" aria-label="下一期">›</button>
+      </div>
+      <div class="profit-calendar-weekdays" aria-hidden="true"></div>
+      <div class="profit-calendar-grid"></div>
+    </div>
+    <div class="profit-calendar-side">
+      <div class="profit-calendar-summary"></div>
+      <div class="profit-calendar-detail">
+        <div class="profit-calendar-detail-head">
+          <div class="profit-calendar-detail-title">区间明细</div>
+          <div class="profit-calendar-detail-tabs">
+            <button type="button" class="profit-calendar-detail-tab" data-detail="trades">交易记录</button>
+            <button type="button" class="profit-calendar-detail-tab active" data-detail="heatmap">热力图</button>
+            <button type="button" class="profit-calendar-detail-tab" data-detail="list">盈亏列表</button>
+          </div>
+        </div>
+        <div class="profit-calendar-trades" hidden></div>
+        <div class="profit-calendar-heatmap"></div>
+        <div class="profit-calendar-list" hidden></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function() {{
+  const payload = {payload_json};
+  const root = document.getElementById("profit-calendar-root");
+  if (!root) return;
+
+  let mode = "day";
+  let detailMode = "heatmap";
+  let selectedKey = null;
+  let currentYear = payload.default_year;
+  let currentMonth = payload.default_month;
+
+  const tabs = Array.from(root.querySelectorAll(".profit-calendar-tab"));
+  const detailTabs = Array.from(root.querySelectorAll(".profit-calendar-detail-tab"));
+  const tradeTab = root.querySelector('.profit-calendar-detail-tab[data-detail="trades"]');
+  const navButtons = Array.from(root.querySelectorAll(".profit-calendar-nav"));
+  const periodButton = root.querySelector(".profit-calendar-period");
+  const weekdays = root.querySelector(".profit-calendar-weekdays");
+  const grid = root.querySelector(".profit-calendar-grid");
+  const summary = root.querySelector(".profit-calendar-summary");
+  const trades = root.querySelector(".profit-calendar-trades");
+  const heatmap = root.querySelector(".profit-calendar-heatmap");
+  const list = root.querySelector(".profit-calendar-list");
+
+  function money(value) {{
+    const number = Number(value || 0);
+    const sign = number > 0 ? "+" : "";
+    return sign + number.toLocaleString("zh-CN", {{ maximumFractionDigits: 0 }});
+  }}
+
+  function percent(value) {{
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+    const number = Number(value) * 100;
+    const sign = number > 0 ? "+" : "";
+    return sign + number.toFixed(2) + "%";
+  }}
+
+  function className(value) {{
+    const number = Number(value || 0);
+    if (number > 0) return "pos";
+    if (number < 0) return "neg";
+    return "neutral";
+  }}
+
+  function itemStyle(item) {{
+    if (!item || !item.pnl) return "";
+    const intensity = Math.max(0.22, Math.min(1, Number(item.intensity || 0.25)));
+    if (item.pnl > 0) return `background: rgba(239, 68, 68, ${{0.30 + intensity * 0.48}});`;
+    if (item.pnl < 0) return `background: rgba(37, 99, 235, ${{0.28 + intensity * 0.48}});`;
+    return "";
+  }}
+
+  function activeItems() {{
+    if (mode === "day") {{
+      return payload.days.filter(item => item.key.slice(0, 7) === currentMonth);
+    }}
+    if (mode === "month") {{
+      return payload.months.filter(item => item.year === currentYear);
+    }}
+    return payload.years;
+  }}
+
+  function selectedItem() {{
+    return activeItems().find(item => item.key === selectedKey) || null;
+  }}
+
+  function defaultRange() {{
+    const items = activeItems();
+    if (!items.length) return null;
+    const periodItem = mode === "day"
+      ? (payload.months || []).find(item => item.period === currentMonth)
+      : (mode === "month" ? (payload.years || []).find(item => item.year === currentYear) : null);
+    if (periodItem) return periodItem;
+    const pnl = items.reduce((sum, item) => sum + Number(item.pnl || 0), 0);
+    const first = items[0];
+    const last = items[items.length - 1];
+    const startNavBase = first.nav - first.pnl;
+    const ret = startNavBase ? (last.nav / startNavBase - 1) : null;
+    return {{
+      key: "default",
+      label: mode === "day" ? currentMonth : (mode === "month" ? String(currentYear) : "全部年份"),
+      start: first.start,
+      end: last.end,
+      range_label: first.start === last.end ? first.start : `${{first.start}} ~ ${{last.end}}`,
+      pnl,
+      ret,
+      nav: last.nav,
+      index_ret: null,
+      pnl_class: className(pnl),
+    }};
+  }}
+
+  function currentRange() {{
+    return selectedItem() || defaultRange();
+  }}
+
+  function setMode(nextMode) {{
+    mode = nextMode;
+    selectedKey = null;
+    tabs.forEach(tab => tab.classList.toggle("active", tab.dataset.mode === mode));
+    render();
+  }}
+
+  function shiftPeriod(direction) {{
+    if (mode === "day") {{
+      const [year, month] = currentMonth.split("-").map(Number);
+      const date = new Date(year, month - 1 + direction, 1);
+      const next = `${{date.getFullYear()}}-${{String(date.getMonth() + 1).padStart(2, "0")}}`;
+      if (payload.days.some(item => item.key.slice(0, 7) === next)) currentMonth = next;
+    }} else if (mode === "month") {{
+      const next = currentYear + direction;
+      if (payload.months.some(item => item.year === next)) currentYear = next;
+    }}
+    selectedKey = null;
+    render();
+  }}
+
+  function setDetailMode(nextMode) {{
+    detailMode = nextMode;
+    detailTabs.forEach(tab => tab.classList.toggle("active", tab.dataset.detail === detailMode));
+    trades.hidden = detailMode !== "trades";
+    heatmap.hidden = detailMode !== "heatmap";
+    list.hidden = detailMode !== "list";
+  }}
+
+  function renderHeader() {{
+    periodButton.textContent = mode === "day" ? currentMonth : (mode === "month" ? `${{currentYear}}年` : "全部年份");
+    weekdays.innerHTML = "";
+    weekdays.style.display = mode === "day" ? "grid" : "none";
+    if (mode === "day") {{
+      ["一", "二", "三", "四", "五"].forEach(day => {{
+        const cell = document.createElement("div");
+        cell.textContent = day;
+        weekdays.appendChild(cell);
+      }});
+    }}
+    navButtons.forEach(button => {{
+      button.style.visibility = mode === "year" ? "hidden" : "visible";
+    }});
+  }}
+
+  function renderGrid() {{
+    const items = activeItems();
+    grid.className = `profit-calendar-grid ${{mode}}-grid`;
+    grid.innerHTML = "";
+    if (mode === "day" && items.length) {{
+      const firstDate = new Date(items[0].key + "T00:00:00");
+      const weekday = firstDate.getDay() === 0 ? 7 : firstDate.getDay();
+      for (let i = 1; i < Math.min(weekday, 6); i += 1) {{
+        const spacer = document.createElement("div");
+        spacer.className = "profit-calendar-spacer";
+        grid.appendChild(spacer);
+      }}
+    }}
+    items.forEach(item => {{
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `profit-calendar-card ${{item.pnl_class}}`;
+      if (selectedKey === item.key) button.classList.add("selected");
+      button.dataset.key = item.key;
+      button.setAttribute("aria-pressed", selectedKey === item.key ? "true" : "false");
+      button.style.cssText = itemStyle(item);
+      button.innerHTML = `
+        <span class="profit-calendar-card-label">${{item.label}}</span>
+        <span class="profit-calendar-card-pnl">${{money(item.pnl)}}</span>
+        <span class="profit-calendar-card-rate">${{percent(item.ret)}}</span>
+        <span class="profit-calendar-check">✓</span>
+      `;
+      button.addEventListener("click", () => {{
+        selectedKey = selectedKey === item.key ? null : item.key;
+        render();
+      }});
+      grid.appendChild(button);
+    }});
+  }}
+
+  function renderSummary() {{
+    const item = currentRange();
+    if (!item) {{
+      summary.innerHTML = "<div>暂无盈亏数据</div>";
+      return;
+    }}
+    summary.innerHTML = `
+      <div><span>区间：</span><strong>${{item.range_label}}</strong></div>
+      <div><span>收益：</span><strong class="${{className(item.pnl)}}">${{money(item.pnl)}}</strong></div>
+      <div><span>收益率：</span><strong class="${{className(item.ret)}}">${{percent(item.ret)}}</strong></div>
+      <div><span>${{payload.index_name || "指数"}}：</span><strong class="${{className(item.index_ret)}}">${{percent(item.index_ret)}}</strong></div>
+    `;
+  }}
+
+  function inRange(dateText, range) {{
+    return range && dateText >= range.start && dateText <= range.end;
+  }}
+
+  function numberText(value, digits = 0) {{
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+    return Number(value).toLocaleString("zh-CN", {{ maximumFractionDigits: digits, minimumFractionDigits: digits }});
+  }}
+
+  function plainMoney(value) {{
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+    return Number(value).toLocaleString("zh-CN", {{ maximumFractionDigits: 0 }});
+  }}
+
+  function tradePnlClass(value) {{
+    const number = Number(value || 0);
+    if (number > 0) return "profit-pos";
+    if (number < 0) return "profit-neg";
+    return "profit-neutral";
+  }}
+
+  function tradePnlText(trade) {{
+    if (!trade || trade.action !== "sell" || trade.pnl === null || trade.pnl === undefined || Number.isNaN(Number(trade.pnl))) return "-";
+    return money(trade.pnl);
+  }}
+
+  function rangeStockDetails(range) {{
+    if (!range) return [];
+    const rows = (payload.stock_details || []).filter(item => inRange(item.date, range));
+    const grouped = new Map();
+    rows.forEach(item => {{
+      const current = grouped.get(item.code) || {{
+        code: item.code,
+        name: item.name || item.code,
+        begin_shares: null,
+        end_shares: null,
+        buy_amount: 0,
+        sell_amount: 0,
+        buy_shares: 0,
+        sell_shares: 0,
+        pnl: 0,
+        first_date: item.date,
+        last_date: item.date,
+        begin_price: item.begin_price,
+        end_price: item.end_price,
+        denominator: 0,
+      }};
+      if (current.begin_shares === null || item.date < current.first_date) {{
+        current.first_date = item.date;
+        current.begin_shares = Number(item.begin_shares || 0);
+        current.begin_price = item.begin_price;
+      }}
+      if (current.end_shares === null || item.date > current.last_date) {{
+        current.last_date = item.date;
+        current.end_shares = Number(item.end_shares || 0);
+        current.end_price = item.end_price;
+      }}
+      current.name = item.name || current.name;
+      current.buy_amount += Number(item.buy_amount || 0);
+      current.sell_amount += Number(item.sell_amount || 0);
+      current.buy_shares += Number(item.buy_shares || 0);
+      current.sell_shares += Number(item.sell_shares || 0);
+      current.pnl += Number(item.pnl || 0);
+      current.denominator += item.return_pct === null || item.return_pct === undefined || Number(item.return_pct) === 0
+        ? 0
+        : Number(item.pnl || 0) / Number(item.return_pct);
+      grouped.set(item.code, current);
+    }});
+    return Array.from(grouped.values()).map(item => {{
+      const capitalBase = item.denominator > 0
+        ? item.denominator
+        : ((Number(item.begin_shares || 0) * Number(item.begin_price || 0)) + item.buy_amount);
+      return {{
+        ...item,
+        buy_avg_price: item.buy_shares ? item.buy_amount / item.buy_shares : null,
+        sell_avg_price: item.sell_shares ? item.sell_amount / item.sell_shares : null,
+        period_return: item.begin_price ? (Number(item.end_price || item.begin_price) / Number(item.begin_price) - 1) : null,
+        return_pct: capitalBase > 0 ? item.pnl / capitalBase : null,
+      }};
+    }}).sort((a, b) => b.pnl - a.pnl);
+  }}
+
+  function rangeTrades(range) {{
+    if (!range) return [];
+    return (payload.trade_details || [])
+      .filter(day => inRange(day.date, range))
+      .flatMap(day => (day.trades || []).map(trade => ({{ ...trade, date: trade.date || day.date }})));
+  }}
+
+  function renderTradeRecordSummary(rows) {{
+    if (!tradeTab) return;
+    const total = rows.length;
+    const buyCount = rows.filter(trade => trade.action === "buy").length;
+    const sellCount = rows.filter(trade => trade.action === "sell").length;
+    const totalText = total ? String(total) : "-";
+    const buyText = total ? String(buyCount) : "-";
+    const sellText = total ? String(sellCount) : "-";
+    tradeTab.textContent = `交易记录（共${{totalText}}次交易、买入${{buyText}}次、卖出${{sellText}}次）`;
+  }}
+
+  function renderTradeRecords() {{
+    const rows = rangeTrades(currentRange());
+    renderTradeRecordSummary(rows);
+    if (!rows.length) {{
+      trades.innerHTML = '<div class="profit-calendar-empty">该区间暂无交易记录。</div>';
+      return;
+    }}
+    trades.innerHTML = `
+      <div class="profit-calendar-list-wrap">
+        <table class="profit-calendar-table profit-calendar-trade-table">
+          <thead><tr><th>成交日期</th><th>代码</th><th>名称</th><th>类型</th><th>成交数量</th><th>成交金额</th><th>交易费用</th><th>盈利</th></tr></thead>
+          <tbody>
+            ${{rows.map(trade => `
+              <tr>
+                <td>${{trade.date || "-"}}</td>
+                <td>${{trade.code || "-"}}</td>
+                <td>${{trade.name || trade.code || "-"}}</td>
+                <td class="profit-calendar-action profit-calendar-action-${{trade.action || "unknown"}}">${{trade.action_label || trade.action || "-"}}</td>
+                <td class="num-cell">${{numberText(trade.shares)}}</td>
+                <td class="num-cell">${{plainMoney(trade.amount)}}</td>
+                <td class="num-cell">${{numberText(trade.commission, 2)}}</td>
+                <td class="num-cell ${{trade.action === "sell" ? tradePnlClass(trade.pnl) : ""}}">${{tradePnlText(trade)}}</td>
+              </tr>
+            `).join("")}}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }}
+
+  function renderHeatmap() {{
+    const items = rangeStockDetails(currentRange());
+    const maxAbs = Math.max(0, ...items.map(item => Math.abs(item.pnl)));
+    if (!items.length) {{
+      heatmap.innerHTML = '<div class="profit-calendar-empty">该区间暂无个股盈亏明细。</div>';
+      return;
+    }}
+    heatmap.innerHTML = items.map(item => {{
+      const intensity = maxAbs ? Math.max(0.22, Math.min(1, Math.abs(item.pnl) / maxAbs)) : 0.22;
+      const style = item.pnl >= 0
+        ? `background: rgba(239, 68, 68, ${{0.30 + intensity * 0.50}});`
+        : `background: rgba(37, 99, 235, ${{0.30 + intensity * 0.50}});`;
+      return `
+        <div class="profit-calendar-heat-item ${{className(item.pnl)}}" style="${{style}}">
+          <span>${{item.name}}</span>
+          <strong>${{money(item.pnl)}}</strong>
+          <small>${{item.code}} · 收益率 ${{percent(item.return_pct)}}</small>
+        </div>
+      `;
+    }}).join("");
+  }}
+
+  function renderList() {{
+    const rows = rangeStockDetails(currentRange());
+    if (!rows.length) {{
+      list.innerHTML = '<div class="profit-calendar-empty">该区间暂无个股盈亏明细。</div>';
+      return;
+    }}
+    list.innerHTML = `
+      <div class="profit-calendar-list-wrap">
+        <table class="profit-calendar-table">
+          <thead><tr><th>股票名称</th><th>股票代码</th><th>盈亏金额</th><th>收益率</th><th>区间涨幅</th><th>期初数量</th><th>期末数量</th><th>累计买入</th><th>累计卖出</th><th>买入均价</th><th>卖出均价</th></tr></thead>
+          <tbody>
+            ${{rows.map(item => `
+              <tr>
+                <td>${{item.name || item.code || "-"}}</td>
+                <td>${{item.code || "-"}}</td>
+                <td class="num-cell ${{className(item.pnl)}}">${{money(item.pnl)}}</td>
+                <td class="num-cell ${{className(item.return_pct)}}">${{percent(item.return_pct)}}</td>
+                <td class="num-cell ${{className(item.period_return)}}">${{percent(item.period_return)}}</td>
+                <td class="num-cell">${{numberText(item.begin_shares)}}</td>
+                <td class="num-cell">${{numberText(item.end_shares)}}</td>
+                <td class="num-cell">${{plainMoney(item.buy_amount)}}</td>
+                <td class="num-cell">${{plainMoney(item.sell_amount)}}</td>
+                <td class="num-cell">${{numberText(item.buy_avg_price, 2)}}</td>
+                <td class="num-cell">${{numberText(item.sell_avg_price, 2)}}</td>
+              </tr>
+            `).join("")}}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }}
+
+  function renderDetails() {{
+    renderSummary();
+    renderTradeRecords();
+    renderHeatmap();
+    renderList();
+    setDetailMode(detailMode);
+  }}
+
+  function render() {{
+    renderHeader();
+    renderGrid();
+    renderDetails();
+  }}
+
+  tabs.forEach(tab => tab.addEventListener("click", () => setMode(tab.dataset.mode)));
+  detailTabs.forEach(tab => tab.addEventListener("click", () => setDetailMode(tab.dataset.detail)));
+  navButtons.forEach(button => button.addEventListener("click", () => shiftPeriod(Number(button.dataset.dir))));
+  render();
+}})();
+</script>
+"""
 
 
 def build_monthly_market_regime_summary(rebalance_log):
@@ -1061,6 +2098,10 @@ def make_html(summary, nav, trades, scores, rebalance_log, holdings):
     end_date = str(nav["date"].iloc[-1])[:10]
     metrics = calc_metrics(nav, summary)
     weekly_hotspots = load_weekly_candidate_dc_segment_hotspots(scores, nav)
+    market_index = load_market_index_for_report()
+    price_panel = load_stock_price_panel_for_report()
+    positions = load_position_daily_for_report()
+    profit_calendar_payload = build_profit_calendar_payload(nav, trades, market_index, price_panel, positions)
     figs = [
         (make_net_value_figure(nav, metrics, start_date, end_date), "净值曲线"),
         (make_equity_figure(nav), "资金曲线"),
@@ -1091,6 +2132,10 @@ def make_html(summary, nav, trades, scores, rebalance_log, holdings):
     sections_html += (
         '<div class="section"><div class="section-title">最新候选股票 Top 30</div>'
         f'{make_latest_candidates_table_html(scores, holdings, trades)}</div>\n'
+    )
+    sections_html += (
+        '<div class="section wide-section"><div class="section-title">盈亏日历</div>'
+        f'{make_profit_calendar_html(profit_calendar_payload)}</div>\n'
     )
 
     html = f"""<!DOCTYPE html>
@@ -1145,6 +2190,69 @@ def make_html(summary, nav, trades, scores, rebalance_log, holdings):
   .latest-candidates-table .multiline-cell {{ white-space: pre-line; line-height: 1.45; vertical-align: top; }}
   .latest-candidates-table .buy-date-cell {{ color: #dc2626; font-weight: 600; }}
   .latest-candidates-table .sell-date-cell {{ color: #16a34a; font-weight: 600; }}
+  .profit-calendar {{ min-width: 1120px; color: #1f2937; }}
+  .profit-calendar-head {{ display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 14px; }}
+  .profit-calendar-title {{ font-size: 18px; font-weight: 700; color: #1f2937; }}
+  .profit-calendar-subtitle {{ margin-top: 4px; font-size: 12px; color: #6b7280; }}
+  .profit-calendar-layout {{ display: grid; grid-template-columns: 430px minmax(680px, 1fr); gap: 28px; align-items: start; }}
+  .profit-calendar-phone {{ width: 430px; min-height: 720px; background: #ffffff; border: 1px solid #dbe2ea; border-radius: 22px; padding: 18px 18px 22px; box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12); }}
+  .profit-calendar-phone-bar {{ width: 92px; height: 5px; border-radius: 999px; background: #d1d5db; margin: 0 auto 14px; }}
+  .profit-calendar-side {{ min-width: 0; border-left: 1px solid #e5e7eb; padding-left: 24px; }}
+  .profit-calendar-tabs, .profit-calendar-detail-tabs {{ display: inline-flex; gap: 4px; background: #f3f4f6; padding: 4px; border-radius: 8px; }}
+  .profit-calendar-phone .profit-calendar-tabs {{ display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; margin-bottom: 14px; }}
+  .profit-calendar-tab, .profit-calendar-detail-tab, .profit-calendar-nav, .profit-calendar-period {{
+    border: 1px solid transparent; background: transparent; color: #374151; cursor: pointer; font-size: 13px;
+  }}
+  .profit-calendar-tab, .profit-calendar-detail-tab {{ padding: 7px 14px; border-radius: 6px; }}
+  .profit-calendar-phone .profit-calendar-tab {{ padding: 8px 6px; font-weight: 700; }}
+  .profit-calendar-tab.active, .profit-calendar-detail-tab.active {{ background: #ffffff; border-color: #d1d5db; color: #111827; font-weight: 700; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }}
+  .profit-calendar-toolbar {{ display: flex; justify-content: center; align-items: center; gap: 10px; margin: 0 0 12px; }}
+  .profit-calendar-nav {{ width: 32px; height: 32px; border-radius: 50%; background: #f3f4f6; font-size: 22px; line-height: 1; }}
+  .profit-calendar-nav:hover {{ background: #e5e7eb; }}
+  .profit-calendar-period {{ min-width: 118px; padding: 7px 10px; border-radius: 8px; font-size: 18px; font-weight: 700; text-align: center; }}
+  .profit-calendar-weekdays {{ display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; color: #4b5563; font-weight: 700; text-align: center; }}
+  .profit-calendar-grid {{ display: grid; gap: 8px; }}
+  .profit-calendar-grid.day-grid {{ grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }}
+  .profit-calendar-grid.month-grid {{ grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }}
+  .profit-calendar-grid.year-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }}
+  .profit-calendar-card {{ position: relative; min-height: 92px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; padding: 10px; text-align: left; cursor: pointer; overflow: hidden; }}
+  .profit-calendar-spacer {{ min-height: 92px; }}
+  .profit-calendar-card:hover {{ border-color: #9ca3af; }}
+  .profit-calendar-card.selected {{ border: 2px solid #ef4444; box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.18); }}
+  .profit-calendar-card-label {{ display: block; font-size: 14px; color: rgba(31, 41, 55, 0.72); font-weight: 700; }}
+  .profit-calendar-card-pnl {{ display: block; margin-top: 9px; font-size: 18px; color: #ffffff; font-weight: 700; white-space: nowrap; }}
+  .profit-calendar-card-rate {{ display: block; margin-top: 5px; font-size: 12px; color: rgba(255, 255, 255, 0.88); }}
+  .profit-calendar-card.neutral .profit-calendar-card-pnl, .profit-calendar-card.neutral .profit-calendar-card-rate {{ color: #374151; }}
+  .profit-calendar-check {{ display: none; position: absolute; top: 0; left: 0; width: 28px; height: 28px; background: #ef4444; color: #ffffff; border-bottom-right-radius: 12px; align-items: center; justify-content: center; font-weight: 700; }}
+  .profit-calendar-card.selected .profit-calendar-check {{ display: flex; }}
+  .profit-calendar-summary {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 16px; padding: 13px 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; }}
+  .profit-calendar-summary span {{ color: #6b7280; }}
+  .profit-calendar-summary .pos, .profit-calendar-table .pos {{ color: #dc2626; }}
+  .profit-calendar-summary .neg, .profit-calendar-table .neg {{ color: #2563eb; }}
+  .profit-calendar-detail {{ border-top: 1px solid #e5e7eb; padding-top: 14px; }}
+  .profit-calendar-detail-head {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }}
+  .profit-calendar-detail-title {{ font-size: 15px; font-weight: 700; }}
+  .profit-calendar [hidden] {{ display: none !important; }}
+  .profit-calendar-heatmap {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); grid-auto-rows: minmax(92px, auto); gap: 8px; }}
+  .profit-calendar-heat-item {{ border-radius: 6px; padding: 12px; color: #ffffff; overflow: hidden; }}
+  .profit-calendar-heat-item span, .profit-calendar-heat-item strong, .profit-calendar-heat-item small {{ display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+  .profit-calendar-heat-item strong {{ margin-top: 8px; font-size: 18px; }}
+  .profit-calendar-heat-item small {{ margin-top: 6px; color: rgba(255, 255, 255, 0.82); }}
+  .profit-calendar-empty {{ padding: 18px; color: #6b7280; background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 8px; text-align: center; }}
+  .profit-calendar-list-wrap {{ max-height: 560px; overflow: auto; border: 1px solid #d0d7de; }}
+  .profit-calendar-table {{ border-collapse: separate; border-spacing: 0; width: 100%; min-width: 980px; font-size: 12px; }}
+  .profit-calendar-table th {{ position: sticky; top: 0; background: #34495e; color: white; padding: 7px 8px; border-right: 1px solid #d0d7de; border-bottom: 1px solid #d0d7de; }}
+  .profit-calendar-table td {{ padding: 6px 8px; border-right: 1px solid #d0d7de; border-bottom: 1px solid #d0d7de; white-space: nowrap; }}
+  .profit-calendar-table th:nth-child(1), .profit-calendar-table td:nth-child(1),
+  .profit-calendar-table th:nth-child(2), .profit-calendar-table td:nth-child(2) {{ text-align: left; }}
+  .profit-calendar-table th:nth-child(n+3), .profit-calendar-table td:nth-child(n+3) {{ text-align: right; }}
+  .profit-calendar-trade-table th:nth-child(3), .profit-calendar-trade-table td:nth-child(3) {{ text-align: left; }}
+  .profit-calendar-trade-table th:nth-child(4), .profit-calendar-trade-table td:nth-child(4) {{ text-align: center; }}
+  .profit-calendar-action {{ font-weight: 700; }}
+  .profit-calendar-action-buy {{ color: #dc2626; }}
+  .profit-calendar-action-sell {{ color: #2563eb; }}
+  .profit-calendar-table .profit-pos {{ color: #dc2626; }}
+  .profit-calendar-table .profit-neg {{ color: #16a34a; }}
 </style>
 </head>
 <body>

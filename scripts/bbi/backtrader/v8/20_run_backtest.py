@@ -74,6 +74,7 @@ from config import (
     NAV_SERIES_PATH,
     OUTPUT_DIR,
     PANEL_PATH,
+    POSITION_DAILY_PATH,
     REBALANCE_LOG_PATH,
     SCORES_PATH,
     SCHEMA,
@@ -979,6 +980,26 @@ def calc_max_drawdown(nav_df):
     return float(dd.min() * 100.0)
 
 
+def build_position_daily_rows(date, holdings):
+    rows = []
+    for code, pos in sorted(holdings.items()):
+        shares = float(pos.get("shares", 0.0))
+        price = float(pos.get("last_price", pos.get("cost_price", 0.0)))
+        rows.append({
+            "date": str(date)[:10],
+            "ts_code": code,
+            "name": pos.get("name", code),
+            "shares": round(shares, 4),
+            "close": round(price, 4),
+            "market_value": round(shares * price, 2),
+            "cost_price": round(float(pos.get("cost_price", 0.0)), 4),
+            "invested_amount": round(float(pos.get("invested_amount", 0.0)), 2),
+            "buy_comm": round(float(pos.get("buy_comm", 0.0)), 2),
+            "step_index": int(pos.get("step_index", 0)),
+        })
+    return rows
+
+
 def build_panel_by_date(panel):
     return {
         date: group_index.to_numpy()
@@ -1014,6 +1035,7 @@ def run_backtest(panel, market, start_date, end_date):
     rebalance_log = []
     score_rows = []
     nav_rows = []
+    position_rows = []
     stats = {
         "signal_days": 0,
         "market_block_days": 0,
@@ -1339,6 +1361,7 @@ def run_backtest(panel, market, start_date, end_date):
 
         nav = cash + sum(mark_position(c, p, day_panel) for c, p in holdings.items())
         nav_rows.append({"date": str(date)[:10], "nav": round(nav, 2), "cash": round(cash, 2), "holdings": len(holdings)})
+        position_rows.extend(build_position_daily_rows(date, holdings))
 
     nav_df = pd.DataFrame(nav_rows)
     total_ret = nav_df["nav"].iloc[-1] / INIT_CASH - 1.0
@@ -1356,7 +1379,7 @@ def run_backtest(panel, market, start_date, end_date):
         "calmar_ratio": round((annual_ret * 100.0) / abs(max_dd), 4) if max_dd < 0 else 0.0,
         "trade_records": len(trades),
     })
-    return nav_df, pd.DataFrame(trades), pd.DataFrame(rebalance_log), pd.DataFrame(score_rows), holdings, stats
+    return nav_df, pd.DataFrame(trades), pd.DataFrame(rebalance_log), pd.DataFrame(score_rows), pd.DataFrame(position_rows), holdings, stats
 
 
 def write_last_holdings(holdings):
@@ -1394,10 +1417,11 @@ def main():
         ) from exc
     panel["trade_date"] = pd.to_datetime(panel["trade_date"])
     market = load_market_index()
-    nav_df, trades_df, rebalance_df, scores_df, holdings, stats = run_backtest(panel, market, args.start, args.end)
+    nav_df, trades_df, rebalance_df, scores_df, position_df, holdings, stats = run_backtest(panel, market, args.start, args.end)
 
     nav_df.to_csv(NAV_SERIES_PATH, index=False)
     trades_df.to_csv(TRADE_RECORDS_PATH, index=False, quoting=csv.QUOTE_MINIMAL)
+    position_df.to_csv(POSITION_DAILY_PATH, index=False)
     rebalance_df.to_csv(REBALANCE_LOG_PATH, index=False)
     scores_df.to_csv(SCORES_PATH, index=False)
     write_last_holdings(holdings)
